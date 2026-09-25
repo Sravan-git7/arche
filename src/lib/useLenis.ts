@@ -8,6 +8,10 @@ import { gsap, ScrollTrigger, prefersReducedMotion } from "./gsap";
  * We reproduce that with Lenis, driven by the GSAP ticker so it stays in
  * lockstep with every ScrollTrigger-based reveal in the page.
  */
+/** The live instance, for the few places that need to drive scroll themselves. */
+let instance: Lenis | null = null;
+export const getLenis = (): Lenis | null => instance;
+
 export function useLenis() {
   useEffect(() => {
     if (prefersReducedMotion()) return;
@@ -23,6 +27,7 @@ export function useLenis() {
       anchors: { offset: -96 },
     });
 
+    instance = lenis;
     lenis.on("scroll", ScrollTrigger.update);
 
     const tick = (time: number) => {
@@ -40,6 +45,7 @@ export function useLenis() {
       window.removeEventListener("load", refresh);
       gsap.ticker.remove(tick);
       lenis.destroy();
+      if (instance === lenis) instance = null;
     };
   }, []);
 }

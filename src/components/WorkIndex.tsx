@@ -143,7 +143,6 @@ export function ProjectRow({ p, i, isLast = false }: { p: Project; i: number; is
           onPointerLeave={onPointerLeave}
           onClick={toggleExpand}
           data-cursor={expanded ? "CLOSE" : "VIEW"}
-          {...(i === 0 ? { "data-work-first-frame": "1" } : {})}
         >
           <div style={{ aspectRatio: RATIO[p.ratio], borderRadius: 6, overflow: "hidden" }}>
             <img

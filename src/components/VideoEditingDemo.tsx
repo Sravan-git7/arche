@@ -1,14 +1,26 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { prefersReducedMotion } from "../lib/gsap";
+import { gsap, prefersReducedMotion } from "../lib/gsap";
+import { announcePreviewDone, markPreviewPlayed } from "../lib/autoplay";
 
 /**
- * Video Editing Service Demo (PROMPT 09)
+ * Video Editing Service Demo (PROMPT 09, autoplay per PROMPT 24)
  *
  * Sequence: RAW -> SELECT -> CUT -> MOTION -> CAPTIONS -> GRADE -> EXPORT
  * Fully scrubbable by visitor via playhead or waveform drag / touch-drag.
  * Non-drag hover on any segment box jumps directly to that stage.
  * Mobile includes an auto-play fallback button.
+ *
+ * The playhead is CONTINUOUS (a 0..1 value written to a `--ph` custom
+ * property, so the head and the played part of the waveform move every
+ * frame without re-rendering React); the stage it sits in is the discrete
+ * value derived from it. On first view it scrubs the whole RAW -> EXPORT
+ * range once, slowly (~4.6s), then hands control to the visitor — any
+ * pointer input kills the auto pass immediately and for good.
  */
+
+const SLUG = "video-editing";
+/** Seconds for the first-view auto pass across the full range. */
+const AUTO_SCRUB = 4.6;
 
 export const STAGES = [
   { id: "raw", label: "RAW", name: "Raw Footage", desc: "Uncut, unprocessed camera output." },
@@ -32,37 +44,110 @@ const SEGMENTS = [
 ];
 
 export function VideoEditingDemo({
+  active = false,
   preview = false,
+  auto = false,
 }: {
   active?: boolean;
   preview?: boolean;
+  auto?: boolean;
 }) {
+  const LAST = STAGES.length - 1;
   const [stageIndex, setStageIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isScrubbing, setIsScrubbing] = useState(false);
   const trackRef = useRef<HTMLDivElement>(null);
-  const playheadRef = useRef<number>(0);
-  const autoPlayTimer = useRef<number | null>(null);
+  const posRef = useRef(0); // continuous playhead position, 0..1
+  const proxy = useRef({ p: 0 });
+  const tween = useRef<gsap.core.Tween | null>(null);
+  const autoStarted = useRef(false);
+  const startTimer = useRef(0);
 
   const currentStage = STAGES[stageIndex];
 
-  // Stop autoplay on unmount
-  useEffect(() => {
-    return () => {
-      if (autoPlayTimer.current) window.clearInterval(autoPlayTimer.current);
-    };
-  }, []);
+  /**
+   * Write a playhead position. The head and the played waveform are driven
+   * straight off the `--ph` custom property (no React work per frame); the
+   * stage state only changes when the head crosses into the next stage.
+   */
+  const applyPos = (p: number) => {
+    const v = Math.max(0, Math.min(1, p));
+    posRef.current = v;
+    trackRef.current?.style.setProperty("--ph", v.toFixed(4));
+    const idx = Math.round(v * LAST);
+    setStageIndex((prev) => (prev === idx ? prev : idx));
+  };
+
+  const stopTween = () => {
+    tween.current?.kill();
+    tween.current = null;
+    setIsPlaying(false);
+  };
+
+  /** Glide the playhead to an absolute position. */
+  const glideTo = (p: number, duration: number, ease = "power2.inOut", onDone?: () => void) => {
+    if (prefersReducedMotion()) {
+      applyPos(p);
+      onDone?.();
+      return;
+    }
+    stopTween();
+    setIsPlaying(duration > 0.6);
+    proxy.current.p = posRef.current;
+    tween.current = gsap.to(proxy.current, {
+      p,
+      duration,
+      ease,
+      onUpdate: () => applyPos(proxy.current.p),
+      onComplete: () => {
+        tween.current = null;
+        setIsPlaying(false);
+        onDone?.();
+      },
+    });
+  };
+
+  /** The visitor took the playhead: no auto pass from here on. */
+  const takeOver = () => {
+    autoStarted.current = true;
+    if (startTimer.current) window.clearTimeout(startTimer.current);
+    stopTween();
+  };
 
   const jumpToStage = (idx: number) => {
-    const clamped = Math.max(0, Math.min(STAGES.length - 1, idx));
-    setStageIndex(clamped);
-    playheadRef.current = clamped / (STAGES.length - 1);
+    takeOver();
+    glideTo(Math.max(0, Math.min(LAST, idx)) / LAST, 0.4);
   };
+
+  useEffect(
+    () => () => {
+      if (startTimer.current) window.clearTimeout(startTimer.current);
+      tween.current?.kill();
+    },
+    []
+  );
+
+  /* PROMPT 24 — first view: one slow pass across the full range, then the
+     visitor owns the playhead. Runs once per page visit. */
+  useEffect(() => {
+    if (autoStarted.current || !auto || !active || preview) return;
+    const id = window.setTimeout(() => {
+      startTimer.current = 0;
+      autoStarted.current = true;
+      markPreviewPlayed(SLUG);
+      glideTo(1, AUTO_SCRUB, "sine.inOut", () => announcePreviewDone(SLUG));
+    }, 480);
+    startTimer.current = id;
+    return () => {
+      window.clearTimeout(id);
+      if (startTimer.current === id) startTimer.current = 0;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auto, active, preview]);
 
   const handlePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (preview) return;
-    setIsPlaying(false);
-    if (autoPlayTimer.current) window.clearInterval(autoPlayTimer.current);
+    takeOver();
     setIsScrubbing(true);
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     updateFromPointer(e.clientX);
@@ -86,43 +171,20 @@ export function VideoEditingDemo({
   const updateFromPointer = (clientX: number) => {
     if (!trackRef.current) return;
     const rect = trackRef.current.getBoundingClientRect();
-    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    playheadRef.current = ratio;
-    const targetIdx = Math.round(ratio * (STAGES.length - 1));
-    setStageIndex(targetIdx);
+    applyPos((clientX - rect.left) / rect.width);
   };
 
+  /** PLAY / PAUSE — a visitor-triggered pass over the same range. */
   const toggleAutoPlay = () => {
-    if (isPlaying) {
-      setIsPlaying(false);
-      if (autoPlayTimer.current) window.clearInterval(autoPlayTimer.current);
-      return;
-    }
-
-    if (prefersReducedMotion()) {
-      jumpToStage(STAGES.length - 1);
-      return;
-    }
-
-    setIsPlaying(true);
-    let cur = stageIndex >= STAGES.length - 1 ? 0 : stageIndex;
-    jumpToStage(cur);
-
-    if (autoPlayTimer.current) window.clearInterval(autoPlayTimer.current);
-    autoPlayTimer.current = window.setInterval(() => {
-      cur += 1;
-      if (cur >= STAGES.length) {
-        setIsPlaying(false);
-        if (autoPlayTimer.current) window.clearInterval(autoPlayTimer.current);
-      } else {
-        jumpToStage(cur);
-      }
-    }, 450);
+    if (preview) return;
+    takeOver();
+    if (isPlaying) return; // takeOver() already stopped it
+    if (posRef.current > 0.995) applyPos(0);
+    glideTo(1, 3.2, "sine.inOut");
   };
 
   // Map stage to segment selection
   const activeSegmentIdx = Math.min(stageIndex, SEGMENTS.length - 1);
-  const playheadPercent = (stageIndex / (STAGES.length - 1)) * 100;
 
   return (
     <div
@@ -386,7 +448,7 @@ export function VideoEditingDemo({
           ref={trackRef}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
-          className="relative h-[44px] w-full cursor-ew-resize rounded-[4px] border overflow-hidden p-[2px] touch-none"
+          className="vd-track relative h-[44px] w-full cursor-ew-resize rounded-[4px] border overflow-hidden p-[2px] touch-none"
           style={{
             borderColor: isScrubbing ? "var(--accent-deep)" : "var(--line)",
             background: "var(--bg-2)",
@@ -399,33 +461,40 @@ export function VideoEditingDemo({
           aria-valuenow={stageIndex}
           aria-valuetext={currentStage.label}
         >
-          {/* Static SVG Waveform representation */}
-          <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 300 40">
-            {Array.from({ length: 48 }).map((_, i) => {
-              const height = 6 + ((i * 23) % 24);
-              const x = i * 6.3 + 3;
-              const isPast = x / 300 <= playheadPercent / 100;
-              return (
-                <line
-                  key={i}
-                  x1={x}
-                  y1={20 - height / 2}
-                  x2={x}
-                  y2={20 + height / 2}
-                  stroke={isPast ? "var(--accent-deep)" : "var(--faint)"}
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  opacity={isPast ? 1 : 0.4}
-                />
-              );
-            })}
-          </svg>
+          {/* Waveform: one faint bed, one lime copy clipped to the playhead.
+              Both read the same `--ph` value, so the sweep is continuous. */}
+          {[false, true].map((played) => (
+            <svg
+              key={played ? "played" : "bed"}
+              className={`absolute inset-0 h-full w-full ${played ? "vd-wave-played" : ""}`}
+              preserveAspectRatio="none"
+              viewBox="0 0 300 40"
+              aria-hidden
+            >
+              {Array.from({ length: 48 }).map((_, i) => {
+                const height = 6 + ((i * 23) % 24);
+                const x = i * 6.3 + 3;
+                return (
+                  <line
+                    key={i}
+                    x1={x}
+                    y1={20 - height / 2}
+                    x2={x}
+                    y2={20 + height / 2}
+                    stroke={played ? "var(--accent-deep)" : "var(--faint)"}
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    opacity={played ? 1 : 0.4}
+                  />
+                );
+              })}
+            </svg>
+          ))}
 
           {/* Draggable Playhead */}
           <div
-            className="absolute top-0 bottom-0 w-[2px] -translate-x-1/2 pointer-events-none transition-transform duration-75"
+            className="vd-playhead pointer-events-none absolute top-0 bottom-0 w-[2px]"
             style={{
-              left: `${playheadPercent}%`,
               background: "var(--accent-deep)",
               boxShadow: "0 0 8px var(--accent-deep)",
             }}

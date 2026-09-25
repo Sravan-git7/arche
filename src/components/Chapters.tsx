@@ -5,6 +5,7 @@ import { Link } from "../lib/router";
 import { gsap, ScrollTrigger, prefersReducedMotion } from "../lib/gsap";
 import { emitThread } from "../lib/threadBus";
 import { hasFinePointer } from "../lib/interact";
+import { DONE_BEAT_MS, IDLE_ADVANCE_MS, holdFor, onPreviewDone, previewPlayed } from "../lib/autoplay";
 
 /**
  * SERVICES — shared shell, normal scroll (not pinned).
@@ -18,6 +19,13 @@ import { hasFinePointer } from "../lib/interact";
  * On desktop, resting on a tab for >400ms previews it in the stage
  * without committing. Mobile: swipeable strip, tap commits.
  * The whole module opens once from the centre as it first enters.
+ *
+ * PROMPT 24 — autoplay-first. A visitor who only scrolls still sees all
+ * four services demonstrate themselves: each tab runs its own first-view
+ * preview (owned by the stage), and if nothing in this section has been
+ * touched ~6s after it enters the viewport the tabs advance on their own,
+ * once around, then hold. Any interaction — tab click, click inside a demo,
+ * a hover-preview — ends the tour immediately and for the rest of the visit.
  */
 const HOVER_MS = 400;
 
@@ -32,10 +40,43 @@ export function Chapters() {
   const [index, setIndex] = useState(0);
   const [preview, setPreview] = useState<number | null>(null);
   const [inView, setInView] = useState(false);
+  const [touring, setTouring] = useState(false);
   const [visited, setVisited] = useState<Set<string>>(() => new Set([services[0].slug]));
+
+  /* ---- idle tour state (Prompt 24) ---- */
+  const touched = useRef(false); // visitor took control — permanently
+  const autoTimer = useRef(0);
+  const autoOff = useRef<(() => void) | null>(null);
+  const autoSteps = useRef(0); // tabs the tour has advanced through
+  const indexRef = useRef(0);
+  indexRef.current = index;
+  const advanceRef = useRef<() => void>(() => {});
 
   const intro = siteContent.servicesIntro;
   const s = services[index];
+
+  const clearAutoTimer = () => {
+    if (autoTimer.current) {
+      window.clearTimeout(autoTimer.current);
+      autoTimer.current = 0;
+    }
+    autoOff.current?.();
+    autoOff.current = null;
+  };
+
+  /** The visitor engaged with anything here: autoplay stops for this visit. */
+  const takeControl = () => {
+    if (touched.current) return;
+    touched.current = true;
+    clearAutoTimer();
+    setTouring(false);
+  };
+
+  advanceRef.current = () => {
+    clearAutoTimer();
+    autoSteps.current += 1;
+    select((indexRef.current + 1) % services.length);
+  };
 
   const select = (i: number) => {
     window.clearTimeout(hoverTimer.current);
@@ -47,14 +88,58 @@ export function Chapters() {
   const hoverStart = (i: number) => {
     if (!hasFinePointer() || i === index) return;
     window.clearTimeout(hoverTimer.current);
-    hoverTimer.current = window.setTimeout(() => setPreview(i), HOVER_MS);
+    hoverTimer.current = window.setTimeout(() => {
+      // Resting on another tab is engagement: the tour hands over.
+      takeControl();
+      setPreview(i);
+    }, HOVER_MS);
   };
   const hoverEnd = () => {
     window.clearTimeout(hoverTimer.current);
     setPreview(null);
   };
 
-  useEffect(() => () => window.clearTimeout(hoverTimer.current), []);
+  useEffect(
+    () => () => {
+      window.clearTimeout(hoverTimer.current);
+      clearAutoTimer();
+    },
+    []
+  );
+
+  /*
+   * The idle tour itself. Re-armed for whichever tab is current, only while
+   * the section is on screen and untouched, and only until all four tabs have
+   * been shown once — then it holds on the last one and never moves again.
+   * A demo reporting "preview done" shortens the wait to a natural beat.
+   */
+  useEffect(() => {
+    if (!inView || touched.current || prefersReducedMotion()) return;
+    if (autoSteps.current >= services.length - 1) {
+      setTouring(false);
+      return;
+    }
+    const slug = services[index].slug;
+    const startedAt = performance.now();
+    setTouring(true);
+
+    const fire = () => advanceRef.current();
+    // A tab whose preview already ran (visitor scrolled away and back) just
+    // holds for the idle beat — nothing is going to report "done" again.
+    autoTimer.current = window.setTimeout(fire, previewPlayed(slug) ? IDLE_ADVANCE_MS : holdFor(slug));
+    autoOff.current = onPreviewDone((done) => {
+      if (done !== slug || !autoTimer.current) return;
+      const elapsed = performance.now() - startedAt;
+      window.clearTimeout(autoTimer.current);
+      autoTimer.current = window.setTimeout(fire, Math.max(DONE_BEAT_MS, IDLE_ADVANCE_MS - elapsed));
+    });
+
+    return () => {
+      clearAutoTimer();
+      setTouring(false);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inView, index]);
 
   /*
    * PROMPT 20 — nav hover-preview handoff. A nav thumbnail click either
@@ -66,6 +151,8 @@ export function Chapters() {
     const apply = (slug: string, andScroll: boolean) => {
       const i = services.findIndex((s) => s.slug === slug);
       if (i < 0) return;
+      // Choosing a service from the nav is explicit intent: no idle tour.
+      takeControl();
       select(i);
       if (andScroll) {
         window.setTimeout(() => {
@@ -143,7 +230,13 @@ export function Chapters() {
   }, [index]);
 
   return (
-    <section id="services-home" ref={root} className="relative w-full py-[clamp(56px,8vh,96px)]">
+    <section
+      id="services-home"
+      ref={root}
+      className="relative w-full py-[clamp(56px,8vh,96px)]"
+      onPointerDown={takeControl}
+      onKeyDown={takeControl}
+    >
       <div ref={moduleRef} className="wrap flex flex-col">
         {/* header */}
         <div className="order-0 flex items-end justify-between gap-[16px] border-b pb-[14px]" style={{ borderColor: "var(--line)" }}>
@@ -257,7 +350,9 @@ export function Chapters() {
               }}
             />
           </span>
-          <span className="mono hidden flex-none min-[900px]:block">{preview !== null ? "Previewing" : "Select a service"}</span>
+          <span className="mono hidden flex-none min-[900px]:block" aria-live="polite">
+            {preview !== null ? "Previewing" : touring ? "Auto-tour · click to take over" : "Select a service"}
+          </span>
         </div>
       </div>
     </section>

@@ -1,11 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { prefersReducedMotion } from "../lib/gsap";
+import { announcePreviewDone, markPreviewPlayed } from "../lib/autoplay";
 
 /**
  * A deliberately scoped agent demo: three questions, no free-text input.
  * The full Ask Arche section owns open-ended conversation. Here the visitor
  * sees a question become a considered answer and a small business action.
+ *
+ * PROMPT 24 — autoplay-first: ~1.5s after the stage first comes on screen it
+ * sends ONE of the suggested questions by itself, so the whole reply and the
+ * trigger sequence play out unprompted. The other two chips stay visitor-
+ * triggered, and any question asked by the visitor cancels the auto-send.
  */
+
+const SLUG = "ai-chatbots";
+/** Pause after entering view before the demo asks its own question. */
+const AUTO_ASK_MS = 1500;
 const QUESTIONS = [
   {
     id: "booking",
@@ -50,7 +60,15 @@ const HOLD = 500;
 const THINK = 600;
 const LINE_GAP = 145;
 
-export function AgentDemo({ active = true, preview = false }: { active?: boolean; preview?: boolean }) {
+export function AgentDemo({
+  active = true,
+  preview = false,
+  auto = false,
+}: {
+  active?: boolean;
+  preview?: boolean;
+  auto?: boolean;
+}) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [used, setUsed] = useState<Set<Turn["id"]>>(() => new Set());
   const [busy, setBusy] = useState(false);
@@ -58,6 +76,9 @@ export function AgentDemo({ active = true, preview = false }: { active?: boolean
   const timers = useRef<Set<number>>(new Set());
   const busyRef = useRef(false);
   const scroll = useRef<HTMLDivElement>(null);
+  const autoTimer = useRef(0);
+  const autoStarted = useRef(false);
+  const autoTurn = useRef<Turn["id"] | null>(null);
 
   const clearTimers = () => {
     timers.current.forEach((id) => window.clearTimeout(id));
@@ -84,6 +105,11 @@ export function AgentDemo({ active = true, preview = false }: { active?: boolean
 
   const ask = (id: Turn["id"]) => {
     if (preview || busyRef.current || used.has(id)) return;
+    // the visitor asked something: the demo's own auto-send stands down
+    if (autoTimer.current) {
+      window.clearTimeout(autoTimer.current);
+      autoTimer.current = 0;
+    }
     const question = QUESTIONS.find((q) => q.id === id)!;
 
     busyRef.current = true;
@@ -120,11 +146,37 @@ export function AgentDemo({ active = true, preview = false }: { active?: boolean
       busyRef.current = false;
       setBusy(false);
       setAnnouncement(`Agent reply: ${question.lines.join(" ")}`);
+      if (autoTurn.current === id) {
+        autoTurn.current = null;
+        announcePreviewDone(SLUG);
+      }
     });
   };
 
+  /* PROMPT 24 — first view: ask one suggested question by itself, once.
+     Nothing is booked as "played" until the question actually goes out, so
+     scrolling away inside the pause simply re-arms it on the way back. */
+  useEffect(() => {
+    if (autoStarted.current || !auto || !active || preview) return;
+    const id = window.setTimeout(() => {
+      autoTimer.current = 0;
+      autoStarted.current = true;
+      markPreviewPlayed(SLUG);
+      const first = QUESTIONS.find((q) => !used.has(q.id)) ?? QUESTIONS[0];
+      autoTurn.current = first.id;
+      ask(first.id);
+    }, AUTO_ASK_MS);
+    autoTimer.current = id;
+    return () => {
+      window.clearTimeout(id);
+      if (autoTimer.current === id) autoTimer.current = 0;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auto, active, preview]);
+
   const reset = () => {
     clearTimers();
+    autoTurn.current = null;
     busyRef.current = false;
     setBusy(false);
     setTurns([]);
