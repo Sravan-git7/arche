@@ -4,7 +4,6 @@ import { Link } from "../lib/router";
 import { gsap, ScrollTrigger, prefersReducedMotion } from "../lib/gsap";
 import { HeroEnvironment } from "./HeroEnvironment";
 import { whenIntroDone } from "./Intro";
-import { BusinessFriction } from "./BusinessFriction";
 
 /* ================================================================
    HERO — quiet, precise, then alive. Statement lands word by word;
@@ -99,7 +98,7 @@ export function Hero() {
         <div ref={rest} className="mt-[36px] flex flex-col gap-[26px] border-t pt-[24px] md:flex-row md:items-end md:justify-between" style={{ borderColor: "var(--line)" }}>
           <p className="body max-w-[52ch]">{h.sub}</p>
           <div className="flex flex-none flex-wrap gap-[10px]">
-            <Link to={h.ctaPrimary.to} className="btn" cursor="START">
+            <Link to={h.ctaPrimary.to} className="btn" cursor="START" data-magnetic>
               {h.ctaPrimary.label} <span className="arw">→</span>
             </Link>
             <Link to={h.ctaSecondary.to} className="btn btn-ghost" cursor="VIEW">
@@ -127,50 +126,6 @@ export function Hero() {
 }
 
 /* ================================================================
-   WHAT WE DO — disconnection becomes connection, drawn on scroll.
-   ================================================================ */
-export function WhatWeDo() {
-  const w = siteContent.whatWeDo;
-
-  return (
-    <section className="w-full py-[clamp(76px,10vw,160px)]">
-      <div className="wrap grid items-center gap-[clamp(30px,4vw,70px)] md:grid-cols-2">
-        <div className="flex flex-col gap-[22px]">
-          <p className="mono mono-a">{w.label}</p>
-          <h2 className="d2" data-r="mask">
-            {w.lineA}
-          </h2>
-          <h2 className="d2" data-r="mask" style={{ color: "var(--faint)" }}>
-            {w.lineB}
-          </h2>
-          <p className="body max-w-[48ch]" data-r="meta" data-r-delay="140">
-            {w.body}
-          </p>
-        </div>
-
-        <BusinessFriction />
-      </div>
-    </section>
-  );
-}
-
-/** Thin bridge: problem → where do we start → services */
-export function EntryBridge() {
-  return (
-    <section className="w-full pb-[clamp(28px,4vw,48px)]">
-      <div className="wrap flex flex-col gap-[10px] border-t pt-[28px] md:flex-row md:items-end md:justify-between" style={{ borderColor: "var(--line)" }}>
-        <h2 className="d3 max-w-[18ch]" data-r="mask">
-          Start with the part that needs to move.
-        </h2>
-        <p className="body max-w-[36ch]" data-r="meta">
-          One capability, built properly. The rest can connect when it's useful — not before.
-        </p>
-      </div>
-    </section>
-  );
-}
-
-/* ================================================================
    APPROACH (Prompt 15) — quiet positioning.
    Right-side visual panel responds subtly to which principle is active.
    ================================================================ */
@@ -182,6 +137,9 @@ export function Approach() {
     { k: "Built to keep running", v: "Every engagement ends with something you can operate, measure and improve." },
   ];
   const [active, setActive] = useState(0);
+  const sectionRef = useRef<HTMLElement>(null);
+  const miniRef = useRef<HTMLSpanElement>(null);
+  const handoffDone = useRef(false);
 
   // Scroll-driven active principle detection
   useLayoutEffect(() => {
@@ -198,11 +156,70 @@ export function Approach() {
       });
       cleanups.push(() => st.kill());
     });
+
+    /*
+     * Prompt 14 → 15 handoff: the fully-built, breathing Process diagram
+     * compresses and becomes the small icon accompanying "Systems thinking".
+     * A clone flies from the diagram's last on-screen position into the icon
+     * slot; if the diagram is already off-screen (fast scroll / reduced
+     * motion fallback), the icon simply arrives compressed.
+     */
+    const st = ScrollTrigger.create({
+      trigger: sectionRef.current,
+      start: "top 62%",
+      once: true,
+      onEnter: () => {
+        if (handoffDone.current) return;
+        handoffDone.current = true;
+        const icon = miniRef.current;
+        if (!icon) return;
+        const sources = Array.from(document.querySelectorAll<HTMLElement>("[data-pv-diagram]")).filter(
+          (el) => el.offsetParent !== null
+        );
+        const src = sources[0]?.getBoundingClientRect();
+        const dst = icon.getBoundingClientRect();
+        const desktop = window.innerWidth >= 900;
+
+        const reveal = () =>
+          gsap.fromTo(
+            icon,
+            { scale: 1.5, opacity: 0, filter: "blur(3px)" },
+            { scale: 1, opacity: 1, filter: "blur(0px)", duration: 0.55, ease: "power3.out", clearProps: "filter" }
+          );
+
+        if (!prefersReducedMotion() && desktop && src && src.width > 40 && src.bottom > 0 && src.top < window.innerHeight) {
+          // fly a clone from the process diagram into the icon slot
+          const clone = document.createElement("div");
+          clone.setAttribute("aria-hidden", "true");
+          clone.style.cssText = `position:fixed;left:${src.left + src.width / 2}px;top:${
+            src.top + src.height / 2
+          }px;width:${src.width}px;height:${src.width}px;translate:-50% -50%;z-index:90;pointer-events:none;`;
+          clone.innerHTML = miniBuiltDiagramMarkup();
+          document.body.appendChild(clone);
+          gsap.to(clone, {
+            x: dst.left + dst.width / 2 - (src.left + src.width / 2),
+            y: dst.top + dst.height / 2 - (src.top + src.height / 2),
+            scale: dst.width / src.width,
+            opacity: 0.9,
+            duration: 0.85,
+            ease: "expo.inOut",
+            onComplete: () => {
+              clone.remove();
+              reveal();
+            },
+          });
+        } else {
+          reveal();
+        }
+      },
+    });
+    cleanups.push(() => st.kill());
+
     return () => cleanups.forEach((c) => c());
   }, []);
 
   return (
-    <section className="on-ink w-full py-[clamp(76px,10vw,150px)]">
+    <section ref={sectionRef} className="on-ink w-full py-[clamp(76px,10vw,150px)]">
       <div className="wrap">
         <div className="mb-[clamp(36px,4vw,64px)] flex items-center gap-[16px]">
           <span className="mono" style={{ color: "var(--accent-deep)" }}>
@@ -231,7 +248,21 @@ export function Approach() {
                 onClick={() => setActive(i)}
               >
                 <span className="mono md:col-span-1" style={{ color: active === i ? "var(--accent-deep)" : "var(--faint)" }}>0{i + 1}</span>
-                <h3 className="d4 md:col-span-3" style={{ color: active === i ? "var(--fg)" : "var(--muted)", transition: "color .35s" }}>{it.k}</h3>
+                <h3 className="d4 flex items-center gap-[10px] md:col-span-3" style={{ color: active === i ? "var(--fg)" : "var(--muted)", transition: "color .35s" }}>
+                  {i === 0 && (
+                    /* the Process diagram, compressed — still running */
+                    <span
+                      ref={miniRef}
+                      className={`pv-mini inline-block h-[24px] w-[24px] flex-none ${prefersReducedMotion() ? "opacity-100" : "opacity-0"}`}
+                      aria-hidden
+                    >
+                      <span className="pv-breath block h-full w-full">
+                        <MiniBuiltDiagram />
+                      </span>
+                    </span>
+                  )}
+                  {it.k}
+                </h3>
                 <p className="body max-w-[42ch] md:col-span-4">{it.v}</p>
               </button>
             ))}
@@ -247,128 +278,162 @@ export function Approach() {
   );
 }
 
+/** Static markup string of the built diagram, for the handoff clone.
+ *  Colors are hardcoded to the dark Approach scope — the clone is appended
+ *  to document.body, outside the .on-ink CSS variable scope. */
+function miniBuiltDiagramMarkup(): string {
+  const dots = PV_CORNERS.map(
+    (c) => `<span style="position:absolute;left:${c.x}%;top:${c.y}%;width:7%;height:7%;translate:-50% -50%;border-radius:999px;background:#c8f14f;box-shadow:0 0 12px rgba(200,241,79,.55);"></span>`
+  ).join("");
+  const lines = PV_CORNERS.map(
+    (c) =>
+      `<line x1="${c.x}" y1="${c.y}" x2="50" y2="50" stroke="#7fae00" stroke-width="2.4" opacity="0.9"/>`
+  ).join("");
+  return `
+    <div style="width:100%;height:100%;background:#141416;border-radius:8px;position:relative;overflow:hidden;">
+      <svg viewBox="0 0 100 100" style="position:absolute;inset:0;width:100%;height:100%;" fill="none">${lines}</svg>
+      ${dots}
+      <span style="position:absolute;left:50%;top:50%;width:14%;height:14%;translate:-50% -50%;border-radius:999px;border:2px solid #7fae00;background:#141416;display:grid;place-items:center;">
+        <span style="width:38%;height:38%;border-radius:999px;background:#c8f14f;"></span>
+      </span>
+    </div>`;
+}
+
+/** The built Process diagram in miniature — lives beside "Systems thinking". */
+function MiniBuiltDiagram() {
+  return (
+    <svg viewBox="0 0 100 100" className="h-full w-full" fill="none" aria-hidden>
+      {PV_CORNERS.map((c, i) => (
+        <line key={i} x1={c.x} y1={c.y} x2="50" y2="50" stroke="var(--accent-deep)" strokeWidth="3" opacity="0.8" />
+      ))}
+      {PV_CORNERS.map((c, i) => (
+        <circle key={`d${i}`} cx={c.x} cy={c.y} r="6.5" fill="var(--accent)" />
+      ))}
+      <circle cx="50" cy="50" r="12" fill="var(--bg-2)" stroke="var(--accent-deep)" strokeWidth="3" />
+      <circle cx="50" cy="50" r="4.5" fill="var(--accent)" />
+    </svg>
+  );
+}
+
+/** Geometry for the "Systems thinking" micro-visual (three dots + drawn links). */
+const APPROACH_DOTS = [
+  { x: 24, y: 34 },
+  { x: 52, y: 62 },
+  { x: 78, y: 34 },
+];
+const APPROACH_LINKS = [
+  { x1: 24, y1: 34, x2: 52, y2: 62 },
+  { x1: 52, y1: 62, x2: 78, y2: 34 },
+  { x1: 24, y1: 34, x2: 78, y2: 34 },
+];
+
 /**
  * Prompt 15 — Approach Visual Panel.
- * Subtle per-principle updates (small-scale movements, low-contrast opacity shifts).
- * 0: Systems thinking — disconnected dots draw connecting lines
- * 1: AI where it earns — manual task element fades out/disappears
- * 2: Design + engineering — two layers merge into alignment
- * 3: Built to keep running — slow continuous breathing pulse
+ * Subtle per-principle updates only: a few px, low-contrast opacity shifts.
+ * 0: Systems thinking — disconnected dots draw connecting lines between them
+ * 1: AI where it earns — the manual-task element fades out / disappears
+ * 2: Design + engineering — two overlapping layers merge into alignment
+ * 3: Built to keep running — slow continuous pulse (same language as the
+ *    Process EVOLVE breathing, deliberately reused)
  */
 function ApproachVisual({ active }: { active: number }) {
-  const breathRef = useRef<HTMLSpanElement>(null);
-
-  useEffect(() => {
-    if (active !== 3 || !breathRef.current || prefersReducedMotion()) return;
-    const tl = gsap.to(breathRef.current, {
-      scale: 1.12,
-      opacity: 0.7,
-      duration: 1.8,
-      ease: "sine.inOut",
-      yoyo: true,
-      repeat: -1,
-    });
-    return () => { tl.kill(); };
-  }, [active]);
-
   return (
     <div className="relative aspect-[4/3] overflow-hidden rounded-[6px] border" style={{ borderColor: "var(--line)", background: "var(--bg-2)" }} aria-hidden>
-      {/* Principle 0: Systems thinking — dots with connecting lines */}
-      {[0, 1, 2].map((i) => (
+      {/* Principle 0: three disconnected dots that draw connecting lines */}
+      {APPROACH_DOTS.map((p, i) => (
         <span
           key={`dot-${i}`}
-          className="absolute block h-[8px] w-[8px] rounded-full transition-all duration-700"
+          className="absolute block h-[7px] w-[7px] rounded-full"
           style={{
-            left: `${22 + i * 28}%`,
-            top: `${32 + (i % 2) * 30}%`,
-            background: active === 0 ? "var(--accent-deep)" : "var(--faint)",
+            left: `${p.x}%`,
+            top: `${p.y}%`,
+            translate: "-50% -50%",
+            background: active === 0 ? "var(--accent)" : "var(--faint)",
+            transform: active === 0 ? "scale(1)" : "scale(.72)",
             opacity: active === 0 ? 1 : 0.3,
-            transitionTimingFunction: "var(--e-out)",
+            transition: "background .6s, transform .7s var(--e-out), opacity .6s",
+            transitionDelay: `${i * 90}ms`,
           }}
         />
       ))}
-      {/* Connecting lines — fade in only for principle 0 */}
-      <svg className="absolute inset-0 h-full w-full pointer-events-none" viewBox="0 0 100 100" fill="none">
-        <line x1="22" y1="32" x2="50" y2="62" stroke="var(--accent-deep)" strokeWidth="0.6"
-          style={{ opacity: active === 0 ? 0.8 : 0, transition: "opacity 0.8s var(--e-out)" }} />
-        <line x1="50" y1="62" x2="78" y2="32" stroke="var(--accent-deep)" strokeWidth="0.6"
-          style={{ opacity: active === 0 ? 0.8 : 0, transition: "opacity 0.8s var(--e-out)", transitionDelay: "0.15s" }} />
-        <line x1="22" y1="32" x2="78" y2="32" stroke="var(--accent-deep)" strokeWidth="0.4"
-          style={{ opacity: active === 0 ? 0.5 : 0, transition: "opacity 0.8s var(--e-out)", transitionDelay: "0.3s" }} />
+      <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" fill="none">
+        {APPROACH_LINKS.map((l, i) => (
+          <line
+            key={`link-${i}`}
+            x1={l.x1}
+            y1={l.y1}
+            x2={l.x2}
+            y2={l.y2}
+            pathLength={1}
+            stroke="var(--accent-deep)"
+            strokeWidth="0.55"
+            strokeDasharray={1}
+            strokeDashoffset={active === 0 ? 0 : 1}
+            style={{ opacity: active === 0 ? 0.75 : 0, transition: "stroke-dashoffset .9s var(--e-inout), opacity .4s", transitionDelay: `${i * 180}ms` }}
+          />
+        ))}
       </svg>
 
-      {/* Principle 1: AI replaces manual — manual task fades away */}
+      {/* Principle 1: the manual task — disappears when AI earns its place */}
       <span
-        className="absolute top-[24%] right-[18%] grid h-[48px] w-[48px] place-items-center rounded-full border transition-all duration-700"
+        className="absolute top-[24%] right-[18%] grid h-[44px] w-[44px] place-items-center rounded-full border"
         style={{
           borderColor: active === 1 ? "var(--accent-deep)" : "var(--line)",
           opacity: active === 1 ? 1 : 0.15,
-          transitionTimingFunction: "var(--e-out)",
+          transition: "border-color .6s, opacity .6s",
         }}
       >
-        <span className="mono text-[9px]" style={{ color: active === 1 ? "var(--accent-deep)" : "var(--faint)" }}>AI</span>
+        <span className="mono text-[9px]" style={{ color: active === 1 ? "var(--accent-deep)" : "var(--faint)", transition: "color .5s" }}>AI</span>
       </span>
-      {/* Manual task element — disappears when AI principle is active */}
       <span
-        className="absolute top-[20%] right-[36%] flex h-[28px] w-[52px] items-center justify-center rounded-[3px] border transition-all duration-700"
+        className="absolute top-[20%] right-[38%] flex h-[26px] w-[50px] items-center justify-center rounded-[3px] border"
         style={{
           borderColor: "var(--line)",
-          opacity: active === 1 ? 0 : 0.25,
-          transform: active === 1 ? "translateY(-6px) scale(0.9)" : "translateY(0) scale(1)",
-          transitionTimingFunction: "var(--e-out)",
+          opacity: active === 1 ? 0 : 0.28,
+          transform: active === 1 ? "translateY(-4px)" : "translateY(0)",
+          transition: "opacity .8s var(--e-out) .25s, transform .8s var(--e-out) .25s",
         }}
       >
-        <span className="mono text-[7px]" style={{ color: "var(--faint)", textDecoration: active === 1 ? "line-through" : "none" }}>MANUAL</span>
+        <span className="mono text-[7px]" style={{ color: "var(--faint)" }}>MANUAL</span>
       </span>
 
-      {/* Principle 2: Design + engineering — two layers merge into alignment */}
+      {/* Principle 2: interface layer + structure layer merge into alignment */}
       <div
-        className="absolute right-[16%] bottom-[16%] h-[64px] w-[92px] rounded-[4px] border p-[8px] transition-all duration-700"
+        className="absolute right-[16%] bottom-[16%] h-[60px] w-[88px] rounded-[4px] border p-[8px]"
         style={{
-          borderColor: active === 2 ? "var(--fg)" : "var(--line)",
-          opacity: active === 2 ? 1 : 0.15,
-          transform: active === 2 ? "translate(0, 0)" : "translate(4px, -2px)",
-          transitionTimingFunction: "var(--e-out)",
+          borderColor: active === 2 ? "var(--accent-deep)" : "var(--line)",
+          opacity: active === 2 ? 0.9 : 0.18,
+          transform: active === 2 ? "translate(0, 0)" : "translate(-5px, -3px)",
+          transition: "border-color .6s, opacity .6s, transform .8s var(--e-inout)",
         }}
       >
-        <span className="block h-[4px] w-[65%] rounded-full transition-all duration-500" style={{ background: "var(--line)" }} />
+        <span className="block h-[4px] w-[65%] rounded-full" style={{ background: "var(--line)" }} />
         <span
-          className="mt-[6px] block h-[14px] w-[44px] rounded-full transition-all duration-700"
-          style={{
-            background: active === 2 ? "var(--accent-deep)" : "var(--line)",
-            transitionTimingFunction: "var(--e-out)",
-          }}
+          className="mt-[6px] block h-[12px] w-[42px] rounded-full"
+          style={{ background: active === 2 ? "var(--accent-deep)" : "var(--line)", opacity: active === 2 ? 0.85 : 1, transition: "background .6s" }}
         />
       </div>
-      {/* Second overlapping layer — merges when active */}
       <div
-        className="absolute right-[14%] bottom-[18%] h-[64px] w-[92px] rounded-[4px] border transition-all duration-700 pointer-events-none"
+        className="pointer-events-none absolute right-[16%] bottom-[16%] h-[60px] w-[88px] rounded-[4px] border"
         style={{
-          borderColor: active === 2 ? "var(--accent-deep)" : "transparent",
-          opacity: active === 2 ? 0.5 : 0.1,
-          transform: active === 2 ? "translate(0, 0)" : "translate(-6px, 4px)",
-          transitionTimingFunction: "var(--e-out)",
+          borderColor: active === 2 ? "var(--accent)" : "var(--line)",
+          opacity: active === 2 ? 0.55 : 0.12,
+          transform: active === 2 ? "translate(0, 0)" : "translate(5px, 3px)",
+          transition: "border-color .6s, opacity .6s, transform .8s var(--e-inout)",
         }}
       />
 
-      {/* Principle 3: Built to keep running — continuous breathing pulse */}
+      {/* Principle 3: built to keep running — same breathing language as Process EVOLVE */}
       <span
-        ref={breathRef}
-        className="absolute bottom-[14%] left-[18%] block h-[38px] w-[38px] rounded-full border transition-all duration-700"
+        className={`absolute bottom-[14%] left-[18%] block h-[38px] w-[38px] rounded-full border ${active === 3 ? "pv-breath" : ""}`}
         style={{
           borderColor: active === 3 ? "var(--accent-deep)" : "var(--line)",
           opacity: active === 3 ? 1 : 0.15,
-          transitionTimingFunction: "var(--e-out)",
+          transition: "border-color .6s, opacity .6s",
         }}
       >
         {active === 3 && (
-          <span
-            className="absolute inset-[5px] rounded-full border-t"
-            style={{
-              borderColor: "var(--accent-deep)",
-              animation: "spin 2.5s linear infinite",
-            }}
-          />
+          <span className="absolute inset-[6px] rounded-full border-t" style={{ borderColor: "var(--accent-deep)", animation: "spin 3.2s linear infinite" }} />
         )}
       </span>
 
@@ -379,7 +444,9 @@ function ApproachVisual({ active }: { active: number }) {
 
 /* ================================================================
    PROCESS (Prompt 14) — Accumulating Diagram.
-   The left-side diagram visibly builds as scroll progresses through steps.
+   The left-side diagram visibly builds as scroll progresses through
+   steps; clicking a step label jumps the diagram to that state.
+   Mobile: a compact diagram rides along, still scroll-triggered.
    ================================================================ */
 export function ProcessSys() {
   const root = useRef<HTMLElement>(null);
@@ -439,6 +506,10 @@ export function ProcessSys() {
             </div>
           </div>
           <div className="flex flex-col md:col-span-9">
+            {/* Mobile companion diagram — same accumulating states, scroll-driven */}
+            <div className="mb-[26px] flex justify-center md:hidden">
+              <ProcessVisual active={activeStep} compact />
+            </div>
             {p.steps.map((s, si) => (
               <div
                 key={s.n}
@@ -447,7 +518,7 @@ export function ProcessSys() {
                 aria-pressed={activeStep === si}
                 onClick={() => setActiveStep(si)}
                 onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setActiveStep(si))}
-                data-cursor="EXPLORE"
+                data-cursor="JUMP"
                 className="pr-step relative flex cursor-pointer gap-[22px] rounded-[4px] py-[clamp(18px,2.2vw,32px)] pl-[34px] outline-none md:pl-[42px]"
                 style={{ background: activeStep === si ? "var(--bg-2)" : "transparent", transition: "background .4s var(--e-out)" }}
               >
@@ -492,177 +563,219 @@ export function ProcessSys() {
 /**
  * Prompt 14 — Process Accumulating Diagram.
  *
- * DISCOVER:  single dim central dot only.
- * DESIGN:    four corner connection lines fade in, still dim.
- * BUILD:     four outer dots appear, staggered.
- * CONNECT:   all dots + center pulse lime together, settle to lit state.
- * LAUNCH:    single bright pulse radiating outward from center.
- * EVOLVE:    slow continuous breathing pulse (never stops).
+ * Each state only ADDS to what the previous state built:
  *
- * Each state ADDS — never resets or removes.
+ *  0 DISCOVER  a single dim central dot, alone.
+ *  1 DESIGN    the four corner connection lines fade in, still dim.
+ *  2 BUILD     the four outer dots appear at the end of each line,
+ *              one at a time with a short stagger.
+ *  3 CONNECT   all four dots and the center pulse lime once, together,
+ *              then settle to a steady lit state.
+ *  4 LAUNCH    a single bright pulse radiates outward from center.
+ *  5 EVOLVE    the diagram settles into a slow, continuous, low-amplitude
+ *              breathing pulse — it never stops again.
+ *
+ * One-shot moments (CONNECT pulse, LAUNCH pulse) fire when the state is
+ * entered moving forward — by scroll or by clicking a step label.
  */
-function ProcessVisual({ active }: { active: number }) {
+const PV_CORNERS = [
+  { x: 15, y: 15 },
+  { x: 85, y: 15 },
+  { x: 15, y: 85 },
+  { x: 85, y: 85 },
+];
+
+function ProcessVisual({ active, compact = false }: { active: number; compact?: boolean }) {
+  const dotRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const centerRef = useRef<HTMLSpanElement>(null);
+  const launchRef = useRef<HTMLSpanElement>(null);
   const breathRef = useRef<HTMLSpanElement>(null);
-  const pulseRef = useRef<HTMLSpanElement>(null);
-  const stages = ["Observe", "Structure", "Assemble", "Connect", "Run", "Learn → Discover"];
+  const prev = useRef(-1);
 
-  // EVOLVE breathing — continuous, never stops once reached
-  useEffect(() => {
-    if (active < 5 || !breathRef.current || prefersReducedMotion()) return;
-    const tl = gsap.to(breathRef.current, {
-      scale: 1.15,
-      opacity: 0.55,
-      duration: 2.0,
-      ease: "sine.inOut",
-      yoyo: true,
-      repeat: -1,
-    });
-    return () => { tl.kill(); };
-  }, [active]);
-
-  // LAUNCH single bright pulse
-  useEffect(() => {
-    if (active < 4 || !pulseRef.current || prefersReducedMotion()) return;
-    gsap.fromTo(pulseRef.current, { scale: 0.3, opacity: 1 }, {
-      scale: 3.5,
-      opacity: 0,
-      duration: 1.0,
-      ease: "power2.out",
-    });
-  }, [active]);
-
-  // Connection line visibility (DESIGN+)
   const showLines = active >= 1;
-  // Outer dots visibility (BUILD+)
   const showDots = active >= 2;
-  // Connected state (CONNECT+)
   const connected = active >= 3;
-  // Launch pulse (LAUNCH+)
-  const launched = active >= 4;
-  // Evolving (EVOLVE)
   const evolving = active >= 5;
 
-  const cornerPositions = [
-    ["14%", "14%"],
-    ["86%", "14%"],
-    ["14%", "86%"],
-    ["86%", "86%"],
-  ];
+  /*
+   * One state machine for the built effects. `prev` guards direction:
+   * one-shot moments (BUILD stagger, CONNECT pulse, LAUNCH pulse) only
+   * fire when the state is entered moving forward. Nothing here resets
+   * what earlier states built — each state only adds.
+   * (Transforms on dots/rings are owned by GSAP; CSS transitions handle
+   * only color/opacity so the two systems never fight.)
+   */
+  useLayoutEffect(() => {
+    const from = prev.current;
+    prev.current = active;
+    if (prefersReducedMotion()) return;
+
+    const dots = dotRefs.current.filter(Boolean) as HTMLSpanElement[];
+
+    if (active >= 2 && from < 2) {
+      // BUILD — dots appear at the end of each line, one at a time.
+      const jumped = active > 2; // click-jump past BUILD: arrive fast, still sequential
+      gsap.fromTo(
+        dots,
+        { scale: 0, opacity: 0 },
+        { scale: 1, opacity: 1, duration: jumped ? 0.16 : 0.45, ease: "back.out(2.1)", stagger: jumped ? 0.05 : 0.15, overwrite: "auto" }
+      );
+    } else if (active >= 2) {
+      gsap.set(dots, { scale: 1, opacity: 1 });
+    } else if (from >= 2) {
+      // scrolling back before BUILD — the only time anything un-builds
+      gsap.to(dots, { scale: 0, opacity: 0, duration: 0.25, ease: "power2.in", overwrite: "auto" });
+    }
+
+    // CONNECT — all four dots and the center pulse lime once, together
+    if (active === 3 && from < 3) {
+      const targets = [...dots, centerRef.current].filter(Boolean) as HTMLSpanElement[];
+      gsap
+        .timeline()
+        .to(targets, { scale: 1.32, duration: 0.26, ease: "power2.out", overwrite: "auto" })
+        .to(targets, { scale: 1, duration: 0.55, ease: "power2.out" });
+    }
+
+    // LAUNCH — single bright pulse radiating outward from center
+    if (active === 4 && from < 4 && launchRef.current) {
+      gsap.fromTo(
+        launchRef.current,
+        { scale: 0.25, opacity: 0.95 },
+        { scale: 3.4, opacity: 0, duration: 1.0, ease: "power2.out", overwrite: "auto" }
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
+
+  // EVOLVE — slow continuous, low-amplitude breathing. Never stops once reached.
+  useEffect(() => {
+    if (!evolving || !breathRef.current || prefersReducedMotion()) return;
+    gsap.killTweensOf(breathRef.current);
+    const tl = gsap.timeline({ repeat: -1, yoyo: true, repeatDelay: 0.1 });
+    tl.fromTo(
+      breathRef.current,
+      { scale: 1, opacity: 0.3 },
+      { scale: 1.12, opacity: 0.7, duration: 2.2, ease: "sine.inOut" }
+    );
+    return () => { tl.kill(); };
+  }, [evolving]);
+
+  const stage = siteContent.process.steps[Math.min(active, 5)];
 
   return (
-    <div className="relative aspect-square w-full max-w-[230px] overflow-hidden rounded-[6px]" style={{ background: "var(--bg-2)" }} aria-hidden>
-      {/* Connection lines from corners to center (DESIGN+) */}
-      <svg className="absolute inset-0 h-full w-full pointer-events-none" viewBox="0 0 100 100" fill="none">
-        {cornerPositions.map(([cx, cy], i) => (
+    <div
+      data-pv-diagram
+      className={`pv-root relative aspect-square w-full overflow-hidden rounded-[6px] ${compact ? "max-w-[164px]" : "max-w-[230px]"}`}
+      style={{ background: "var(--bg-2)" }}
+      aria-hidden
+    >
+      {/* DESIGN+ — corner connection lines, drawn dim */}
+      <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" fill="none">
+        {PV_CORNERS.map((c, i) => (
           <line
-            key={`line-${i}`}
-            x1={parseFloat(cx)}
-            y1={parseFloat(cy)}
+            key={`ln-${i}`}
+            x1={c.x}
+            y1={c.y}
             x2="50"
             y2="50"
-            stroke={connected ? "var(--accent-deep)" : "var(--line)"}
-            strokeWidth={connected ? 0.7 : 0.4}
+            stroke={connected ? "var(--accent-deep)" : "var(--fg)"}
+            strokeWidth={connected ? 0.65 : 0.4}
             style={{
-              opacity: showLines ? (connected ? 0.8 : 0.4) : 0,
-              transition: "opacity 0.6s var(--e-out), stroke 0.5s, stroke-width 0.5s",
-              transitionDelay: `${i * 80}ms`,
+              opacity: showLines ? (connected ? 0.85 : 0.32) : 0,
+              transition: `opacity .6s var(--e-out) ${i * 70}ms, stroke .5s, stroke-width .5s`,
             }}
           />
         ))}
-        {/* Cross connection lines (CONNECT+) */}
-        {connected && (
-          <>
-            <line x1="14" y1="14" x2="86" y2="14" stroke="var(--accent-deep)" strokeWidth="0.35" style={{ opacity: 0.5 }} />
-            <line x1="14" y1="86" x2="86" y2="86" stroke="var(--accent-deep)" strokeWidth="0.35" style={{ opacity: 0.5 }} />
-            <line x1="14" y1="14" x2="14" y2="86" stroke="var(--accent-deep)" strokeWidth="0.35" style={{ opacity: 0.5 }} />
-            <line x1="86" y1="14" x2="86" y2="86" stroke="var(--accent-deep)" strokeWidth="0.35" style={{ opacity: 0.5 }} />
-          </>
-        )}
       </svg>
 
-      {/* Four corner outer dots (BUILD+, staggered) */}
-      {cornerPositions.map(([cx, cy], i) => (
+      {/* BUILD+ — four outer dots, one at a time */}
+      {PV_CORNERS.map((c, i) => (
         <span
-          key={`corner-${i}`}
-          className="absolute block h-[10px] w-[10px] rounded-full border"
+          key={`dot-${i}`}
+          ref={(el) => { dotRefs.current[i] = el; }}
+          className="absolute block h-[10px] w-[10px] rounded-full"
           style={{
-            left: cx,
-            top: cy,
-            transform: `translate(-50%, -50%) scale(${showDots ? 1 : 0.2})`,
-            background: connected ? "var(--accent-deep)" : "var(--bg)",
-            borderColor: connected ? "var(--accent-deep)" : showDots ? "var(--fg)" : "var(--line)",
+            left: `${c.x}%`,
+            top: `${c.y}%`,
+            translate: "-50% -50%",
+            transform: `scale(${showDots ? 1 : 0})`,
             opacity: showDots ? 1 : 0,
-            transition: "all 0.55s var(--e-out)",
-            transitionDelay: `${i * 120}ms`,
-            boxShadow: connected ? "0 0 8px color-mix(in srgb, var(--accent-deep) 50%, transparent)" : "none",
+            background: connected ? "var(--accent)" : "var(--fg)",
+            transition: "background .45s, box-shadow .45s",
+            boxShadow: connected ? "0 0 10px color-mix(in srgb, var(--accent-deep) 55%, transparent)" : "none",
           }}
         />
       ))}
 
-      {/* Central dot (always visible — DISCOVER state) */}
+      {/* Central dot — present (dim) from DISCOVER on */}
       <span
-        className="absolute top-1/2 left-1/2 grid h-[30px] w-[30px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full"
+        ref={centerRef}
+        className="absolute top-1/2 left-1/2 grid h-[26px] w-[26px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full"
         style={{
-          background: launched ? "var(--fg)" : connected ? "var(--fg)" : "var(--bg)",
-          border: `1.5px solid ${connected ? "var(--accent-deep)" : "var(--line)"}`,
-          transition: "all 0.5s var(--e-out)",
-          boxShadow: launched ? "0 0 16px color-mix(in srgb, var(--accent-deep) 60%, transparent)" : "none",
+          background: "var(--bg-2)",
+          border: `1px solid ${connected ? "var(--accent-deep)" : "var(--line)"}`,
+          opacity: showLines ? 1 : 0.55,
+          transition: "border-color .5s, opacity .5s, box-shadow .5s",
+          boxShadow: connected ? "0 0 14px color-mix(in srgb, var(--accent-deep) 45%, transparent)" : "none",
         }}
       >
         <span
-          className="block h-[7px] w-[7px] rounded-full"
+          className="block h-[8px] w-[8px] rounded-full"
           style={{
-            background: connected ? "var(--accent)" : active > 0 ? "var(--fg)" : "var(--faint)",
-            transition: "background 0.5s",
+            background: connected ? "var(--accent)" : "var(--faint)",
+            opacity: connected ? 1 : 0.55,
+            transition: "background .5s, opacity .5s",
           }}
         />
       </span>
 
-      {/* LAUNCH outward pulse ring */}
+      {/* LAUNCH radiating ring */}
       <span
-        ref={pulseRef}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 block h-[24px] w-[24px] rounded-full border pointer-events-none"
+        ref={launchRef}
+        className="pointer-events-none absolute top-1/2 left-1/2 block h-[26px] w-[26px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-0"
+        style={{ border: "1.5px solid var(--accent)", boxShadow: "0 0 24px color-mix(in srgb, var(--accent-deep) 65%, transparent)" }}
+      />
+
+      {/* EVOLVE breathing ring — continuous */}
+      <span
+        ref={breathRef}
+        className="pointer-events-none absolute top-1/2 left-1/2 block h-[54px] w-[54px] -translate-x-1/2 -translate-y-1/2 rounded-full"
         style={{
-          borderColor: "var(--accent-deep)",
+          border: "1px solid var(--accent-deep)",
           opacity: 0,
+          visibility: evolving ? "visible" : "hidden",
         }}
       />
 
-      {/* EVOLVE breathing ring */}
-      {evolving && (
-        <span
-          ref={breathRef}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 block h-[60px] w-[60px] rounded-full border pointer-events-none"
-          style={{ borderColor: "var(--accent-deep)", opacity: 0.4 }}
-        />
-      )}
-
-      {/* Stage label */}
-      <p className="mono absolute right-[12px] bottom-[10px] transition-colors duration-500" style={{ color: active === 5 ? "var(--accent-deep)" : "var(--faint)" }}>
-        {stages[active]}
+      <p className="mono absolute right-[12px] bottom-[10px]" style={{ color: evolving ? "var(--accent-deep)" : "var(--faint)", transition: "color .5s" }}>
+        {stage.k}
       </p>
     </div>
   );
 }
 
 /* ================================================================
-   FINAL CTA (Prompt 18) — Convergence Moment.
-   Small recognizable echoes of earlier motifs drift in from edges
-   toward center, merge into a single bright lime point,
-   then that point expands into the resting line graphic.
+   FINAL CTA (Prompt 18) — The Convergence Moment.
+   The one time the site uses true multi-object convergence: echoes of
+   earlier motifs (a Problem status card, a Service tab icon, a 3D node
+   fragment, the lime signal dot) drift in from the viewport edges,
+   merge into a single bright lime point, and that point expands outward
+   into the resting node/line graphic as the headline appears.
+   Plays once on entry (~1.9s). Mobile: the converged graphic is
+   pre-arranged and simply settles in — light entrance only.
    ================================================================ */
 const FC_MOTIFS = [
-  { k: "Connected", label: "STATUS", from: [-280, -180], icon: "status" },
-  { k: "Service", label: "SVC", from: [260, -200], icon: "tab" },
-  { k: "3D Node", label: "NODE", from: [300, 190], icon: "node" },
-  { k: "Signal", label: "●", from: [-240, 210], icon: "signal" },
+  { label: "STATUS", from: [-320, -210], icon: "status" },
+  { label: "SERVICE", from: [300, -230], icon: "tab" },
+  { label: "NODE", from: [340, 200], icon: "node" },
+  { label: "SIGNAL", from: [-290, 230], icon: "signal" },
 ];
 
 const FC_NODES = [
-  { k: "Website", x: 16, y: 20, from: [-220, -140] },
-  { k: "AI Agent", x: 84, y: 18, from: [200, -160] },
-  { k: "Automation", x: 86, y: 80, from: [230, 150] },
-  { k: "Content", x: 14, y: 82, from: [-210, 170] },
+  { k: "Website", x: 16, y: 20 },
+  { k: "AI Agent", x: 84, y: 18 },
+  { k: "Automation", x: 86, y: 80 },
+  { k: "Content", x: 14, y: 82 },
 ];
 
 export function FinalCTA() {
@@ -672,52 +785,80 @@ export function FinalCTA() {
 
   useLayoutEffect(() => {
     if (!root.current || prefersReducedMotion()) return;
-    const isMobile = !window.matchMedia("(min-width: 900px)").matches;
-    const k = isMobile ? 0.4 : 1;
+    const desktop = window.matchMedia("(min-width: 900px)").matches;
 
     const ctx = gsap.context(() => {
+      if (!desktop) {
+        /* Mobile: composed graphic pre-arranged, light entrance only. */
+        gsap.timeline({
+          scrollTrigger: { trigger: root.current, start: "top 80%", once: true },
+        })
+          .fromTo(".fc-static", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" })
+          .fromTo(".fc-static .fc-line", { attr: { x2: 50, y2: 50 } }, { attr: { x2: (i: number) => FC_NODES[i].x, y2: (i: number) => FC_NODES[i].y, duration: 0.6, ease: "power2.out" } }, 0.1)
+          .fromTo(".fc-text > *", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.6, stagger: 0.08, ease: "power3.out" }, 0.25);
+        gsap.set(".fc-motif, .fc-converge-point", { display: "none" });
+        return;
+      }
+
+      /* Desktop: the one true convergence. Plays once on entry. */
       const tl = gsap.timeline({
-        scrollTrigger: { trigger: root.current, start: "top 85%", end: "center 55%", scrub: 0.8 },
+        scrollTrigger: { trigger: root.current, start: "top 74%", once: true },
       });
 
-      // Phase 1: Motifs drift in from edges toward center (0 -> 0.5)
+      // 1 — echoes drift in from the edges toward center (~1s)
       tl.fromTo(
         ".fc-motif",
         {
-          x: (i: number) => FC_MOTIFS[i].from[0] * k,
-          y: (i: number) => FC_MOTIFS[i].from[1] * k,
-          rotation: (i: number) => (i % 2 ? 12 : -12),
-          opacity: 0.2,
-          scale: 0.6,
+          x: (i: number) => FC_MOTIFS[i].from[0],
+          y: (i: number) => FC_MOTIFS[i].from[1],
+          rotation: (i: number) => (i % 2 ? 10 : -10),
+          opacity: 0,
+          scale: 0.85,
         },
-        { x: 0, y: 0, rotation: 0, opacity: 1, scale: 1, ease: "none", duration: 0.5 },
+        {
+          x: 0,
+          y: 0,
+          rotation: 0,
+          opacity: 1,
+          scale: 1,
+          duration: 1.0,
+          ease: "power2.inOut",
+          stagger: 0.05,
+        },
         0
       );
 
-      // Phase 2: Motifs merge into center point + fade
-      tl.to(".fc-motif", {
-        x: 0, y: 0, scale: 0, opacity: 0, duration: 0.15, ease: "power2.in",
-      }, 0.5);
+      // 2 — they merge into a single bright lime point
+      tl.to(".fc-motif", { scale: 0, opacity: 0, duration: 0.3, ease: "power3.in", stagger: 0.03 }, 1.0).fromTo(
+        convergeCenterRef.current,
+        { scale: 0, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.28, ease: "power2.out" },
+        1.12
+      );
 
-      // Phase 3: Center point expands after merge
-      if (convergeCenterRef.current) {
-        tl.fromTo(
-          convergeCenterRef.current,
-          { scale: 0.1, opacity: 0 },
-          { scale: 1, opacity: 1, ease: "power2.out", duration: 0.15 },
-          0.55
-        );
-      }
+      // 3 — the point expands outward into the node/line graphic
+      tl.to(convergeCenterRef.current, { scale: 2.6, opacity: 0, duration: 0.5, ease: "power2.out" }, 1.42)
+        .fromTo(
+          ".fc-line",
+          { attr: { x2: 50, y2: 50 }, opacity: 0 },
+          { attr: { x2: (i: number) => FC_NODES[i].x, y2: (i: number) => FC_NODES[i].y }, opacity: 0.7, duration: 0.45, ease: "power2.out", stagger: 0.04 },
+          1.46
+        )
+        .fromTo(
+          ".fc-node",
+          { opacity: 0, scale: 0.6 },
+          { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(1.8)", stagger: 0.05 },
+          1.62
+        )
+        .fromTo(".fc-core", { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(1.6)" }, 1.78);
 
-      // Phase 4: Existing convergence structure
+      // 4 — the headline settles in as the graphic reaches rest
       tl.fromTo(
-        ".fc-node",
-        { x: (i: number) => FC_NODES[i].from[0] * k * 0.3, y: (i: number) => FC_NODES[i].from[1] * k * 0.3, opacity: 0.3 },
-        { x: 0, y: 0, opacity: 1, ease: "none", duration: 0.2 },
-        0.65
-      )
-      .fromTo(".fc-line", { attr: { x2: (i: number) => FC_NODES[i].x, y2: (i: number) => FC_NODES[i].y } }, { attr: { x2: 50, y2: 50 }, ease: "none", duration: 0.15 }, 0.7)
-      .fromTo(".fc-core", { scale: 0.2, opacity: 0 }, { scale: 1, opacity: 1, ease: "none", duration: 0.1 }, 0.8);
+        ".fc-text > *",
+        { opacity: 0, y: 18 },
+        { opacity: 1, y: 0, duration: 0.65, stagger: 0.09, ease: "power3.out" },
+        1.62
+      );
     }, root);
 
     return () => ctx.revert();
@@ -725,11 +866,11 @@ export function FinalCTA() {
 
   return (
     <section ref={root} className="on-ink relative w-full overflow-hidden py-[clamp(90px,12vw,180px)]">
-      {/* Convergence Motifs (Prompt 18 unique multi-object convergence) */}
-      <div className="pointer-events-none absolute inset-0 grid place-items-center" aria-hidden>
-        {FC_MOTIFS.map((m, i) => (
+      {/* Convergence motifs — desktop only; mobile uses the static graphic */}
+      <div className="pointer-events-none absolute inset-0 hidden place-items-center lg:grid" aria-hidden>
+        {FC_MOTIFS.map((m) => (
           <span
-            key={m.k}
+            key={m.label}
             className="fc-motif absolute inline-flex items-center gap-[6px] rounded-full border px-[10px] py-[5px]"
             style={{
               borderColor: m.icon === "signal" ? "var(--accent)" : "var(--line)",
@@ -737,7 +878,7 @@ export function FinalCTA() {
               color: m.icon === "signal" ? "#0c0c0d" : "var(--fg)",
               top: "50%",
               left: "50%",
-              transform: `translate(-50%, -50%) translate(${FC_MOTIFS[i].from[0]}px, ${FC_MOTIFS[i].from[1]}px)`,
+              translate: "-50% -50%",
             }}
           >
             {m.icon === "signal" ? (
@@ -748,10 +889,10 @@ export function FinalCTA() {
             <span className="mono text-[8px]">{m.label}</span>
           </span>
         ))}
-        {/* Converge center point */}
+        {/* the single bright lime point the motifs merge into */}
         <span
           ref={convergeCenterRef}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 block h-[16px] w-[16px] rounded-full opacity-0"
+          className="fc-converge-point absolute top-1/2 left-1/2 block h-[16px] w-[16px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-0"
           style={{
             background: "var(--accent)",
             boxShadow: "0 0 30px var(--accent), 0 0 60px color-mix(in srgb, var(--accent-deep) 60%, transparent)",
@@ -759,7 +900,8 @@ export function FinalCTA() {
         />
       </div>
 
-      <div className="pointer-events-none absolute top-[8%] right-[3%] bottom-[8%] hidden w-[42%] md:block" aria-hidden>
+      {/* resting node/line graphic — desktop: right column; mobile: static composed */}
+      <div className="pointer-events-none absolute top-[8%] right-[3%] bottom-[8%] hidden w-[42%] lg:block" aria-hidden>
         <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
           {FC_NODES.map((n) => (
             <line key={n.k} className="fc-line" x1={n.x} y1={n.y} x2={50} y2={50} stroke="var(--accent-deep)" strokeWidth="1" vectorEffect="non-scaling-stroke" opacity=".7" />
@@ -775,18 +917,39 @@ export function FinalCTA() {
           <span className="font-mono text-[11px] tracking-[.16em] uppercase">Arche</span>
         </div>
       </div>
-      <div className="wrap relative flex flex-col items-start gap-[clamp(28px,4vw,52px)]">
+
+      {/* mobile composed graphic — pre-arranged, light entrance */}
+      <div className="wrap relative mb-[34px] lg:hidden" aria-hidden>
+        <div className="fc-static relative mx-auto aspect-[16/7] w-full max-w-[520px]">
+          <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+            {FC_NODES.map((n) => (
+              <line key={n.k} className="fc-line" x1={n.x} y1={n.y} x2={50} y2={50} stroke="var(--accent-deep)" strokeWidth="1" vectorEffect="non-scaling-stroke" opacity=".7" />
+            ))}
+          </svg>
+          {FC_NODES.map((n) => (
+            <span key={n.k} className="mono absolute rounded-full border px-[9px] py-[4px] text-[8px]" style={{ left: `${n.x}%`, top: `${n.y}%`, translate: "-50% -50%", borderColor: "var(--line)", color: "var(--fg)", background: "var(--bg-2)" }}>
+              {n.k}
+            </span>
+          ))}
+          <div className="absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-[8px] rounded-full px-[13px] py-[8px]" style={{ background: "var(--fg)", color: "var(--bg)" }}>
+            <span className="signal-dot" />
+            <span className="font-mono text-[10px] tracking-[.16em] uppercase">Arche</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="wrap fc-text relative flex flex-col items-start gap-[clamp(28px,4vw,52px)]">
         <div className="flex w-full items-center gap-[16px]">
           <span className="mono" style={{ color: "var(--accent-deep)" }}>
             Next
           </span>
           <span className="h-px flex-1 origin-left" style={{ background: "var(--line)" }} data-r="line" />
         </div>
-        <h2 className="d1 max-w-[11ch] md:max-w-[9ch]" data-r="mask">
+        <h2 className="d1 max-w-[11ch] md:max-w-[9ch]">
           Let's build what actually connects.
         </h2>
         <div className="flex flex-wrap items-center gap-[14px]">
-          <Link to="/contact" className="btn" cursor="START" style={{ background: "var(--fg)", color: "var(--bg)" }}>
+          <Link to="/contact" className="btn" cursor="START" data-magnetic style={{ background: "var(--fg)", color: "var(--bg)" }}>
             Start a Project <span className="arw">→</span>
           </Link>
           <a href={`mailto:${c.email}`} className="mono lnk" style={{ color: "var(--muted)" }}>

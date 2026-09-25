@@ -1,445 +1,536 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { services, siteContent } from "../data/site";
+import { useEffect, useRef, useState } from "react";
+import { siteContent } from "../data/site";
 import { usePage } from "../lib/router";
 import { useReveal } from "../lib/reveal";
-import { activeProvider, type PaymentStatus } from "../lib/payments";
 import { gsap, prefersReducedMotion } from "../lib/gsap";
-
-type Prefill = { service?: string; pkg?: string };
+import { readLastTrigger, type VisualTrigger } from "../data/intents";
 
 /**
- * PROMPT 17 — Contact (Guided Inquiry Flow)
+ * PROMPT 17 — Contact: guided, spatial inquiry flow.
  *
- * Redesigned as a progressive-disclosure guided flow rather than a standard form.
- * Each step reveals only after the previous one is answered.
- * Visual confirmation of each answered question (a brief micro-animation).
+ * Four steps, each answered answer compressed into a small tag that rides
+ * above the next question (the flow never feels amnesiac). Step changes
+ * slide in from the right while the answered option flies up into its tag
+ * — a spatial move, not a fade-and-replace.
  *
- *   1. Scope    — service, package (fixed) or custom, timeline, budget
- *   2. Details  — what you're building, contact info, channel
- *   3. Review   — summary → submit inquiry
- *   4. Reserve  — if a fixed package was chosen, optional deposit step
+ * Final submit: the lime signal dot — seeded by the visitor's last-active
+ * Ask Arche visual trigger (Prompt 16 handoff, sessionStorage) — travels
+ * from the form into a compact static rendering of the system node
+ * structure and lights the matching node: REQUEST RECEIVED.
  */
+
+type BuildOption = "Website" | "AI Agent" | "Automation" | "Video" | "Other";
+
+const BUILD_OPTIONS: { k: BuildOption; hint: string }[] = [
+  { k: "Website", hint: "A site that has to perform, not just exist." },
+  { k: "AI Agent", hint: "Answers real questions, takes real actions." },
+  { k: "Automation", hint: "Manual work, handed to a system." },
+  { k: "Video", hint: "Footage turned into content that ships." },
+  { k: "Other", hint: "Something between or beyond — tell us." },
+];
+
+const TIMELINE_OPTIONS = [
+  { k: "Weeks — in a hurry", hint: "There's a date. Work backwards from it." },
+  { k: "1–3 months", hint: "Room to do it properly." },
+  { k: "3+ months", hint: "Larger scope, or a phased build." },
+  { k: "Just exploring", hint: "No date yet — mapping options." },
+];
+
+/** Ask Arche trigger → which node lights in the confirmation diagram. */
+const TRIGGER_NODE: Record<VisualTrigger, string> = {
+  "service:web": "web",
+  "service:agent": "agent",
+  "service:automation": "auto",
+  "service:video": "content",
+  system: "core",
+  contact: "core",
+};
+
+type TagKey = "build" | "change" | "timeline";
+
 export function ContactPage() {
   usePage("Start a Project — Arche");
   useReveal();
 
   const c = siteContent.contact;
   const [step, setStep] = useState(0);
-  const [service, setService] = useState<string>("");
-  const [pkg, setPkg] = useState<string>("Custom");
-  const [budget, setBudget] = useState("");
-  const [timeline, setTimeline] = useState("");
-  const [channel, setChannel] = useState("Email");
-  const [form, setForm] = useState({ name: "", email: "", company: "", contact: "", brief: "", reference: "" });
-  const [submitted, setSubmitted] = useState(false);
-  const [payStatus, setPayStatus] = useState<PaymentStatus>("idle");
-  const [payRef, setPayRef] = useState<string>("");
+  const [build, setBuild] = useState<BuildOption | null>(null);
+  const [change, setChange] = useState("");
+  const [timeline, setTimeline] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [company, setCompany] = useState("");
+  const [phase, setPhase] = useState<"form" | "sending" | "received">("form");
+  const [tagged, setTagged] = useState<Record<TagKey, boolean>>({ build: false, change: false, timeline: false });
+  const [dismissed, setDismissed] = useState<Record<TagKey, boolean>>({ build: false, change: false, timeline: false });
+  const [seed, setSeed] = useState<VisualTrigger | null>(null);
 
-  // Step transition animation refs
-  const stepContainerRef = useRef<HTMLDivElement>(null);
+  const stepRef = useRef<HTMLDivElement>(null);
+  const sendBtnRef = useRef<HTMLButtonElement>(null);
+  const sendRectRef = useRef<DOMRect | null>(null);
+  const pendingTag = useRef<TagKey | null>(null);
 
-  // prefill from service pages
+  // Prompt 16 → 17 handoff: the last Ask Arche trigger seeds the confirmation
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem("arche:prefill");
-      if (raw) {
-        const p: Prefill = JSON.parse(raw);
-        if (p.service) setService(p.service);
-        if (p.pkg) setPkg(p.pkg);
-        sessionStorage.removeItem("arche:prefill");
-      }
-    } catch {
-      /* fine */
-    }
+    setSeed(readLastTrigger());
   }, []);
 
-  // Animate step transitions
+  // step slide-in from the right
   useEffect(() => {
-    if (!stepContainerRef.current || prefersReducedMotion()) return;
-    const container = stepContainerRef.current;
+    if (!stepRef.current || prefersReducedMotion()) return;
     gsap.fromTo(
-      container,
-      { opacity: 0, y: 18 },
-      { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }
+      stepRef.current,
+      { x: 46, opacity: 0 },
+      { x: 0, opacity: 1, duration: 0.55, ease: "expo.out" }
     );
+  }, [step, phase]);
+
+  // after a step render, land any in-flight tag ghost at its slot
+  useEffect(() => {
+    const key = pendingTag.current;
+    if (!key) return;
+    const slot = document.querySelector<HTMLElement>(`[data-tag-slot="${key}"]`);
+    const ghost = document.querySelector<HTMLElement>(".tag-ghost");
+    if (slot && ghost) {
+      const from = ghost.getBoundingClientRect();
+      const to = slot.getBoundingClientRect();
+      gsap.to(ghost, {
+        x: to.left - from.left + (to.width - from.width) / 2,
+        y: to.top - from.top + (to.height - from.height) / 2,
+        scale: (to.width / from.width) * 0.92,
+        duration: 0.55,
+        ease: "expo.inOut",
+        onComplete: () => {
+          ghost.remove();
+          setTagged((t) => ({ ...t, [key]: true }));
+          pendingTag.current = null;
+        },
+      });
+    } else {
+      ghost?.remove();
+      setTagged((t) => ({ ...t, [key]: true }));
+      pendingTag.current = null;
+    }
   }, [step]);
 
-  const svc = services.find((s) => s.slug === service);
-  const selPkg = useMemo(() => svc?.packages.find((p) => p.name === pkg), [svc, pkg]);
-
-  const canNext0 = !!service && !!timeline;
-  const canNext1 = form.name.trim() && /\S+@\S+\.\S+/.test(form.email) && form.brief.trim().length > 4;
-
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    setForm((f) => ({ ...f, [k]: e.target.value }));
-
-  const animateChipSelection = (el: HTMLElement) => {
-    if (prefersReducedMotion()) return;
-    gsap.fromTo(el, { scale: 0.95 }, { scale: 1, duration: 0.3, ease: "back.out(2)" });
+  const flyTag = (key: TagKey, fromEl: HTMLElement | null, text: string) => {
+    pendingTag.current = key;
+    if (prefersReducedMotion() || !fromEl) {
+      setTagged((t) => ({ ...t, [key]: true }));
+      pendingTag.current = null;
+      return;
+    }
+    const r = fromEl.getBoundingClientRect();
+    const ghost = document.createElement("div");
+    ghost.className = "tag-ghost mono";
+    ghost.textContent = text;
+    ghost.style.cssText = `position:fixed;left:${r.left + r.width / 2}px;top:${r.top + r.height / 2}px;width:${Math.max(r.width, 90)}px;translate:-50% -50%;z-index:80;pointer-events:none;`;
+    document.body.appendChild(ghost);
   };
 
-  const goToStep = (target: number) => {
+  const chooseBuild = (o: BuildOption, el: HTMLElement) => {
+    if (build !== o) {
+      setBuild(o);
+      setDismissed((d) => ({ ...d, build: false }));
+    }
+    window.setTimeout(() => {
+      flyTag("build", el, `Building: ${o}`);
+      setStep(1);
+    }, 340);
+  };
+
+  const chooseTimeline = (o: string, el: HTMLElement) => {
+    setTimeline(o);
+    setDismissed((d) => ({ ...d, timeline: false }));
+    window.setTimeout(() => {
+      flyTag("timeline", el, `Timeline: ${o}`);
+      setStep(3);
+    }, 340);
+  };
+
+  const submitChange = (el: HTMLElement | null) => {
+    setDismissed((d) => ({ ...d, change: false }));
+    flyTag("change", el, change.trim() ? `Change: ${change.trim().slice(0, 22)}…` : "Change: noted");
+    setStep(3);
+  };
+
+  const goBack = (target: number) => {
+    if (target === 0) setDismissed((d) => ({ ...d, build: true }));
+    if (target === 2) setDismissed((d) => ({ ...d, timeline: true }));
+    if (target === 1) setDismissed((d) => ({ ...d, change: true }));
     setStep(target);
-    // Scroll the step into view smoothly
-    setTimeout(() => {
-      stepContainerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 60);
   };
+
+  const canSubmit = name.trim().length > 1 && /\S+@\S+\.\S+/.test(email);
 
   const submit = () => {
+    if (!canSubmit || phase !== "form") return;
     try {
       const log = JSON.parse(localStorage.getItem("arche:inquiries") || "[]");
-      log.push({ service, pkg, budget, timeline, channel, ...form, at: new Date().toISOString() });
+      log.push({ build, change, timeline, name, email, company, seed, at: new Date().toISOString() });
       localStorage.setItem("arche:inquiries", JSON.stringify(log));
     } catch {
       /* fine */
     }
-    setSubmitted(true);
-    goToStep(3);
+    // capture the button's position before the form unmounts — the signal
+    // dot flies from here into the node diagram
+    sendRectRef.current = sendBtnRef.current?.getBoundingClientRect() ?? null;
+    setPhase("sending");
+    window.setTimeout(() => setPhase("received"), prefersReducedMotion() ? 0 : 250);
   };
 
-  const reserve = async () => {
-    if (!svc || !selPkg) return;
-    setPayStatus("pending");
-    try {
-      const res = await activeProvider.createCheckout({
-        service: svc.title,
-        packageName: selPkg.name,
-        amountLabel: `${selPkg.deposit || selPkg.price} deposit`,
-        customer: { name: form.name, email: form.email },
-      });
-      setPayStatus(res.status);
-      setPayRef(res.reference || "");
-    } catch {
-      setPayStatus("failed");
+  // signal dot flight: form → node diagram (Prompt 16 seed picks the node)
+  useEffect(() => {
+    if (phase !== "received") return;
+    const nodeEl = document.querySelector<HTMLElement>("[data-receive-node]");
+    const note = document.querySelector<HTMLElement>("[data-receive-note]");
+    if (!nodeEl) return;
+
+    if (prefersReducedMotion()) {
+      nodeEl.classList.add("node-lit");
+      return;
     }
-  };
 
-  const steps = ["Scope", "Details", "Review", "Confirmation"];
+    // the note reveals only when the signal arrives
+    if (note) gsap.set(note, { opacity: 0 });
+    const from = sendRectRef.current;
+    const to = nodeEl.getBoundingClientRect();
+    const dot = document.createElement("span");
+    dot.className = "signal-dot";
+    const startX = from ? from.left + from.width / 2 : window.innerWidth / 2;
+    const startY = from ? from.top + from.height / 2 : window.innerHeight + 40;
+    dot.style.cssText = `position:fixed;left:${startX}px;top:${startY}px;z-index:90;width:8px;height:8px;`;
+    document.body.appendChild(dot);
+    gsap.fromTo(
+      dot,
+      { x: 0, y: 0, scale: 1.4, opacity: 1 },
+      {
+        x: to.left + to.width / 2 - startX,
+        y: to.top + to.height / 2 - startY,
+        scale: 0.9,
+        duration: 0.95,
+        ease: "expo.inOut",
+        onComplete: () => {
+          dot.remove();
+          nodeEl.classList.add("node-lit");
+          gsap.fromTo(
+            nodeEl,
+            { scale: 1.7 },
+            { scale: 1, duration: 0.7, ease: "elastic.out(1, 0.55)" }
+          );
+          const note = document.querySelector<HTMLElement>("[data-receive-note]");
+          if (note) gsap.fromTo(note, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out", delay: 0.12 });
+        },
+      }
+    );
+  }, [phase]);
 
-  // Progress bar for visual momentum
-  const progress = step / (steps.length - 1);
+  const tagData: { key: TagKey; label: string; landed: boolean }[] = [];
+  const isPending = (k: TagKey) => pendingTag.current === k;
+  if (build && (tagged.build || isPending("build")) && !dismissed.build)
+    tagData.push({ key: "build", label: `Building: ${build}`, landed: tagged.build });
+  if ((tagged.change || isPending("change")) && !dismissed.change && change.trim())
+    tagData.push({ key: "change", label: `Change: ${change.trim().slice(0, 26)}${change.trim().length > 26 ? "…" : ""}`, landed: tagged.change });
+  if (timeline && (tagged.timeline || isPending("timeline")) && !dismissed.timeline)
+    tagData.push({ key: "timeline", label: `Timeline: ${timeline}`, landed: tagged.timeline });
+
+  const stepTitles = ["WHAT ARE YOU BUILDING?", "WHAT NEEDS TO CHANGE?", "TIMELINE / SCALE", "WHERE DO WE REPLY?"];
 
   return (
-    <>
-      <section className="w-full pt-[130px] pb-[clamp(50px,7vw,110px)]">
-        <div className="wrap">
-          <p className="mono mono-a mb-[14px]">{c.label}</p>
-          <h1 className="d1 max-w-[13ch]" data-r="mask">
-            {c.closing}
-          </h1>
-          <p className="body mt-[20px] max-w-[52ch]" data-r="meta" data-r-delay="120">
-            {c.desc}
-          </p>
+    <section className="w-full pt-[130px] pb-[clamp(60px,8vw,130px)]">
+      <div className="wrap max-w-[880px]">
+        <p className="mono mono-a mb-[14px]" data-r="meta">
+          {c.label}
+        </p>
+        <h1 className="d1 max-w-[14ch]" data-r="mask">
+          {c.closing}
+        </h1>
+        <p className="body mt-[18px] max-w-[52ch]" data-r="meta" data-r-delay="120">
+          Four short steps — more conversation than form. Rough answers are fine; we'll sharpen
+          them together.
+        </p>
 
-          {/* stepper with progress bar */}
-          <div className="mt-[clamp(34px,4.4vw,64px)]" data-r="meta" data-r-delay="180">
-            {/* Progress bar */}
-            <div className="mb-[16px] h-[2px] w-full overflow-hidden rounded-full" style={{ background: "var(--line)" }}>
-              <div
-                className="h-full rounded-full"
-                style={{
-                  background: "var(--accent-deep)",
-                  width: `${progress * 100}%`,
-                  transition: "width 0.6s var(--e-out)",
-                }}
+        {/* progress */}
+        {phase === "form" && (
+          <div className="mt-[clamp(30px,4vw,52px)] flex items-center gap-[14px]" data-r="meta">
+            <span className="mono">
+              0{Math.min(step + 1, 4)} / 04
+            </span>
+            <span className="relative h-px flex-1 overflow-hidden" style={{ background: "var(--line)" }}>
+              <span
+                className="absolute inset-y-0 left-0"
+                style={{ width: `${((step + 1) / 4) * 100}%`, background: "var(--accent-deep)", transition: "width .6s var(--e-out)" }}
               />
-            </div>
-            <div className="flex items-center gap-[10px]">
-              {steps.map((s, i) => (
-                <div key={s} className="flex items-center gap-[10px]">
-                  <button
-                    className="mono flex h-[26px] items-center rounded-full px-[12px] transition-all duration-400"
-                    style={{
-                      border: `1px solid ${i === step ? "var(--accent-deep)" : "var(--line)"}`,
-                      color: i === step ? "var(--accent-deep)" : i < step ? "var(--fg)" : "var(--faint)",
-                      background: i < step ? "var(--bg-2)" : "transparent",
-                      cursor: i < step ? "pointer" : "default",
-                    }}
-                    onClick={() => i < step && goToStep(i)}
-                    disabled={i >= step}
-                  >
-                    {i < step ? "✓ " : ""}
-                    {s}
-                  </button>
-                  {i < steps.length - 1 && <span className="h-px w-[18px]" style={{ background: "var(--line)" }} />}
-                </div>
-              ))}
-            </div>
+            </span>
           </div>
+        )}
 
-          <div ref={stepContainerRef} className="mt-[clamp(26px,3vw,44px)] max-w-[860px]">
-            {/* STEP 0 — SCOPE */}
-            {step === 0 && (
-              <div className="flex flex-col gap-[30px]">
-                <div>
-                  <p className="mono mono-fg mb-[12px]">Which service?*</p>
-                  <div className="flex flex-wrap gap-[8px]">
-                    {services.map((s) => (
-                      <button
-                        key={s.slug}
-                        className="chip"
-                        data-on={service === s.slug ? "1" : "0"}
-                        onClick={(e) => {
-                          setService(s.slug);
-                          setPkg("Custom");
-                          animateChipSelection(e.currentTarget);
-                        }}
-                      >
-                        {s.n} {s.title}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {svc && (
-                  <div style={{ animation: "demoIn 0.4s var(--e-out) both" }}>
-                    <p className="mono mono-fg mb-[12px]">Engagement type</p>
-                    <div className="flex flex-wrap gap-[8px]">
-                      {svc.packages.map((p) => (
-                        <button
-                          key={p.name}
-                          className="chip"
-                          data-on={pkg === p.name ? "1" : "0"}
-                          onClick={(e) => {
-                            setPkg(p.name);
-                            animateChipSelection(e.currentTarget);
-                          }}
-                        >
-                          {p.name} · {p.price}
-                        </button>
-                      ))}
-                      <button
-                        className="chip"
-                        data-on={pkg === "Custom" ? "1" : "0"}
-                        onClick={(e) => {
-                          setPkg("Custom");
-                          animateChipSelection(e.currentTarget);
-                        }}
-                      >
-                        Custom project
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <p className="mono mono-fg mb-[12px]">Timeline*</p>
-                  <div className="flex flex-wrap gap-[8px]">
-                    {c.timelines.map((t) => (
-                      <button
-                        key={t}
-                        className="chip"
-                        data-on={timeline === t ? "1" : "0"}
-                        onClick={(e) => {
-                          setTimeline(t);
-                          animateChipSelection(e.currentTarget);
-                        }}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {pkg === "Custom" && (
-                  <div style={{ animation: "demoIn 0.4s var(--e-out) both" }}>
-                    <p className="mono mono-fg mb-[12px]">Budget range</p>
-                    <div className="flex flex-wrap gap-[8px]">
-                      {c.budgets.map((b) => (
-                        <button
-                          key={b}
-                          className="chip"
-                          data-on={budget === b ? "1" : "0"}
-                          onClick={(e) => {
-                            setBudget(b);
-                            animateChipSelection(e.currentTarget);
-                          }}
-                        >
-                          {b}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <button className="btn self-start" disabled={!canNext0} onClick={() => goToStep(1)}>
-                  Continue <span className="arw">→</span>
+        {/* accumulated tags */}
+        {phase === "form" && tagData.length > 0 && (
+          <div className="mt-[16px] flex flex-wrap items-center gap-[8px]">
+            {tagData.map((t) => (
+              <span
+                key={t.key}
+                data-tag-slot={t.key}
+                className="mono inline-flex items-center gap-[7px] rounded-full px-[11px] py-[5px]"
+                style={{
+                  border: "1px solid var(--line)",
+                  color: "var(--muted)",
+                  background: "var(--bg-2)",
+                  opacity: t.landed ? 1 : 0,
+                  transition: "opacity .2s",
+                }}
+              >
+                {t.label}
+                <button
+                  aria-label={`Edit ${t.key}`}
+                  className="cursor-pointer leading-none"
+                  style={{ color: "var(--faint)" }}
+                  onClick={() => goBack(t.key === "build" ? 0 : t.key === "change" ? 1 : 2)}
+                >
+                  ✕
                 </button>
-              </div>
-            )}
+              </span>
+            ))}
+          </div>
+        )}
 
-            {/* STEP 1 — DETAILS */}
-            {step === 1 && (
-              <div className="flex flex-col gap-[22px]">
-                <div className="grid gap-[20px] sm:grid-cols-2">
-                  <label className="flex flex-col">
-                    <span className="mono mb-[2px]">Name*</span>
-                    <input className="field" value={form.name} onChange={set("name")} placeholder="Your name" />
-                  </label>
-                  <label className="flex flex-col">
-                    <span className="mono mb-[2px]">Company</span>
-                    <input className="field" value={form.company} onChange={set("company")} placeholder="Your company" />
-                  </label>
-                  <label className="flex flex-col">
-                    <span className="mono mb-[2px]">Email*</span>
-                    <input className="field" type="email" value={form.email} onChange={set("email")} placeholder="you@company.com" />
-                  </label>
-                  <label className="flex flex-col">
-                    <span className="mono mb-[2px]">WhatsApp / phone</span>
-                    <input className="field" value={form.contact} onChange={set("contact")} placeholder="+1 555 123 4567" />
-                  </label>
-                </div>
-                <label className="flex flex-col">
-                  <span className="mono mb-[2px]">What are you trying to build, automate or improve?*</span>
-                  <textarea className="field" rows={4} value={form.brief} onChange={set("brief")} placeholder="A few sentences is enough — we'll take it from there." />
-                </label>
-                <label className="flex flex-col">
-                  <span className="mono mb-[2px]">Website / reference (optional)</span>
-                  <input className="field" value={form.reference} onChange={set("reference")} placeholder="https://" />
-                </label>
-                <div>
-                  <p className="mono mono-fg mb-[12px]">Preferred communication</p>
-                  <div className="flex flex-wrap gap-[8px]">
-                    {c.channels.map((ch) => (
-                      <button
-                        key={ch}
-                        className="chip"
-                        data-on={channel === ch ? "1" : "0"}
-                        onClick={(e) => {
-                          setChannel(ch);
-                          animateChipSelection(e.currentTarget);
-                        }}
-                      >
-                        {ch}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex gap-[10px]">
-                  <button className="btn btn-ghost" onClick={() => goToStep(0)}>
-                    ← Back
-                  </button>
-                  <button className="btn" disabled={!canNext1} onClick={() => goToStep(2)}>
-                    Review <span className="arw">→</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* STEP 2 — REVIEW */}
-            {step === 2 && (
-              <div className="flex flex-col gap-[22px]">
-                <div className="grid gap-px sm:grid-cols-2" style={{ background: "var(--line)", border: "1px solid var(--line)" }}>
-                  {[
-                    ["Service", svc?.title || "—"],
-                    ["Engagement", pkg + (selPkg ? ` · ${selPkg.price}` : "")],
-                    ["Timeline", timeline],
-                    ["Budget", pkg === "Custom" ? budget || "To discuss" : selPkg?.price || "—"],
-                    ["Name", form.name],
-                    ["Email", form.email],
-                    ["Company", form.company || "—"],
-                    ["Channel", channel],
-                  ].map(([k, v], i) => (
-                    <div
-                      key={k}
-                      className="flex flex-col gap-[4px] p-[16px]"
+        {/* ------------------------------ STEPS ------------------------------ */}
+        {phase === "form" ? (
+          <div ref={stepRef} className="mt-[clamp(26px,3.4vw,46px)]">
+            {step === 0 && (
+              <div>
+                <StepTitle n="01" title={stepTitles[0]} />
+                <div className="mt-[8px] flex flex-col">
+                  {BUILD_OPTIONS.map((o) => (
+                    <button
+                      key={o.k}
+                      onClick={(e) => chooseBuild(o.k, e.currentTarget)}
+                      data-cursor="SELECT"
+                      className="group flex items-baseline justify-between gap-[16px] border-b py-[18px] text-left"
                       style={{
-                        background: "var(--bg)",
-                        animation: prefersReducedMotion() ? "none" : `demoIn 0.35s var(--e-out) ${i * 40}ms both`,
+                        borderColor: build === o.k ? "var(--accent-deep)" : "var(--line)",
+                        background: build === o.k ? "var(--bg-2)" : "transparent",
+                        transition: "border-color .3s, background .3s, padding-left .3s var(--e-out)",
                       }}
                     >
-                      <span className="mono">{k}</span>
-                      <span className="body" style={{ color: "var(--fg)" }}>
-                        {v}
+                      <span className="flex items-baseline gap-[16px]">
+                        <span className="d3 group-hover:translate-x-[6px]" style={{ transition: "transform .35s var(--e-out)", fontSize: "clamp(22px,3vw,34px)" }}>
+                          {o.k}
+                        </span>
+                        <span className="body-s hidden sm:block" style={{ color: "var(--faint)" }}>
+                          {o.hint}
+                        </span>
                       </span>
-                    </div>
+                      <span className="mono" style={{ color: build === o.k ? "var(--accent-deep)" : "var(--faint)" }}>
+                        →
+                      </span>
+                    </button>
                   ))}
                 </div>
-                <div className="flex flex-col gap-[4px] border p-[16px]" style={{ borderColor: "var(--line)", borderRadius: 6 }}>
-                  <span className="mono">Brief</span>
-                  <p className="body">{form.brief}</p>
-                </div>
-                <div className="flex gap-[10px]">
-                  <button className="btn btn-ghost" onClick={() => goToStep(1)}>
-                    ← Back
-                  </button>
-                  <button className="btn" onClick={submit}>
-                    Submit inquiry <span className="arw">→</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* STEP 3 — CONFIRMATION / RESERVE */}
-            {step === 3 && submitted && (
-              <div className="flex flex-col gap-[26px]">
-                <div className="border p-[clamp(20px,2.4vw,34px)]" style={{ borderColor: "var(--accent-deep)", borderRadius: 6, background: "var(--card)" }}>
-                  {/* Animated confirmation checkmark */}
-                  <div
-                    className="mb-[14px] flex h-[48px] w-[48px] items-center justify-center rounded-full"
-                    style={{
-                      background: "var(--accent-deep)",
-                      animation: prefersReducedMotion() ? "none" : "demoIn 0.5s var(--e-out) both",
-                    }}
-                  >
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0c0c0d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </div>
-                  <p className="mono mono-a mb-[8px]">System received</p>
-                  <h2 className="d3 mb-[10px]">We'll take it from here.</h2>
-                  <p className="body max-w-[52ch]">
-                    Next: a short reply confirming scope{pkg === "Custom" ? ", then a call and a written proposal with timeline and investment." : " and scheduling for your package."}{" "}
-                    You'll hear from us at {form.email}.
-                  </p>
-                </div>
-
-                {selPkg?.deposit && (
-                  <div className="border p-[clamp(20px,2.4vw,34px)]" style={{ borderColor: "var(--line)", borderRadius: 6 }}>
-                    <div className="mb-[12px] flex flex-wrap items-baseline justify-between gap-[8px]">
-                      <h3 className="d4">Reserve your slot — {selPkg.name}</h3>
-                      <span className="mono mono-a">{selPkg.deposit || selPkg.price} deposit</span>
-                    </div>
-                    <p className="body-s mb-[16px] max-w-[56ch]">
-                      Optional: reserve your production slot now. {activeProvider.configured ? "You'll be taken to secure checkout." : "No charge is made yet — the reservation is recorded and we'll send a secure payment link to confirm."}
-                    </p>
-                    {payStatus === "idle" && (
-                      <button className="btn" onClick={reserve}>
-                        Reserve slot <span className="arw">→</span>
-                      </button>
-                    )}
-                    {payStatus === "pending" && (
-                      <p className="mono" aria-live="polite">
-                        Processing<span className="mono-a"> ●●●</span>
-                      </p>
-                    )}
-                    {payStatus === "successful" && (
-                      <p className="mono" style={{ color: "var(--accent-deep)" }} aria-live="polite">
-                        ✓ Reserved — reference {payRef}. Check your email for confirmation.
-                      </p>
-                    )}
-                    {(payStatus === "failed" || payStatus === "cancelled") && (
-                      <div className="flex items-center gap-[14px]" aria-live="polite">
-                        <p className="mono" style={{ color: "#d64530" }}>
-                          {payStatus === "failed" ? "Payment failed." : "Payment cancelled."}
-                        </p>
-                        <button className="btn btn-ghost" onClick={reserve}>
-                          Try again
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <p className="mono">
-                  Prefer email? <a className="lnk mono-fg" href={`mailto:${c.email}`}>{c.email}</a>
+                <p className="body-s mt-[14px]" style={{ color: "var(--faint)" }}>
+                  Pick the closest — "Other" is a perfectly good answer.
                 </p>
               </div>
             )}
+
+            {step === 1 && (
+              <div>
+                <StepTitle n="02" title={stepTitles[1]} />
+                <label className="mt-[18px] flex flex-col">
+                  <span className="sr-only">What needs to change?</span>
+                  <textarea
+                    className="field min-h-[130px] resize-y"
+                    autoFocus
+                    value={change}
+                    onChange={(e) => setChange(e.target.value)}
+                    placeholder="What's slow, broken, or missing? What should be true a few months from now?"
+                  />
+                </label>
+                <div className="mt-[16px] flex items-center gap-[14px]">
+                  <button
+                    className="btn"
+                    disabled={change.trim().length < 3}
+                    onClick={(e) => submitChange(e.currentTarget)}
+                    data-cursor="START"
+                  >
+                    Continue <span className="arw">→</span>
+                  </button>
+                  <span className="body-s" style={{ color: "var(--faint)" }}>
+                    A sentence or two is plenty.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div>
+                <StepTitle n="03" title={stepTitles[2]} />
+                <div className="mt-[8px] flex flex-col">
+                  {TIMELINE_OPTIONS.map((o) => (
+                    <button
+                      key={o.k}
+                      onClick={(e) => chooseTimeline(o.k, e.currentTarget)}
+                      data-cursor="SELECT"
+                      className="group flex items-baseline justify-between gap-[16px] border-b py-[18px] text-left"
+                      style={{
+                        borderColor: timeline === o.k ? "var(--accent-deep)" : "var(--line)",
+                        background: timeline === o.k ? "var(--bg-2)" : "transparent",
+                        transition: "border-color .3s, background .3s",
+                      }}
+                    >
+                      <span className="d4">{o.k}</span>
+                      <span className="body-s hidden sm:block" style={{ color: "var(--faint)" }}>
+                        {o.hint}
+                      </span>
+                      <span className="mono" style={{ color: "var(--faint)" }}>
+                        →
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div>
+                <StepTitle n="04" title={stepTitles[3]} />
+                <div className="mt-[18px] grid gap-[16px] sm:grid-cols-2">
+                  <label className="flex flex-col">
+                    <span className="mono mb-[6px]">Name</span>
+                    <input className="field" value={name} onChange={(e) => setName(e.target.value)} placeholder="Who's building this?" />
+                  </label>
+                  <label className="flex flex-col">
+                    <span className="mono mb-[6px]">Email</span>
+                    <input className="field" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" />
+                  </label>
+                  <label className="flex flex-col sm:col-span-2">
+                    <span className="mono mb-[6px]">
+                      Company <span style={{ color: "var(--faint)" }}>(optional)</span>
+                    </span>
+                    <input className="field" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Only if you'd like to share" />
+                  </label>
+                </div>
+                <div className="mt-[20px] flex items-center gap-[16px]">
+                  <button ref={sendBtnRef} className="btn" disabled={!canSubmit} onClick={submit} data-cursor="START" data-magnetic>
+                    Send request <span className="arw">→</span>
+                  </button>
+                  <span className="body-s" style={{ color: "var(--faint)" }}>
+                    No newsletters, no drip — a human replies.
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      </section>
-    </>
+        ) : (
+          /* ----------------------- REQUEST RECEIVED ----------------------- */
+          <div className="mt-[clamp(30px,4vw,56px)] grid items-center gap-[clamp(26px,4vw,54px)] sm:grid-cols-2">
+            <div>
+              <p className="mono mono-a mb-[10px]" style={{ color: "var(--accent-deep)" }}>
+                REQUEST RECEIVED
+              </p>
+              <h2 className="d3 mb-[12px]">It's in the system.</h2>
+              <p className="body max-w-[44ch]" data-receive-note="">
+                Thanks {name.trim().split(" ")[0]}{build ? ` — a ${build.toLowerCase()} it is` : ""}. A
+                real reply goes to <span style={{ color: "var(--fg)" }}>{email}</span>, usually within
+                two working days, with next steps and honest scoping.
+              </p>
+              {seed && (
+                <p className="mono mt-[14px]" style={{ color: "var(--faint)" }}>
+                  Signal carried over from Ask Arche —{" "}
+                  <span style={{ color: "var(--accent-deep)" }}>
+                    {seed === "service:web" ? "website" : seed === "service:agent" ? "agent" : seed === "service:automation" ? "automation" : seed === "service:video" ? "video" : "system"}
+                  </span>
+                </p>
+              )}
+              <p className="mono mt-[20px]">
+                Prefer email?{" "}
+                <a className="lnk mono-fg" href={`mailto:${c.email}`}>
+                  {c.email}
+                </a>
+              </p>
+            </div>
+
+            {/* compact, static rendering of the System Moment node structure */}
+            <div className="relative aspect-square w-full max-w-[320px] justify-self-center sm:justify-self-end" aria-hidden>
+              <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full" fill="none">
+                <line x1="50" y1="50" x2="22" y2="24" stroke="var(--line)" strokeWidth="0.6" />
+                <line x1="50" y1="50" x2="80" y2="20" stroke="var(--line)" strokeWidth="0.6" />
+                <line x1="50" y1="50" x2="82" y2="62" stroke="var(--line)" strokeWidth="0.6" />
+                <line x1="50" y1="50" x2="24" y2="80" stroke="var(--line)" strokeWidth="0.6" />
+                <line x1="50" y1="50" x2="58" y2="88" stroke="var(--line)" strokeWidth="0.6" />
+                <line x1="22" y1="24" x2="80" y2="20" stroke="var(--line)" strokeWidth="0.35" opacity="0.6" />
+                <line x1="24" y1="80" x2="58" y2="88" stroke="var(--line)" strokeWidth="0.35" opacity="0.6" />
+              </svg>
+              <ReceiveNode x={22} y={24} id="web" seed={seed} label="WEB" />
+              <ReceiveNode x={80} y={20} id="agent" seed={seed} label="AGENT" />
+              <ReceiveNode x={82} y={62} id="auto" seed={seed} label="AUTO" />
+              <ReceiveNode x={24} y={80} id="content" seed={seed} label="CONTENT" />
+              <ReceiveNode x={50} y={50} id="core" seed={seed} label="" core />
+              <ReceiveNode x={58} y={88} id="extra" seed={seed} label="" />
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
   );
+}
+
+function StepTitle({ n, title }: { n: string; title: string }) {
+  return (
+    <div className="flex items-baseline gap-[14px]">
+      <span className="mono" style={{ color: "var(--accent-deep)" }}>
+        {n}
+      </span>
+      <h2 className="d3" style={{ fontSize: "clamp(20px,2.6vw,30px)" }}>
+        {title}
+      </h2>
+    </div>
+  );
+}
+
+function ReceiveNode({
+  x,
+  y,
+  id,
+  seed,
+  label,
+  core = false,
+}: {
+  x: number;
+  y: number;
+  id: string;
+  seed: VisualTrigger | null;
+  label: string;
+  core?: boolean;
+}) {
+  const willLight = seedMatches(seed, id);
+  const size = core ? 26 : label ? 13 : 9;
+  return (
+    <span
+      data-receive-node={willLight ? "" : undefined}
+      className="receive-node absolute rounded-full"
+      style={{
+        left: `${x}%`,
+        top: `${y}%`,
+        width: size,
+        height: size,
+        translate: "-50% -50%",
+        background: willLight ? "var(--bg-2)" : "var(--line)",
+        border: willLight ? "1.5px solid var(--accent-deep)" : "1px solid var(--line)",
+        transition: "background .4s, border-color .4s",
+      }}
+    >
+      {label && (
+        <span className="mono absolute left-1/2 top-full mt-[6px] -translate-x-1/2 whitespace-nowrap text-[8px]" style={{ color: "var(--faint)" }}>
+          {label}
+        </span>
+      )}
+    </span>
+  );
+}
+
+function seedMatches(seed: VisualTrigger | null, id: string): boolean {
+  const target = seed ? TRIGGER_NODE[seed] : "core";
+  return target === id;
 }

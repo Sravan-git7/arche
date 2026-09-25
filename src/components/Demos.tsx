@@ -487,7 +487,7 @@ export function TryAuto() {
               {i === step && <span className="mono ml-auto">a person, again</span>}
             </div>
           ))}
-          <button type="button" className="btn mt-[8px] self-start" onClick={automate} data-cursor="RUN">
+          <button type="button" className="btn mt-[8px] self-start" onClick={automate} data-cursor="RUN" data-magnetic>
             Automate this <span className="arw">→</span>
           </button>
         </div>

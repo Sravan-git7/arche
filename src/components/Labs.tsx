@@ -431,7 +431,7 @@ function Spatial3DLab() {
       onPointerUp={onPointerUp}
       onPointerLeave={onPointerUp}
       onClick={handleTapStep}
-      data-cursor="ROTATE"
+      data-cursor="DRAG"
     >
       <canvas ref={canvasRef} width={240} height={170} />
       <span className="mono absolute bottom-[6px] text-[8.5px]" style={{ color: "rgba(244,242,237,0.4)" }}>

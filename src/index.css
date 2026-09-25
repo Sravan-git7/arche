@@ -31,6 +31,7 @@
 
   --e-out: cubic-bezier(0.16, 1, 0.3, 1);
   --e-inout: cubic-bezier(0.76, 0, 0.24, 1);
+  --e-in: cubic-bezier(0.55, 0, 0.68, 0.4);
 
   --gut: 5.5vw;
 }
@@ -433,6 +434,25 @@ textarea.field {
     0 0 0 1px color-mix(in srgb, var(--accent-deep) 45%, transparent);
 }
 
+/* ---------- Process EVOLVE / Approach "keep running" breathing ----------
+   One shared motion language: slow, continuous, low amplitude. Used by the
+   built Process diagram (EVOLVE state), the compressed mini icon in
+   Approach, and the Approach "Built to keep running" circle. */
+@keyframes pvBreath {
+  0%,
+  100% {
+    opacity: 0.42;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.78;
+    transform: scale(1.09);
+  }
+}
+.pv-breath {
+  animation: pvBreath 2.2s ease-in-out infinite;
+}
+
 /* ---------- interactive demo primitives ---------- */
 @keyframes demoIn {
   from {
@@ -458,6 +478,241 @@ textarea.field {
 .demo-pulse {
   animation: demoPulse 1.4s var(--e-out) infinite;
   pointer-events: none;
+}
+
+/* ---------- Ask Arche (Prompt 16) ---------- */
+@keyframes chatUserIn {
+  from {
+    opacity: 0;
+    transform: translate(14px, 10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.chat-user {
+  animation: chatUserIn 0.2s var(--e-out) both;
+}
+@keyframes chatLineIn {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.chat-line {
+  animation: chatLineIn 0.32s var(--e-out) both;
+}
+@keyframes typeDot {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+.type-dot {
+  animation: typeDot 0.9s ease-in-out infinite;
+}
+/* persistent trigger panel: scale/fade swap (same numbers as Services) */
+.tv-layer {
+  opacity: 0;
+  transform: scale(0.96);
+  transition:
+    opacity 0.22s var(--e-in),
+    transform 0.22s var(--e-in);
+}
+.tv-layer[data-on="1"] {
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    opacity 0.32s var(--e-out) 0.16s,
+    transform 0.32s var(--e-out) 0.16s;
+}
+@keyframes swapFade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.swap-fade {
+  animation: swapFade 0.35s var(--e-out) both;
+}
+/* mini trigger visuals — small idles, deterministic loops */
+@keyframes tvSignalDown {
+  0% {
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(24px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+.tv-signal {
+  transform-box: fill-box;
+  animation: tvSignalDown 2.4s var(--e-inout) infinite;
+}
+@keyframes tvRunner {
+  0% {
+    offset-distance: 0%;
+  }
+  100% {
+    offset-distance: 100%;
+  }
+}
+.tv-runner {
+  offset-rotate: 0deg;
+  animation: tvRunner 3.2s linear infinite;
+}
+@keyframes tvBarPulse {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.65);
+  }
+}
+.tv-bar {
+  transform-origin: bottom;
+  animation: tvBarPulse 1.3s ease-in-out infinite;
+}
+@keyframes tvHeadSweep {
+  0% {
+    left: 4%;
+  }
+  100% {
+    left: 96%;
+  }
+}
+.tv-head {
+  animation: tvHeadSweep 2.6s var(--e-inout) infinite alternate;
+}
+@keyframes tvBlockIn {
+  from {
+    opacity: 0.25;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.tv-block-1,
+.tv-block-2,
+.tv-block-3,
+.tv-block-4 {
+  animation: tvBlockIn 0.9s var(--e-out) infinite alternate;
+}
+.tv-block-2 {
+  animation-delay: 0.2s;
+}
+.tv-block-4 {
+  animation-delay: 0.4s;
+}
+@keyframes tvBubbleQ {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateX(0);
+  }
+  45%,
+  55% {
+    opacity: 1;
+    transform: translateX(5px);
+  }
+}
+@keyframes tvBubbleA {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: translateX(0);
+  }
+  45%,
+  55% {
+    opacity: 1;
+    transform: translateX(-5px);
+  }
+}
+.tv-q {
+  animation: tvBubbleQ 2.6s ease-in-out infinite;
+}
+.tv-a {
+  animation: tvBubbleA 2.6s ease-in-out infinite;
+}
+@keyframes tvClipCut {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.tv-clip {
+  animation: tvClipCut 1.8s ease-in-out infinite;
+}
+.tv-clip:nth-child(2) {
+  animation-delay: 0.35s;
+}
+.tv-clip:nth-child(3) {
+  animation-delay: 0.7s;
+}
+
+/* ---------- Contact guided flow (Prompt 17) ---------- */
+@keyframes tagGhostIn {
+  from {
+    opacity: 0.9;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.tag-ghost {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  border: 1px solid var(--accent-deep);
+  border-radius: 999px;
+  background: var(--bg-2);
+  color: var(--fg);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  overflow: hidden;
+  animation: tagGhostIn 0.2s both;
+}
+.receive-node {
+  transition:
+    background 0.4s,
+    border-color 0.4s,
+    box-shadow 0.4s;
+}
+.receive-node.node-lit {
+  background: var(--accent);
+  border-color: var(--accent-deep);
+  box-shadow:
+    0 0 18px 2px color-mix(in srgb, var(--accent) 65%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--accent-deep) 22%, transparent);
 }
 .demo-navlink {
   position: relative;

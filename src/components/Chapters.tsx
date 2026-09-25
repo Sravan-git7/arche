@@ -56,6 +56,40 @@ export function Chapters() {
 
   useEffect(() => () => window.clearTimeout(hoverTimer.current), []);
 
+  /*
+   * PROMPT 20 — nav hover-preview handoff. A nav thumbnail click either
+   * fires the select-service event (same-page jump) or stashes the slug
+   * in sessionStorage (cross-route). Either way the tab commits here and
+   * the section scrolls into view.
+   */
+  useEffect(() => {
+    const apply = (slug: string, andScroll: boolean) => {
+      const i = services.findIndex((s) => s.slug === slug);
+      if (i < 0) return;
+      select(i);
+      if (andScroll) {
+        window.setTimeout(() => {
+          document.getElementById("services-home")?.scrollIntoView({
+            behavior: prefersReducedMotion() ? "auto" : "smooth",
+            block: "start",
+          });
+        }, 180);
+      }
+    };
+    const onEv = (e: Event) => apply((e as CustomEvent).detail, false);
+    window.addEventListener("arche:select-service", onEv);
+    let pending: string | null = null;
+    try {
+      pending = sessionStorage.getItem("arche:svcTab");
+      sessionStorage.removeItem("arche:svcTab");
+    } catch {
+      /* ignore */
+    }
+    if (pending) apply(pending, true);
+    return () => window.removeEventListener("arche:select-service", onEv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // stages only animate while the section is on screen
   useEffect(() => {
     const el = root.current;
