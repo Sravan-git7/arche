@@ -1,4 +1,8 @@
-@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+/* The webfont <link>s live in index.html, not here: a remote @import inside
+   the sheet is discovered only after the CSS is fetched, and the whole sheet
+   then waits on fonts.googleapis.com before it can paint anything. Loading
+   them from the document head lets that request run in parallel with the
+   bundle, and the fallback stacks below paint immediately either way. */
 @import "tailwindcss";
 
 /* ============================================================
@@ -1731,5 +1735,175 @@ img {
   /* Remove all will-change hints when motion is reduced */
   * {
     will-change: auto !important;
+  }
+}
+
+/* ============================================================
+   PROMPT 24 — Critical fixes & polish
+   ============================================================ */
+
+/* ---------- Video Editing: a continuous playhead ----------
+   One custom property drives both the head and the played part of the
+   waveform, so a scrub (or the first-view auto pass) moves every frame
+   without re-rendering React. */
+.vd-track {
+  --ph: 0;
+}
+.vd-wave-played {
+  clip-path: inset(0 calc((1 - var(--ph)) * 100%) 0 0);
+}
+.vd-playhead {
+  left: calc(var(--ph) * 100%);
+  transform: translateX(-1px);
+}
+
+/* ---------- Web Development: the LIVE "look around" cue ----------
+   A cursor hand that presses, with a ring at the fingertip. It retires the
+   moment the visitor touches the demo (or after a few seconds on its own). */
+.wd-hand {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 15px;
+  height: 19px;
+  animation: wdHandPress 2.1s var(--e-inout) infinite;
+}
+.wd-hand svg {
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 1px 2px rgba(12, 12, 13, 0.28));
+}
+.wd-hand-ring {
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  width: 13px;
+  height: 13px;
+  border: 1px solid var(--accent-deep);
+  border-radius: 999px;
+  animation: wdHandRing 2.1s var(--e-out) infinite;
+}
+@keyframes wdHandPress {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  42% {
+    transform: translate(5px, 4px) scale(0.93);
+  }
+  58% {
+    transform: translate(5px, 4px) scale(1);
+  }
+}
+@keyframes wdHandRing {
+  0% {
+    transform: scale(0.3);
+    opacity: 0.9;
+  }
+  55% {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+
+/* ---------- Process diagram: one-shot beats + the EVOLVE loop ---------- */
+@keyframes pvSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes pvSyncDot {
+  0% {
+    transform: scale(1);
+    opacity: 0.95;
+  }
+  45% {
+    transform: scale(1.9);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+@keyframes pvSyncRing {
+  0% {
+    transform: scale(0.55);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(3.6);
+    opacity: 0;
+  }
+}
+@keyframes pvLaunch {
+  0% {
+    transform: scale(0.3);
+    opacity: 0.95;
+  }
+  65% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(4.4);
+    opacity: 0;
+  }
+}
+@keyframes pvLaunchCore {
+  0% {
+    transform: scale(0.45);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+.pv-sync-dot {
+  animation: pvSyncDot 0.85s var(--e-out) both;
+}
+.pv-sync-ring {
+  animation: pvSyncRing 0.95s var(--e-out) both;
+}
+.pv-launch {
+  animation: pvLaunch 1.05s var(--e-out) both;
+}
+.pv-launch-core {
+  animation: pvLaunchCore 0.9s var(--e-out) both;
+}
+
+/* ---------- Drag comparison: the handle's invitation ---------- */
+.ba-hint {
+  animation: baHintNudge 2.4s var(--e-inout) infinite;
+}
+@keyframes baHintNudge {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  45%,
+  60% {
+    transform: translateX(9px);
+  }
+}
+.ba-metric {
+  font-variant-numeric: tabular-nums;
+  transition: color 0.3s var(--e-out);
+}
+.ba-tick {
+  animation: baMetricTick 0.34s var(--e-out);
+}
+@keyframes baMetricTick {
+  0% {
+    transform: translateY(0);
+    opacity: 0.55;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
   }
 }

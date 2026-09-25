@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { gsap, prefersReducedMotion } from "../lib/gsap";
+import { announcePreviewDone, markPreviewPlayed } from "../lib/autoplay";
 
 /**
  * AI AUTOMATION — the same job, done two ways.
@@ -16,7 +17,17 @@ import { gsap, prefersReducedMotion } from "../lib/gsap";
  * modes. Both timelines are precomputed constants (deterministic for QA and
  * repeat visits); only geometry is measured at run time. The DONE time is
  * the real elapsed time of the run, never hardcoded.
+ *
+ * PROMPT 24 — autoplay-first: the first time this stage is on screen it runs
+ * MANUAL once at normal pace, beats ~0.9s, then runs AUTOMATED once — no RUN
+ * click needed, and the comparison line at the bottom fills itself in. Any
+ * click on RUN or the MANUAL/AUTOMATED toggle cancels the chain and hands
+ * control over for good; both stay fully usable afterwards.
  */
+
+const SLUG = "ai-automation";
+/** Beat between the manual run finishing and the automated run starting. */
+const CHAIN_GAP = 900;
 
 type Mode = "manual" | "auto";
 type Phase = "idle" | "running" | "done";
@@ -77,7 +88,7 @@ const offsetIn = (el: HTMLElement, stop: HTMLElement) => {
 
 const fmt = (s: number) => `${s.toFixed(1)}s`;
 
-export function AutomationDemo({ preview = false }: { preview?: boolean }) {
+export function AutomationDemo({ preview = false, auto = false }: { preview?: boolean; auto?: boolean }) {
   const root = useRef<HTMLDivElement>(null);
   const tl = useRef<gsap.core.Timeline | null>(null);
   const collapsed = useRef(false);
@@ -88,6 +99,12 @@ export function AutomationDemo({ preview = false }: { preview?: boolean }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [ran, setRan] = useState<Mode>("manual");
   const [results, setResults] = useState<Partial<Record<Mode, number>>>({});
+  const [chainOn, setChainOn] = useState(false); // unattended first-view preview
+
+  /** Next run-completion hook — the autoplay chain lives here. */
+  const chain = useRef<((m: Mode) => void) | null>(null);
+  const chainTimer = useRef(0);
+  const autoStarted = useRef(false);
 
   const q = <T extends Element = HTMLElement>(sel: string) => root.current!.querySelector<T>(sel)!;
   const qa = <T extends Element = HTMLElement>(sel: string) => Array.from(root.current!.querySelectorAll<T>(sel));
@@ -100,6 +117,8 @@ export function AutomationDemo({ preview = false }: { preview?: boolean }) {
     gsap.set(q(".au-node"), { scale: 0.3, opacity: 0 });
     return () => {
       tl.current?.kill();
+      if (chainTimer.current) window.clearTimeout(chainTimer.current);
+      chain.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -124,6 +143,14 @@ export function AutomationDemo({ preview = false }: { preview?: boolean }) {
     clockStart.current = 0;
     setResults((r) => ({ ...r, [m]: elapsed }));
     setPhase("done");
+    endRun(m);
+  };
+
+  /** Fire (once) whatever is waiting on this run to finish. */
+  const endRun = (m: Mode) => {
+    const cb = chain.current;
+    chain.current = null;
+    cb?.(m);
   };
 
   /* ---- morph: list ⇄ node -------------------------------------------------- */
@@ -347,6 +374,7 @@ export function AutomationDemo({ preview = false }: { preview?: boolean }) {
       setState(q(".au-node"), m === "auto" ? "complete" : "idle");
       setResults((r) => ({ ...r, [m]: NOMINAL[m] }));
       setPhase("done");
+      endRun(m);
       return;
     }
 
@@ -360,10 +388,47 @@ export function AutomationDemo({ preview = false }: { preview?: boolean }) {
     tl.current = t;
   };
 
+  /** A visitor-initiated run: cancels any unattended preview chain. */
+  const userRun = (m: Mode) => {
+    chain.current = null;
+    if (chainTimer.current) window.clearTimeout(chainTimer.current);
+    setChainOn(false);
+    run(m);
+  };
+
   const chooseMode = (m: Mode) => {
     setMode(m);
-    run(m); // the toggle auto-runs
+    userRun(m); // the toggle auto-runs
   };
+
+  /*
+   * PROMPT 24 — the first-view preview: MANUAL once, a beat, AUTOMATED once.
+   * Marked as played the moment it starts, so switching tabs and coming back
+   * never replays it (and never fights the visitor's own run).
+   */
+  useEffect(() => {
+    if (autoStarted.current || !auto || preview) return;
+    const id = window.setTimeout(() => {
+      autoStarted.current = true;
+      markPreviewPlayed(SLUG);
+      setChainOn(true);
+      setMode("manual");
+      chain.current = (m) => {
+        if (m !== "manual") return;
+        chainTimer.current = window.setTimeout(() => {
+          chain.current = (m2) => {
+            setChainOn(false);
+            if (m2 === "auto") announcePreviewDone(SLUG);
+          };
+          setMode("auto");
+          run("auto");
+        }, CHAIN_GAP);
+      };
+      run("manual");
+    }, 420);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auto, preview]);
 
   // hover preview: sample the automated run once
   useEffect(() => {
@@ -401,7 +466,7 @@ export function AutomationDemo({ preview = false }: { preview?: boolean }) {
         <button
           type="button"
           className="au-run"
-          onClick={() => run(mode)}
+          onClick={() => userRun(mode)}
           disabled={phase === "running"}
           data-cursor={phase === "running" ? undefined : "RUN"}
         >
@@ -465,6 +530,11 @@ export function AutomationDemo({ preview = false }: { preview?: boolean }) {
         <span className="mono" style={{ color: phase === "done" ? "var(--accent-deep)" : phase === "running" ? "var(--fg)" : "var(--faint)" }}>
           {phase === "running" ? (
             <>
+              {chainOn && (
+                <span style={{ color: "var(--accent-deep)" }}>
+                  Auto-preview · {mode === "manual" ? "manual" : "automated"} run ·{" "}
+                </span>
+              )}
               Running · <span ref={clock}>0.0s</span>
             </>
           ) : phase === "done" ? (

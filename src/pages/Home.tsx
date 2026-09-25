@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Hero, Approach, ProcessSys, FinalCTA } from "../components/Sections";
 import { Chapters } from "../components/Chapters";
 import { WorkIndex } from "../components/WorkIndex";
@@ -11,9 +12,9 @@ import { Labs } from "../components/Labs";
 import { ProgressRail } from "../components/ProgressRail";
 import { BridgeDot } from "../components/BridgeDot";
 import { SystemThread } from "../components/SystemThread";
-import { ServiceToWorkThread } from "../components/ServiceToWorkThread";
 import { Link, usePage } from "../lib/router";
 import { useReveal, useParallax } from "../lib/reveal";
+import { resetPreviews } from "../lib/autoplay";
 
 /**
  * Motion rhythm — calm → curious → interactive → cinematic → fast → calm
@@ -35,6 +36,9 @@ export function Home() {
   usePage("Arche — AI + Digital Systems Studio");
   useReveal();
   useParallax();
+
+  // A fresh visit gets a fresh round of Services first-view previews.
+  useEffect(() => resetPreviews(), []);
 
   return (
     <>
@@ -96,7 +100,6 @@ export function Home() {
       <ProgressRail />
       <BridgeDot />
       <SystemThread />
-      <ServiceToWorkThread />
     </>
   );
 }

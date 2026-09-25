@@ -561,22 +561,28 @@ export function ProcessSys() {
 }
 
 /**
- * Prompt 14 — Process Accumulating Diagram.
+ * Prompt 14 — Process Accumulating Diagram (rebuilt for Prompt 24).
  *
- * Each state only ADDS to what the previous state built:
+ * Each state only ADDS to what the previous state built, and — this was the
+ * fix — the built result is a pure function of the active step, so the
+ * diagram at Evolve is visibly a superset of the diagram at Discover no
+ * matter how the visitor got there (scroll, click, jump, scroll back):
  *
  *  0 DISCOVER  a single dim central dot, alone.
- *  1 DESIGN    the four corner connection lines fade in, still dim.
- *  2 BUILD     the four outer dots appear at the end of each line,
- *              one at a time with a short stagger.
- *  3 CONNECT   all four dots and the center pulse lime once, together,
- *              then settle to a steady lit state.
- *  4 LAUNCH    a single bright pulse radiates outward from center.
- *  5 EVOLVE    the diagram settles into a slow, continuous, low-amplitude
- *              breathing pulse — it never stops again.
+ *  1 DESIGN    the four connection lines draw out from the centre, still dim.
+ *  2 BUILD     the four outer dots appear at the end of each line, one at a
+ *              time with a short stagger.
+ *  3 CONNECT   the four dots close into a perimeter, everything turns lime,
+ *              and all five nodes pulse once together before settling lit.
+ *  4 LAUNCH    a single bright pulse radiates outward from the centre to a
+ *              dotted horizon ring, which stays behind as new geometry.
+ *  5 EVOLVE    the built system keeps running: a slow breathing halo, a
+ *              signal dot orbiting the perimeter, the horizon turning.
  *
- * One-shot moments (CONNECT pulse, LAUNCH pulse) fire when the state is
- * entered moving forward — by scroll or by clicking a step label.
+ * Persistent layers are plain inline styles + CSS transitions (React owns
+ * them, so state changes always animate and never desync). The two one-shot
+ * moments are keyed CSS animations: bumping the key remounts the echo layer,
+ * which restarts the animation — nothing here fights React for a transform.
  */
 const PV_CORNERS = [
   { x: 15, y: 15 },
@@ -585,170 +591,189 @@ const PV_CORNERS = [
   { x: 85, y: 85 },
 ];
 
+const PV_E = "var(--e-out)";
+
 function ProcessVisual({ active, compact = false }: { active: number; compact?: boolean }) {
-  const dotRefs = useRef<(HTMLSpanElement | null)[]>([]);
-  const centerRef = useRef<HTMLSpanElement>(null);
-  const launchRef = useRef<HTMLSpanElement>(null);
-  const breathRef = useRef<HTMLSpanElement>(null);
+  const s = Math.max(0, Math.min(5, active));
   const prev = useRef(-1);
+  const [syncKey, setSyncKey] = useState(0);
+  const [launchKey, setLaunchKey] = useState(0);
 
-  const showLines = active >= 1;
-  const showDots = active >= 2;
-  const connected = active >= 3;
-  const evolving = active >= 5;
+  const lines = s >= 1; // DESIGN
+  const dots = s >= 2; // BUILD
+  const lit = s >= 3; // CONNECT
+  const launched = s >= 4; // LAUNCH
+  const alive = s >= 5; // EVOLVE
 
-  /*
-   * One state machine for the built effects. `prev` guards direction:
-   * one-shot moments (BUILD stagger, CONNECT pulse, LAUNCH pulse) only
-   * fire when the state is entered moving forward. Nothing here resets
-   * what earlier states built — each state only adds.
-   * (Transforms on dots/rings are owned by GSAP; CSS transitions handle
-   * only color/opacity so the two systems never fight.)
-   */
-  useLayoutEffect(() => {
-    const from = prev.current;
-    prev.current = active;
-    if (prefersReducedMotion()) return;
-
-    const dots = dotRefs.current.filter(Boolean) as HTMLSpanElement[];
-
-    if (active >= 2 && from < 2) {
-      // BUILD — dots appear at the end of each line, one at a time.
-      const jumped = active > 2; // click-jump past BUILD: arrive fast, still sequential
-      gsap.fromTo(
-        dots,
-        { scale: 0, opacity: 0 },
-        { scale: 1, opacity: 1, duration: jumped ? 0.16 : 0.45, ease: "back.out(2.1)", stagger: jumped ? 0.05 : 0.15, overwrite: "auto" }
-      );
-    } else if (active >= 2) {
-      gsap.set(dots, { scale: 1, opacity: 1 });
-    } else if (from >= 2) {
-      // scrolling back before BUILD — the only time anything un-builds
-      gsap.to(dots, { scale: 0, opacity: 0, duration: 0.25, ease: "power2.in", overwrite: "auto" });
-    }
-
-    // CONNECT — all four dots and the center pulse lime once, together
-    if (active === 3 && from < 3) {
-      const targets = [...dots, centerRef.current].filter(Boolean) as HTMLSpanElement[];
-      gsap
-        .timeline()
-        .to(targets, { scale: 1.32, duration: 0.26, ease: "power2.out", overwrite: "auto" })
-        .to(targets, { scale: 1, duration: 0.55, ease: "power2.out" });
-    }
-
-    // LAUNCH — single bright pulse radiating outward from center
-    if (active === 4 && from < 4 && launchRef.current) {
-      gsap.fromTo(
-        launchRef.current,
-        { scale: 0.25, opacity: 0.95 },
-        { scale: 3.4, opacity: 0, duration: 1.0, ease: "power2.out", overwrite: "auto" }
-      );
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
-
-  // EVOLVE — slow continuous, low-amplitude breathing. Never stops once reached.
+  /* One-shot beats, fired when those states are entered moving forward —
+     and in the right order when a click jumps past more than one. */
   useEffect(() => {
-    if (!evolving || !breathRef.current || prefersReducedMotion()) return;
-    gsap.killTweensOf(breathRef.current);
-    const tl = gsap.timeline({ repeat: -1, yoyo: true, repeatDelay: 0.1 });
-    tl.fromTo(
-      breathRef.current,
-      { scale: 1, opacity: 0.3 },
-      { scale: 1.12, opacity: 0.7, duration: 2.2, ease: "sine.inOut" }
-    );
-    return () => { tl.kill(); };
-  }, [evolving]);
+    const from = prev.current;
+    prev.current = s;
+    if (prefersReducedMotion()) return;
+    const ids: number[] = [];
+    let t = 240; // let the new layers draw in first
+    if (s >= 3 && from < 3) {
+      ids.push(window.setTimeout(() => setSyncKey((k) => k + 1), t));
+      t += 420;
+    }
+    if (s >= 4 && from < 4) ids.push(window.setTimeout(() => setLaunchKey((k) => k + 1), t));
+    return () => ids.forEach((id) => window.clearTimeout(id));
+  }, [s]);
 
-  const stage = siteContent.process.steps[Math.min(active, 5)];
+  const stage = siteContent.process.steps[s];
+  const svgCenter = { transformBox: "view-box", transformOrigin: "50px 50px" } as const;
+  const svgSelf = { transformBox: "fill-box", transformOrigin: "center" } as const;
 
   return (
     <div
       data-pv-diagram
+      data-state={s}
       className={`pv-root relative aspect-square w-full overflow-hidden rounded-[6px] ${compact ? "max-w-[164px]" : "max-w-[230px]"}`}
       style={{ background: "var(--bg-2)" }}
       aria-hidden
     >
-      {/* DESIGN+ — corner connection lines, drawn dim */}
-      <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" fill="none">
+      <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" fill="none">
+        {/* LAUNCH+ — the horizon the pulse travelled to. It stays: new
+            geometry that the earlier states do not have. Turns once EVOLVE. */}
+        <circle
+          cx="50"
+          cy="50"
+          r="40"
+          pathLength={100}
+          strokeDasharray="1.4 3.2"
+          stroke="var(--accent-deep)"
+          strokeWidth="0.7"
+          style={{
+            opacity: launched ? 0.5 : 0,
+            transition: `opacity .6s ${PV_E}`,
+            animation: alive && !prefersReducedMotion() ? "pvSpin 26s linear infinite" : "none",
+            ...svgCenter,
+          }}
+        />
+
+        {/* CONNECT+ — the perimeter that joins the four outer dots */}
+        <rect
+          x="15"
+          y="15"
+          width="70"
+          height="70"
+          rx="9"
+          pathLength={1}
+          strokeDasharray={1}
+          strokeDashoffset={lit ? 0 : 1}
+          stroke="var(--accent-deep)"
+          strokeWidth="0.9"
+          style={{ opacity: lit ? 0.7 : 0, transition: `stroke-dashoffset 1s ${PV_E} .08s, opacity .5s ${PV_E}` }}
+        />
+
+        {/* DESIGN+ — four connection lines, drawn out from the centre */}
         {PV_CORNERS.map((c, i) => (
           <line
             key={`ln-${i}`}
-            x1={c.x}
-            y1={c.y}
-            x2="50"
-            y2="50"
-            stroke={connected ? "var(--accent-deep)" : "var(--fg)"}
-            strokeWidth={connected ? 0.65 : 0.4}
+            x1="50"
+            y1="50"
+            x2={c.x}
+            y2={c.y}
+            pathLength={1}
+            strokeDasharray={1}
+            strokeDashoffset={lines ? 0 : 1}
+            stroke={lit ? "var(--accent-deep)" : "var(--fg)"}
+            strokeWidth={lit ? 0.85 : 0.55}
             style={{
-              opacity: showLines ? (connected ? 0.85 : 0.32) : 0,
-              transition: `opacity .6s var(--e-out) ${i * 70}ms, stroke .5s, stroke-width .5s`,
+              opacity: lines ? (lit ? 0.85 : 0.3) : 0,
+              transition: `stroke-dashoffset .85s ${PV_E} ${i * 90}ms, opacity .45s ${PV_E} ${i * 90}ms, stroke .5s, stroke-width .5s`,
             }}
           />
         ))}
+
+        {/* EVOLVE — the breathing halo. Slow, low amplitude, never stops. */}
+        {alive && !prefersReducedMotion() && (
+          <circle cx="50" cy="50" r="25" stroke="var(--accent-deep)" strokeWidth="0.8" className="pv-breath" style={svgCenter} />
+        )}
+
+        {/* EVOLVE — one signal, orbiting the built system */}
+        {alive && !prefersReducedMotion() && (
+          <g style={{ animation: "pvSpin 7.5s linear infinite", ...svgCenter }}>
+            <circle cx="50" cy="16" r="2.1" fill="var(--accent)" style={{ filter: "drop-shadow(0 0 3px var(--accent-deep))" }} />
+          </g>
+        )}
+
+        {/* BUILD+ — the four outer dots, one at a time */}
+        {PV_CORNERS.map((c, i) => (
+          <circle
+            key={`dot-${i}`}
+            cx={c.x}
+            cy={c.y}
+            r="3.6"
+            fill={lit ? "var(--accent)" : "var(--fg)"}
+            style={{
+              opacity: dots ? 1 : 0,
+              transform: dots ? "scale(1)" : "scale(0)",
+              transition: `transform .55s cubic-bezier(.34,1.56,.64,1) ${i * 110}ms, opacity .3s ${PV_E} ${i * 110}ms, fill .5s`,
+              filter: lit ? "drop-shadow(0 0 3px color-mix(in srgb, var(--accent-deep) 70%, transparent))" : "none",
+              ...svgSelf,
+            }}
+          />
+        ))}
+
+        {/* DISCOVER+ — the centre. Present and dim from the very first state. */}
+        <circle
+          cx="50"
+          cy="50"
+          r="9.5"
+          fill="var(--bg-2)"
+          stroke={lit ? "var(--accent-deep)" : "var(--line)"}
+          strokeWidth="1"
+          style={{
+            opacity: lines ? 1 : 0.6,
+            transition: `stroke .5s, opacity .5s, filter .5s`,
+            filter: lit ? "drop-shadow(0 0 5px color-mix(in srgb, var(--accent-deep) 45%, transparent))" : "none",
+          }}
+        />
+        <circle
+          cx="50"
+          cy="50"
+          r="3.2"
+          fill={lit ? "var(--accent)" : "var(--faint)"}
+          style={{
+            opacity: lit ? 1 : 0.6,
+            transform: launched ? "scale(1.5)" : "scale(1)",
+            transition: `transform .55s ${PV_E}, fill .5s, opacity .5s`,
+            ...svgSelf,
+          }}
+        />
+
+        {/* CONNECT — all five nodes pulse lime once, together (keyed remount) */}
+        {syncKey > 0 && lit && (
+          <g key={`sync-${syncKey}`}>
+            <circle cx="50" cy="50" r="9.5" fill="none" stroke="var(--accent)" strokeWidth="1.3" className="pv-sync-ring" style={svgCenter} />
+            {PV_CORNERS.map((c, i) => (
+              <circle key={i} cx={c.x} cy={c.y} r="3.6" fill="var(--accent)" className="pv-sync-dot" style={svgSelf} />
+            ))}
+            <circle cx="50" cy="50" r="3.2" fill="var(--accent)" className="pv-sync-dot" style={svgSelf} />
+          </g>
+        )}
+
+        {/* LAUNCH — one bright pulse radiating outward from the centre */}
+        {launchKey > 0 && (
+          <g key={`launch-${launchKey}`}>
+            <circle cx="50" cy="50" r="10" fill="none" stroke="var(--accent)" strokeWidth="2" className="pv-launch" style={svgCenter} />
+            <circle cx="50" cy="50" r="6" fill="var(--accent)" className="pv-launch-core" style={svgCenter} />
+          </g>
+        )}
       </svg>
 
-      {/* BUILD+ — four outer dots, one at a time */}
-      {PV_CORNERS.map((c, i) => (
-        <span
-          key={`dot-${i}`}
-          ref={(el) => { dotRefs.current[i] = el; }}
-          className="absolute block h-[10px] w-[10px] rounded-full"
-          style={{
-            left: `${c.x}%`,
-            top: `${c.y}%`,
-            translate: "-50% -50%",
-            transform: `scale(${showDots ? 1 : 0})`,
-            opacity: showDots ? 1 : 0,
-            background: connected ? "var(--accent)" : "var(--fg)",
-            transition: "background .45s, box-shadow .45s",
-            boxShadow: connected ? "0 0 10px color-mix(in srgb, var(--accent-deep) 55%, transparent)" : "none",
-          }}
-        />
-      ))}
-
-      {/* Central dot — present (dim) from DISCOVER on */}
-      <span
-        ref={centerRef}
-        className="absolute top-1/2 left-1/2 grid h-[26px] w-[26px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full"
+      <p
+        className="mono absolute inset-x-0 bottom-[7px] text-center"
         style={{
-          background: "var(--bg-2)",
-          border: `1px solid ${connected ? "var(--accent-deep)" : "var(--line)"}`,
-          opacity: showLines ? 1 : 0.55,
-          transition: "border-color .5s, opacity .5s, box-shadow .5s",
-          boxShadow: connected ? "0 0 14px color-mix(in srgb, var(--accent-deep) 45%, transparent)" : "none",
+          fontSize: compact ? 8 : 9,
+          letterSpacing: ".12em",
+          color: alive ? "var(--accent-deep)" : "var(--faint)",
+          transition: "color .5s",
         }}
       >
-        <span
-          className="block h-[8px] w-[8px] rounded-full"
-          style={{
-            background: connected ? "var(--accent)" : "var(--faint)",
-            opacity: connected ? 1 : 0.55,
-            transition: "background .5s, opacity .5s",
-          }}
-        />
-      </span>
-
-      {/* LAUNCH radiating ring */}
-      <span
-        ref={launchRef}
-        className="pointer-events-none absolute top-1/2 left-1/2 block h-[26px] w-[26px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-0"
-        style={{ border: "1.5px solid var(--accent)", boxShadow: "0 0 24px color-mix(in srgb, var(--accent-deep) 65%, transparent)" }}
-      />
-
-      {/* EVOLVE breathing ring — continuous */}
-      <span
-        ref={breathRef}
-        className="pointer-events-none absolute top-1/2 left-1/2 block h-[54px] w-[54px] -translate-x-1/2 -translate-y-1/2 rounded-full"
-        style={{
-          border: "1px solid var(--accent-deep)",
-          opacity: 0,
-          visibility: evolving ? "visible" : "hidden",
-        }}
-      />
-
-      <p className="mono absolute right-[12px] bottom-[10px]" style={{ color: evolving ? "var(--accent-deep)" : "var(--faint)", transition: "color .5s" }}>
-        {stage.k}
+        {stage.n} · {stage.k.toUpperCase()}
       </p>
     </div>
   );
@@ -778,6 +803,14 @@ const FC_NODES = [
   { k: "Content", x: 14, y: 82 },
 ];
 
+/* Index-safe accessors: the section renders two sets of .fc-line (desktop
+   graphic + mobile static graphic), so a bare ".fc-line" selector can hand
+   GSAP more targets than there are nodes. Never let a missing index throw
+   inside a tween — that would abort the whole timeline every frame. */
+const fcNode = (i: number) => FC_NODES[i] ?? FC_NODES[((i % FC_NODES.length) + FC_NODES.length) % FC_NODES.length];
+const fcX = (i: number) => fcNode(i).x;
+const fcY = (i: number) => fcNode(i).y;
+
 export function FinalCTA() {
   const c = siteContent.contact;
   const root = useRef<HTMLElement>(null);
@@ -797,7 +830,7 @@ export function FinalCTA() {
           scrollTrigger: { trigger: root.current, start: "top 80%", once: true },
         })
           .to(".fc-static", { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" })
-          .to(".fc-static .fc-line", { attr: { x2: (i: number) => FC_NODES[i].x, y2: (i: number) => FC_NODES[i].y, duration: 0.6, ease: "power2.out" } }, 0.1)
+          .to(".fc-static .fc-line", { attr: { x2: fcX, y2: fcY, duration: 0.6, ease: "power2.out" } }, 0.1)
           .to(".fc-text > *", { opacity: 1, y: 0, duration: 0.6, stagger: 0.08, ease: "power3.out" }, 0.25);
         gsap.set(".fc-motif, .fc-converge-point", { display: "none" });
         return;
@@ -814,7 +847,7 @@ export function FinalCTA() {
         scale: 0.85,
       });
       gsap.set(convergeCenterRef.current, { scale: 0, opacity: 0 });
-      gsap.set(".fc-line", { attr: { x2: 50, y2: 50 }, opacity: 0 });
+      gsap.set(".fc-line-live", { attr: { x2: 50, y2: 50 }, opacity: 0 });
       gsap.set(".fc-node", { opacity: 0, scale: 0.6 });
       gsap.set(".fc-core", { opacity: 0, scale: 0.5 });
       gsap.set(".fc-text > *", { opacity: 0, y: 18 });
@@ -849,8 +882,8 @@ export function FinalCTA() {
       // 3 — the point expands outward into the node/line graphic
       tl.to(convergeCenterRef.current, { scale: 2.6, opacity: 0, duration: 0.5, ease: "power2.out" }, 1.42)
         .to(
-          ".fc-line",
-          { attr: { x2: (i: number) => FC_NODES[i].x, y2: (i: number) => FC_NODES[i].y }, opacity: 0.7, duration: 0.45, ease: "power2.out", stagger: 0.04 },
+          ".fc-line-live",
+          { attr: { x2: fcX, y2: fcY }, opacity: 0.7, duration: 0.45, ease: "power2.out", stagger: 0.04 },
           1.46
         )
         .to(
@@ -911,7 +944,7 @@ export function FinalCTA() {
       <div className="pointer-events-none absolute top-[8%] right-[3%] bottom-[8%] hidden w-[42%] lg:block" aria-hidden>
         <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
           {FC_NODES.map((n) => (
-            <line key={n.k} className="fc-line" x1={n.x} y1={n.y} x2={50} y2={50} stroke="var(--accent-deep)" strokeWidth="1" vectorEffect="non-scaling-stroke" opacity=".7" />
+            <line key={n.k} className="fc-line fc-line-live" x1={n.x} y1={n.y} x2={50} y2={50} stroke="var(--accent-deep)" strokeWidth="1" vectorEffect="non-scaling-stroke" opacity=".7" />
           ))}
         </svg>
         {FC_NODES.map((n) => (

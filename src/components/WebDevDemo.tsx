@@ -1,18 +1,32 @@
 import { useEffect, useRef, useState } from "react";
 import { prefersReducedMotion } from "../lib/gsap";
+import { announcePreviewDone, markPreviewPlayed } from "../lib/autoplay";
 
 const PHASES = ["IDEA", "STRUCTURE", "INTERFACE", "LIVE"] as const;
 const sequencePlayed = new Set<string>();
+const SLUG = "web-development";
 
 /**
  * Web Development demo: IDEA → STRUCTURE → INTERFACE → LIVE.
  *
  * The build sequence auto-plays once when the demo first becomes active,
  * then hands control to the visitor at LIVE. Scrolling away and back does
- * not reset it, and switching back to the tab does not replay the build —
+ * not reset it, and switching back to the tab does not replay the build.
+ *
+ * PROMPT 24 — at LIVE the demo says so out loud: a pulsing cursor-hand cue
+ * invites the visitor to look around, and steps aside the moment they touch
+ * anything (or after a few seconds on its own).
  */
-export function WebDevDemo({ active = false, preview = false }: { active?: boolean; preview?: boolean }) {
-  const alreadyPlayed = sequencePlayed.has("web-development");
+export function WebDevDemo({
+  active = false,
+  preview = false,
+  auto = false,
+}: {
+  active?: boolean;
+  preview?: boolean;
+  auto?: boolean;
+}) {
+  const alreadyPlayed = sequencePlayed.has(SLUG);
   const [phase, setPhase] = useState(alreadyPlayed ? 3 : 0);
   const timers = useRef<number[]>([]);
   const started = useRef(false);
@@ -20,17 +34,21 @@ export function WebDevDemo({ active = false, preview = false }: { active?: boole
   useEffect(() => () => timers.current.forEach((id) => window.clearTimeout(id)), []);
 
   useEffect(() => {
-    if (started.current || !active) return;
+    if (started.current || !active || preview) return;
     started.current = true;
+    if (auto) markPreviewPlayed(SLUG);
     if (alreadyPlayed || prefersReducedMotion()) {
       setPhase(3);
       return;
     }
     [750, 1750, 3300].forEach((ms, i) => timers.current.push(window.setTimeout(() => setPhase(i + 1), ms)));
-  }, [active, alreadyPlayed]);
+  }, [active, alreadyPlayed, preview, auto]);
 
   useEffect(() => {
-    if (phase >= 3) sequencePlayed.add("web-development");
+    if (phase >= 3) {
+      sequencePlayed.add(SLUG);
+      announcePreviewDone(SLUG);
+    }
   }, [phase]);
 
   return <Core phase={phase} preview={preview} />;
@@ -39,6 +57,7 @@ export function WebDevDemo({ active = false, preview = false }: { active?: boole
 function Core({ phase, preview = false }: { phase: number; preview?: boolean }) {
   const live = phase >= 3;
   const [page, setPage] = useState<"work" | "studio" | "visit">("work");
+  const [hint, setHint] = useState(true); // "look around" cue, until first touch
   const [bookingOpen, setBookingOpen] = useState(false);
   const [booked, setBooked] = useState("");
   const [name, setName] = useState("");
@@ -50,6 +69,13 @@ function Core({ phase, preview = false }: { phase: number; preview?: boolean }) 
     setAnnouncement(notice);
   }, [phase]);
 
+  // The cue retires on its own after a while; any interaction retires it at once.
+  useEffect(() => {
+    if (!live || preview || !hint) return;
+    const id = window.setTimeout(() => setHint(false), 9000);
+    return () => window.clearTimeout(id);
+  }, [live, preview, hint]);
+
   const book = (who: string) => {
     const at = who.trim();
     setBooked(at ? at.toUpperCase().slice(0, 12) : "");
@@ -58,7 +84,11 @@ function Core({ phase, preview = false }: { phase: number; preview?: boolean }) 
   };
 
   return (
-    <div className="relative flex h-full flex-col gap-[9px] px-[14px] pb-[14px] pt-[36px] min-[900px]:h-auto min-[900px]:flex-1 min-[900px]:justify-center min-[900px]:pb-[14px]" data-preview={preview ? "1" : "0"}>
+    <div
+      className="relative flex h-full flex-col gap-[9px] px-[14px] pb-[14px] pt-[36px] min-[900px]:h-auto min-[900px]:flex-1 min-[900px]:justify-center min-[900px]:pb-[14px]"
+      data-preview={preview ? "1" : "0"}
+      onPointerDown={() => setHint(false)}
+    >
       <div className="flex flex-none items-center" aria-label="Build progress">
         {PHASES.map((label, i) => (
           <div key={label} className="flex items-center">
@@ -241,8 +271,38 @@ function Core({ phase, preview = false }: { phase: number; preview?: boolean }) 
         )}
       </div>
 
+      {/* LIVE affordance — a pulsing cursor hand: this is yours to look around */}
+      {live && !preview && hint && (
+        <div
+          className="wd-hint demo-in flex flex-none items-center gap-[10px] rounded-[4px] border px-[10px] py-[7px]"
+          style={{
+            borderColor: "color-mix(in srgb, var(--accent-deep) 40%, var(--line))",
+            background: "color-mix(in srgb, var(--accent) 12%, var(--card))",
+          }}
+        >
+          <span className="wd-hand" aria-hidden>
+            <span className="wd-hand-ring" />
+            <svg width="15" height="19" viewBox="0 0 18 22">
+              <path
+                d="M1 1 L1 17 L5.4 12.9 L8.6 20.2 L11.6 18.9 L8.5 11.7 L14.4 11.7 Z"
+                fill="var(--fg)"
+                stroke="var(--bg)"
+                strokeWidth="1.3"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <span className="mono" style={{ color: "var(--accent-deep)" }}>
+            Live — look around
+          </span>
+          <span className="body-s truncate" style={{ color: "var(--muted)" }}>
+            switch the tabs, or book a visit. It responds.
+          </span>
+        </div>
+      )}
+
       {live && (
-        <div className="flex flex-none items-center justify-between gap-[10px] rounded-[4px] border px-[10px] py-[7px]" style={{ borderColor: "var(--line)", background: "var(--card)" }}>
+        <div className="relative flex flex-none items-center justify-between gap-[10px] rounded-[4px] border px-[10px] py-[7px]" style={{ borderColor: "var(--line)", background: "var(--card)" }}>
           {(["work", "studio", "visit"] as const).map((v) => (
             <button key={v} type="button" onClick={() => setPage(v)} aria-pressed={page === v} className="demo-navlink text-[9.5px] tracking-[.14em] uppercase" data-on={page === v ? "1" : "0"}>
               {v === "work" ? "Design" : v === "studio" ? "Interface" : "Book"}

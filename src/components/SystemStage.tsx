@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactElement } from "react";
 import { services } from "../data/site";
+import { previewPlayed } from "../lib/autoplay";
 import { SCENES } from "./Scenes";
 import { TRY } from "./Demos";
 import { gsap, prefersReducedMotion } from "../lib/gsap";
@@ -21,10 +22,15 @@ import { VideoEditingDemo } from "./VideoEditingDemo";
  *   in   → from scale 1.04 + 0 opacity, ~300ms
  * Rapid switches collapse to the latest target; a switch back mid-flight
  * returns without remounting.
+ *
+ * PROMPT 24 — autoplay-first. Every stage also receives `auto`: true the
+ * first time it is the committed tab and on screen. A stage uses it to run
+ * its own short representative preview without waiting for a click, then
+ * hands control to the visitor for good.
  */
 
 export type DemoMode = "watch" | "try";
-export type StageProps = { active: boolean; mode: DemoMode; preview: boolean };
+export type StageProps = { active: boolean; mode: DemoMode; preview: boolean; auto: boolean };
 
 const withScenePad = (el: ReactElement) => (
   <div className="px-[clamp(4px,0.8vw,12px)] pt-[34px] pb-[8px] [&_svg]:mx-auto min-[900px]:[&_svg]:max-h-[392px]">{el}</div>
@@ -42,13 +48,19 @@ export const STAGES: Record<string, (p: StageProps) => ReactElement> = Object.fr
 );
 
 /** Video Editing — RAW → SELECT → CUT → MOTION → CAPTIONS → GRADE → EXPORT scrubber (Prompt 09). */
-STAGES["video-editing"] = ({ active, preview }: StageProps) => <VideoEditingDemo active={active} preview={preview} />;
+STAGES["video-editing"] = ({ active, preview, auto }: StageProps) => (
+  <VideoEditingDemo active={active} preview={preview} auto={auto} />
+);
 /** Web Development — IDEA → STRUCTURE → INTERFACE → LIVE, then it is usable. */
-STAGES["web-development"] = ({ active, preview }: StageProps) => <WebDevDemo active={active} preview={preview} />;
+STAGES["web-development"] = ({ active, preview, auto }: StageProps) => (
+  <WebDevDemo active={active} preview={preview} auto={auto} />
+);
 /** AI Automation — a real MANUAL vs AUTOMATED run (Prompt 06). */
-STAGES["ai-automation"] = ({ preview }: StageProps) => <AutomationDemo preview={preview} />;
+STAGES["ai-automation"] = ({ preview, auto }: StageProps) => <AutomationDemo preview={preview} auto={auto} />;
 /** AI Chatbots — three suggested questions; the full assistant owns free text. */
-STAGES["ai-chatbots"] = ({ active, preview }: StageProps) => <AgentDemo active={active} preview={preview} />;
+STAGES["ai-chatbots"] = ({ active, preview, auto }: StageProps) => (
+  <AgentDemo active={active} preview={preview} auto={auto} />
+);
 
 /** Stages that bring their own controls: the frame hides its Watch / Try toggle. */
 export const SELF_CONTROLLED = new Set(["video-editing", "web-development", "ai-automation", "ai-chatbots"]);
@@ -168,14 +180,12 @@ export function ServiceStage({
     fadeIn.current();
   }, [shown]);
 
-  // Work (Prompt 10/11) inherits the frame of the last committed service.
-  useEffect(() => {
-    document.documentElement.dataset.lastService = slug;
-  }, [slug]);
-
   const isPreview = previewSlug !== null && shown === previewSlug;
   const showToggle = !isPreview && !SELF_CONTROLLED.has(shown);
   const Stage = STAGES[shown];
+  // First view of this tab while the section is on screen → demonstrate itself.
+  // A hover-preview never auto-plays: it is already a visitor-driven look.
+  const auto = active && !isPreview && !previewPlayed(shown);
   const hand = HANDOFF[shown];
   const sv = services.find((x) => x.slug === shown)!;
 
@@ -213,7 +223,7 @@ export function ServiceStage({
         className="relative flex flex-col justify-center min-[900px]:h-[440px] min-[900px]:overflow-hidden"
         style={{ minHeight: 320, transformOrigin: "50% 50%", willChange: "transform, opacity" }}
       >
-        <Stage key={shown} active={active} mode={isPreview ? "watch" : mode} preview={isPreview} />
+        <Stage key={shown} active={active} mode={isPreview ? "watch" : mode} preview={isPreview} auto={auto} />
       </div>
 
       {/* memory rail — services the visitor has opened stay lit */}
