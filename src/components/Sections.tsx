@@ -790,31 +790,42 @@ export function FinalCTA() {
     const ctx = gsap.context(() => {
       if (!desktop) {
         /* Mobile: composed graphic pre-arranged, light entrance only. */
+        gsap.set(".fc-static", { opacity: 0, y: 16 });
+        gsap.set(".fc-static .fc-line", { attr: { x2: 50, y2: 50 } });
+        gsap.set(".fc-text > *", { opacity: 0, y: 14 });
         gsap.timeline({
           scrollTrigger: { trigger: root.current, start: "top 80%", once: true },
         })
-          .fromTo(".fc-static", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" })
-          .fromTo(".fc-static .fc-line", { attr: { x2: 50, y2: 50 } }, { attr: { x2: (i: number) => FC_NODES[i].x, y2: (i: number) => FC_NODES[i].y, duration: 0.6, ease: "power2.out" } }, 0.1)
-          .fromTo(".fc-text > *", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.6, stagger: 0.08, ease: "power3.out" }, 0.25);
+          .to(".fc-static", { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" })
+          .to(".fc-static .fc-line", { attr: { x2: (i: number) => FC_NODES[i].x, y2: (i: number) => FC_NODES[i].y, duration: 0.6, ease: "power2.out" } }, 0.1)
+          .to(".fc-text > *", { opacity: 1, y: 0, duration: 0.6, stagger: 0.08, ease: "power3.out" }, 0.25);
         gsap.set(".fc-motif, .fc-converge-point", { display: "none" });
         return;
       }
 
-      /* Desktop: the one true convergence. Plays once on entry. */
+      /* Desktop: the one true convergence. Plays once on entry.
+         Initial states are set explicitly, then the timeline only uses
+         .to() — no immediateRender ambiguity. */
+      gsap.set(".fc-motif", {
+        x: (i: number) => FC_MOTIFS[i].from[0],
+        y: (i: number) => FC_MOTIFS[i].from[1],
+        rotation: (i: number) => (i % 2 ? 10 : -10),
+        opacity: 0,
+        scale: 0.85,
+      });
+      gsap.set(convergeCenterRef.current, { scale: 0, opacity: 0 });
+      gsap.set(".fc-line", { attr: { x2: 50, y2: 50 }, opacity: 0 });
+      gsap.set(".fc-node", { opacity: 0, scale: 0.6 });
+      gsap.set(".fc-core", { opacity: 0, scale: 0.5 });
+      gsap.set(".fc-text > *", { opacity: 0, y: 18 });
+
       const tl = gsap.timeline({
         scrollTrigger: { trigger: root.current, start: "top 74%", once: true },
       });
 
       // 1 — echoes drift in from the edges toward center (~1s)
-      tl.fromTo(
+      tl.to(
         ".fc-motif",
-        {
-          x: (i: number) => FC_MOTIFS[i].from[0],
-          y: (i: number) => FC_MOTIFS[i].from[1],
-          rotation: (i: number) => (i % 2 ? 10 : -10),
-          opacity: 0,
-          scale: 0.85,
-        },
         {
           x: 0,
           y: 0,
@@ -829,33 +840,29 @@ export function FinalCTA() {
       );
 
       // 2 — they merge into a single bright lime point
-      tl.to(".fc-motif", { scale: 0, opacity: 0, duration: 0.3, ease: "power3.in", stagger: 0.03 }, 1.0).fromTo(
+      tl.to(".fc-motif", { scale: 0, opacity: 0, duration: 0.3, ease: "power3.in", stagger: 0.03 }, 1.0).to(
         convergeCenterRef.current,
-        { scale: 0, opacity: 0 },
         { scale: 1, opacity: 1, duration: 0.28, ease: "power2.out" },
         1.12
       );
 
       // 3 — the point expands outward into the node/line graphic
       tl.to(convergeCenterRef.current, { scale: 2.6, opacity: 0, duration: 0.5, ease: "power2.out" }, 1.42)
-        .fromTo(
+        .to(
           ".fc-line",
-          { attr: { x2: 50, y2: 50 }, opacity: 0 },
           { attr: { x2: (i: number) => FC_NODES[i].x, y2: (i: number) => FC_NODES[i].y }, opacity: 0.7, duration: 0.45, ease: "power2.out", stagger: 0.04 },
           1.46
         )
-        .fromTo(
+        .to(
           ".fc-node",
-          { opacity: 0, scale: 0.6 },
           { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(1.8)", stagger: 0.05 },
           1.62
         )
-        .fromTo(".fc-core", { opacity: 0, scale: 0.5 }, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(1.6)" }, 1.78);
+        .to(".fc-core", { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(1.6)" }, 1.78);
 
       // 4 — the headline settles in as the graphic reaches rest
-      tl.fromTo(
+      tl.to(
         ".fc-text > *",
-        { opacity: 0, y: 18 },
         { opacity: 1, y: 0, duration: 0.65, stagger: 0.09, ease: "power3.out" },
         1.62
       );
