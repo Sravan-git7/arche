@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Wordmark } from "./Wordmark";
 import { siteContent, services } from "../data/site";
-import { Link, useRoute } from "../lib/router";
+import { Link, navigate, useRoute } from "../lib/router";
 import { gsap } from "../lib/gsap";
 
 export function Header() {
@@ -46,6 +46,27 @@ export function Header() {
     setOpen(false);
     setSvcOpen(false);
   }, [route]);
+
+  /*
+   * PROMPT 20 — nav hover preview → Services tab.
+   * A thumbnail click lands on the Services section with that service's
+   * tab already committed (sessionStorage carries it across a route
+   * change; the event covers same-page jumps).
+   */
+  const gotoService = (slug: string) => {
+    setSvcOpen(false);
+    try {
+      sessionStorage.setItem("arche:svcTab", slug);
+    } catch {
+      /* ignore */
+    }
+    window.dispatchEvent(new CustomEvent("arche:select-service", { detail: slug }));
+    if (route !== "/") {
+      navigate("/");
+    } else {
+      document.getElementById("services-home")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
   const { links, cta } = siteContent.nav;
   const active = (to: string) =>
@@ -105,7 +126,7 @@ export function Header() {
                 </Link>
               )
             )}
-            <Link to={cta.to} className="btn" cursor="START">
+            <Link to={cta.to} className="btn" cursor="START" data-magnetic>
               {cta.label} <span className="arw">→</span>
             </Link>
           </div>
@@ -136,11 +157,12 @@ export function Header() {
           </button>
         </div>
 
-        {/* services drawer (desktop) */}
+        {/* services drawer (desktop) — live idle previews; a thumbnail
+            click jumps to that service's tab in the Services section */}
         <div
           className="hidden overflow-hidden md:block"
           style={{
-            maxHeight: svcOpen ? 320 : 0,
+            maxHeight: svcOpen ? 340 : 0,
             transition: "max-height .6s var(--e-inout)",
             background: "rgba(244,242,237,0.94)",
             backdropFilter: "blur(14px)",
@@ -149,25 +171,26 @@ export function Header() {
         >
           <div className="wrap grid grid-cols-4 gap-[18px] py-[26px]">
             {services.map((s, i) => (
-              <Link
+              <button
                 key={s.slug}
-                to={`/services/${s.slug}`}
-                className="group flex flex-col gap-[8px] border-t pt-[14px]"
+                type="button"
+                onClick={() => gotoService(s.slug)}
+                className="group flex flex-col gap-[8px] border-t pt-[14px] text-left"
                 style={{
                   borderColor: "var(--line)",
                   opacity: svcOpen ? 1 : 0,
                   transform: svcOpen ? "translateY(0)" : "translateY(10px)",
                   transition: `opacity .45s var(--e-out) ${80 + i * 55}ms, transform .45s var(--e-out) ${80 + i * 55}ms`,
                 }}
-                cursor="OPEN"
+                data-cursor="OPEN"
               >
                 <span className="mono">{s.n}</span>
                 <span className="d4 transition-colors duration-300 group-hover:text-[var(--accent-deep)]">
                   {s.title}
                 </span>
                 <span className="body-s">{s.tagline}</span>
-                <ServiceGlyph slug={s.slug} />
-              </Link>
+                {svcOpen && <ServicePreview slug={s.slug} />}
+              </button>
             ))}
           </div>
         </div>
@@ -212,7 +235,7 @@ export function Header() {
             ))}
           </div>
           <div className="mt-[26px] flex flex-col gap-[14px]">
-            <Link to={cta.to} className="btn w-full justify-center">
+            <Link to={cta.to} className="btn w-full justify-center" data-magnetic>
               {cta.label} <span className="arw">→</span>
             </Link>
             <p className="mono">{siteContent.brand.discipline}</p>
@@ -223,36 +246,68 @@ export function Header() {
   );
 }
 
-function ServiceGlyph({ slug }: { slug: string }) {
+/**
+ * PROMPT 20 — live idle preview for the nav drawer. Each service gets a
+ * small looping vignette of its idle state — enough motion to preview,
+ * never the full interactive demo. Mounted only while the drawer is open.
+ */
+function ServicePreview({ slug }: { slug: string }) {
   if (slug === "video-editing") {
     return (
-      <span className="mt-[4px] flex h-[18px] items-end gap-[3px] overflow-hidden">
-        {[7, 13, 9, 16, 11].map((h, i) => (
-          <span key={i} className="block w-[2px] origin-bottom transition-transform duration-500 group-hover:scale-y-125" style={{ height: h, background: i === 3 ? "var(--accent-deep)" : "var(--line)", transitionDelay: `${i * 40}ms` }} />
-        ))}
+      <span className="relative mt-[4px] block h-[30px] w-full max-w-[96px] overflow-hidden rounded-[3px] border" style={{ borderColor: "var(--line)" }} aria-hidden>
+        <span className="absolute inset-0 flex items-center justify-center gap-[2px]">
+          {[6, 11, 8, 15, 10, 17, 12, 9, 14, 7].map((h, i) => (
+            <span
+              key={i}
+              className="tv-bar block w-[2px] rounded-full"
+              style={{ height: h, background: i === 5 ? "var(--accent-deep)" : "var(--line)", animationDelay: `${i * 80}ms` }}
+            />
+          ))}
+        </span>
+        <span className="tv-head absolute top-0 bottom-0 w-px" style={{ background: "var(--accent)" }} />
       </span>
     );
   }
   if (slug === "web-development") {
     return (
-      <span className="mt-[4px] grid h-[22px] w-[38px] grid-cols-3 gap-[2px]">
-        {[0, 1, 2, 3, 4, 5].map((i) => <span key={i} className="border transition-colors duration-400 group-hover:border-[var(--accent-deep)]" style={{ borderColor: "var(--line)" }} />)}
+      <span className="mt-[4px] flex h-[30px] w-full max-w-[96px] flex-col justify-center gap-[3px]" aria-hidden>
+        <span className="tv-block-1 block h-[4px] w-[60%] rounded-full" style={{ background: "var(--line)" }} />
+        <span className="tv-block-2 block h-[9px] w-[80%] rounded-[2px]" style={{ background: "var(--line)" }} />
+        <span className="flex gap-[3px]">
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="tv-block-3 block h-[8px] flex-1 rounded-[2px]"
+              style={{ background: i === 1 ? "var(--accent-deep)" : "var(--line)", animationDelay: `${i * 120}ms`, opacity: i === 1 ? 0.6 : 1 }}
+            />
+          ))}
+        </span>
       </span>
     );
   }
   if (slug === "ai-chatbots") {
     return (
-      <span className="mt-[4px] flex h-[22px] w-[44px] flex-col gap-[3px]">
-        <span className="h-[8px] w-[30px] rounded-full transition-transform duration-500 group-hover:translate-x-[5px]" style={{ background: "var(--line)" }} />
-        <span className="ml-auto h-[8px] w-[26px] rounded-full transition-transform duration-500 group-hover:-translate-x-[5px]" style={{ background: "var(--accent-deep)" }} />
+      <span className="mt-[4px] flex h-[30px] w-full max-w-[96px] flex-col justify-center gap-[4px]" aria-hidden>
+        <span className="tv-q block h-[7px] w-[55%] rounded-full" style={{ background: "var(--line)" }} />
+        <span className="tv-a ml-auto block h-[7px] w-[70%] rounded-full" style={{ background: "var(--accent-deep)" }} />
+        <span className="tv-q block h-[7px] w-[40%] rounded-full" style={{ background: "var(--line)", animationDelay: ".9s" }} />
       </span>
     );
   }
   return (
-    <span className="mt-[4px] flex h-[20px] w-[50px] items-center">
-      <span className="h-[7px] w-[7px] rounded-full" style={{ background: "var(--accent-deep)" }} />
-      <span className="h-px flex-1 origin-left transition-transform duration-500 group-hover:scale-x-75" style={{ background: "var(--line)" }} />
-      <span className="h-[7px] w-[7px] rounded-full border" style={{ borderColor: "var(--fg)" }} />
+    <span className="relative mt-[4px] block h-[30px] w-full max-w-[96px]" aria-hidden>
+      <svg viewBox="0 0 96 30" className="absolute inset-0 h-full w-full" fill="none">
+        <path d="M 12 6 L 84 6 L 84 24 L 12 24 Z" stroke="var(--line)" strokeWidth="1" />
+        {[
+          [12, 6],
+          [84, 6],
+          [84, 24],
+          [12, 24],
+        ].map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r="2.4" fill="var(--bg)" stroke={i === 2 ? "var(--accent-deep)" : "var(--fg)"} strokeWidth="1" />
+        ))}
+        <circle className="tv-runner" r="2" fill="var(--accent)" style={{ offsetPath: 'path("M 12 6 L 84 6 L 84 24 L 12 24 Z")' }} />
+      </svg>
     </span>
   );
 }

@@ -76,7 +76,8 @@ export function Cursor() {
       const el = e.target as HTMLElement | null;
       const labelled = el?.closest?.("[data-cursor]") as HTMLElement | null;
       const interactive = el?.closest?.("a,button,input,textarea,label,[role='slider']");
-      magnet = (el?.closest?.(".btn, [data-magnetic]") as HTMLElement | null) ?? null;
+      // ring magnetism, like button magnetism, is reserved for primary CTAs
+      magnet = (el?.closest?.("[data-magnetic]") as HTMLElement | null) ?? null;
 
       if (labelled) {
         setLabel(labelled.dataset.cursor || "");

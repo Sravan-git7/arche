@@ -1,6 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { gsap, ScrollTrigger, prefersReducedMotion } from "../lib/gsap";
-import { hasFinePointer } from "../lib/interact";
 import { KineticWord } from "./Kinetic";
 
 /**
@@ -83,9 +82,7 @@ export function Architecture3D() {
   const [activeStage, setActiveStage] = useState<number>(0);
   const [hoveredStage, setHoveredStage] = useState<number | null>(null);
   const [lineDrawProgress, setLineDrawProgress] = useState<number[]>(new Array(4).fill(0));
-  const [isPullbackCompressed, setIsPullbackCompressed] = useState(false);
-
-  const finePointer = hasFinePointer();
+  const [, setIsPullbackCompressed] = useState(false);
 
   useLayoutEffect(() => {
     const pinEl = pinSectionRef.current;
@@ -280,8 +277,8 @@ export function Architecture3D() {
                         boxShadow: isActive
                           ? "0 0 24px color-mix(in srgb, var(--accent-deep) 35%, transparent)"
                           : "none",
-                        opacity: isActive ? 1 : isPast ? 0.55 : 0.3,
-                        scale: isActive ? 1.08 : 1.0,
+                        opacity: isActive ? 1 : isHovered ? 0.75 : isPast ? 0.55 : 0.3,
+                        scale: isActive ? 1.08 : isHovered ? 1.04 : 1.0,
                       }}
                     >
                       {/* Top Header */}
