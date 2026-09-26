@@ -219,10 +219,12 @@ export function ServiceStage({
       </div>
 
       {/* Fixed height on desktop: switching or previewing a tab must never
-          move the tab rail out from under the cursor. */}
+          move the tab rail out from under the cursor. When the section is
+          pinned (Prompt 33) the module must fit the viewport on short
+          screens, so the height reads --svc-stage-h (set on the section). */}
       <div
         ref={layer}
-        className="relative flex flex-col justify-center min-[900px]:h-[440px] min-[900px]:overflow-hidden"
+        className="relative flex flex-col justify-center min-[900px]:h-[var(--svc-stage-h,440px)] min-[900px]:overflow-hidden"
         style={{ minHeight: 320, transformOrigin: "50% 50%", willChange: "transform, opacity" }}
       >
         <Stage key={shown} active={active} mode={isPreview ? "watch" : mode} preview={isPreview} auto={auto} />

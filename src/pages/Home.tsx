@@ -22,7 +22,7 @@ import { resetPreviews } from "../lib/autoplay";
  *
  *  Hero          spatial scene, pointer depth, focus-pull headline   (L4)
  *  Problem       pinned: idle tools → fan-out → one diagram          (L3)
- *  Services      tabbed live stages, hover preview, depth swap       (L3)
+ *  Services      pinned: scroll one unit per service, autoplay each      (L3)
  *  System        3D architecture, entry paths, build-it-yourself     (L4)
  *  Work          pointer-reactive frames, expand-to-route            (L2)
  *  Labs          playground of working prototypes                    (L2)
