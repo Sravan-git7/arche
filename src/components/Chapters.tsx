@@ -288,7 +288,22 @@ export function Chapters() {
               ))}
             </div>
             <div data-m>
-              <Link to={`/services/${s.slug}`} className="btn btn-ghost mt-[4px]" cursor="OPEN">
+              <Link
+                to={`/services/${s.slug}`}
+                className="btn btn-ghost mt-[4px]"
+                cursor="OPEN"
+                onNavigate={() => {
+                  const stage = document.getElementById("services-stage");
+                  if (stage && !prefersReducedMotion()) {
+                    gsap.to(stage, {
+                      scale: 1.04,
+                      opacity: 0.9,
+                      duration: 0.35,
+                      ease: "power2.out",
+                    });
+                  }
+                }}
+              >
                 Explore {s.title} <span className="arw">→</span>
               </Link>
             </div>

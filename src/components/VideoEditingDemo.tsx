@@ -127,23 +127,22 @@ export function VideoEditingDemo({
     []
   );
 
-  /* PROMPT 24 — first view: one slow pass across the full range, then the
-     visitor owns the playhead. Runs once per page visit. */
+  /* PROMPT 28 — Video Editing: auto-scrub sequence across RAW → EXPORT plays on view */
   useEffect(() => {
-    if (autoStarted.current || !auto || !active || preview) return;
+    if (autoStarted.current || !active || preview) return;
     const id = window.setTimeout(() => {
       startTimer.current = 0;
       autoStarted.current = true;
       markPreviewPlayed(SLUG);
       glideTo(1, AUTO_SCRUB, "sine.inOut", () => announcePreviewDone(SLUG));
-    }, 480);
+    }, 450);
     startTimer.current = id;
     return () => {
       window.clearTimeout(id);
       if (startTimer.current === id) startTimer.current = 0;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auto, active, preview]);
+  }, [active, preview]);
 
   const handlePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (preview) return;

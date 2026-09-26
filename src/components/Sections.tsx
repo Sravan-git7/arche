@@ -235,19 +235,23 @@ export function Approach() {
         </p>
 
         <div className="mt-[clamp(48px,6vw,90px)] grid gap-[28px] md:grid-cols-12">
-          <div className="flex flex-col md:col-span-8">
+          <div className="flex flex-col md:col-span-7">
             {items.map((it, i) => (
               <button
                 key={it.k}
-                className="approach-principle grid gap-[12px] border-t py-[22px] text-left md:grid-cols-8"
-                style={{ borderColor: active === i ? "var(--accent-deep)" : "var(--line)" }}
+                className="approach-principle grid gap-[12px] border-t py-[22px] text-left md:grid-cols-8 cursor-pointer transition-all duration-300 group"
+                style={{
+                  borderColor: active === i ? "var(--accent-deep)" : "var(--line)",
+                  background: active === i ? "rgba(200, 241, 79, 0.03)" : "transparent",
+                  paddingLeft: active === i ? "10px" : "0px",
+                }}
                 data-r="meta"
                 data-r-delay={i * 70}
                 onMouseEnter={() => setActive(i)}
                 onFocus={() => setActive(i)}
                 onClick={() => setActive(i)}
               >
-                <span className="mono md:col-span-1" style={{ color: active === i ? "var(--accent-deep)" : "var(--faint)" }}>0{i + 1}</span>
+                <span className="mono md:col-span-1" style={{ color: active === i ? "var(--accent)" : "var(--faint)" }}>0{i + 1}</span>
                 <h3 className="d4 flex items-center gap-[10px] md:col-span-3" style={{ color: active === i ? "var(--fg)" : "var(--muted)", transition: "color .35s" }}>
                   {i === 0 && (
                     /* the Process diagram, compressed — still running */
@@ -263,13 +267,18 @@ export function Approach() {
                   )}
                   {it.k}
                 </h3>
-                <p className="body max-w-[42ch] md:col-span-4">{it.v}</p>
+                <p className="body max-w-[42ch] md:col-span-4" style={{ color: active === i ? "var(--fg)" : "var(--faint)", transition: "color .35s" }}>{it.v}</p>
               </button>
             ))}
+
+            {/* Mobile visual preview */}
+            <div className="mt-[24px] block md:hidden">
+              <ApproachVisual active={active} onSelect={setActive} />
+            </div>
           </div>
-          <div className="hidden md:col-span-4 md:block">
+          <div className="hidden md:col-span-5 md:block">
             <div className="sticky top-[140px]">
-              <ApproachVisual active={active} />
+              <ApproachVisual active={active} onSelect={setActive} />
             </div>
           </div>
         </div>
@@ -315,129 +324,491 @@ function MiniBuiltDiagram() {
   );
 }
 
-/** Geometry for the "Systems thinking" micro-visual (three dots + drawn links). */
-const APPROACH_DOTS = [
-  { x: 24, y: 34 },
-  { x: 52, y: 62 },
-  { x: 78, y: 34 },
-];
-const APPROACH_LINKS = [
-  { x1: 24, y1: 34, x2: 52, y2: 62 },
-  { x1: 52, y1: 62, x2: 78, y2: 34 },
-  { x1: 24, y1: 34, x2: 78, y2: 34 },
-];
-
 /**
- * Prompt 15 — Approach Visual Panel.
- * Subtle per-principle updates only: a few px, low-contrast opacity shifts.
- * 0: Systems thinking — disconnected dots draw connecting lines between them
- * 1: AI where it earns — the manual-task element fades out / disappears
- * 2: Design + engineering — two overlapping layers merge into alignment
- * 3: Built to keep running — slow continuous pulse (same language as the
- *    Process EVOLVE breathing, deliberately reused)
+ * PROMPT 31 — Approach Visual Panel.
+ * Distinct, rich visual states responding directly to the 4 principles:
+ * 0: Systems thinking — disconnected nodes drawing connections between them
+ * 1: AI where it earns its place — manual task visibly fades out / disappears
+ * 2: Design + engineering — two distinct layers merge into alignment
+ * 3: Built to keep running — slow continuous pulse & resilient operating loop
  */
-function ApproachVisual({ active }: { active: number }) {
+interface ApproachVisualProps {
+  active: number;
+  onSelect?: (index: number) => void;
+}
+
+export function ApproachVisual({ active, onSelect }: ApproachVisualProps) {
+  const titles = [
+    { num: "01", name: "Systems thinking", sub: "DISCONNECTED NODES → INTEGRATED GRAPH" },
+    { num: "02", name: "AI where it earns", sub: "MANUAL BOTTLENECK FADES → DIRECT AGENT ROUTE" },
+    { num: "03", name: "Design + engineering", sub: "TWO LAYERS MERGING INTO ALIGNMENT" },
+    { num: "04", name: "Built to keep running", sub: "CONTINUOUS RESILIENT PULSE & UPTIME" },
+  ];
+
   return (
-    <div className="relative aspect-[4/3] overflow-hidden rounded-[6px] border" style={{ borderColor: "var(--line)", background: "var(--bg-2)" }} aria-hidden>
-      {/* Principle 0: three disconnected dots that draw connecting lines */}
-      {APPROACH_DOTS.map((p, i) => (
-        <span
-          key={`dot-${i}`}
-          className="absolute block h-[7px] w-[7px] rounded-full"
-          style={{
-            left: `${p.x}%`,
-            top: `${p.y}%`,
-            translate: "-50% -50%",
-            background: active === 0 ? "var(--accent)" : "var(--faint)",
-            transform: active === 0 ? "scale(1)" : "scale(.72)",
-            opacity: active === 0 ? 1 : 0.3,
-            transition: "background .6s, transform .7s var(--e-out), opacity .6s",
-            transitionDelay: `${i * 90}ms`,
-          }}
-        />
-      ))}
-      <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" fill="none">
-        {APPROACH_LINKS.map((l, i) => (
-          <line
-            key={`link-${i}`}
-            x1={l.x1}
-            y1={l.y1}
-            x2={l.x2}
-            y2={l.y2}
-            pathLength={1}
-            stroke="var(--accent-deep)"
-            strokeWidth="0.55"
-            strokeDasharray={1}
-            strokeDashoffset={active === 0 ? 0 : 1}
-            style={{ opacity: active === 0 ? 0.75 : 0, transition: "stroke-dashoffset .9s var(--e-inout), opacity .4s", transitionDelay: `${i * 180}ms` }}
-          />
-        ))}
-      </svg>
-
-      {/* Principle 1: the manual task — disappears when AI earns its place */}
-      <span
-        className="absolute top-[24%] right-[18%] grid h-[44px] w-[44px] place-items-center rounded-full border"
-        style={{
-          borderColor: active === 1 ? "var(--accent-deep)" : "var(--line)",
-          opacity: active === 1 ? 1 : 0.15,
-          transition: "border-color .6s, opacity .6s",
-        }}
-      >
-        <span className="mono text-[9px]" style={{ color: active === 1 ? "var(--accent-deep)" : "var(--faint)", transition: "color .5s" }}>AI</span>
-      </span>
-      <span
-        className="absolute top-[20%] right-[38%] flex h-[26px] w-[50px] items-center justify-center rounded-[3px] border"
-        style={{
-          borderColor: "var(--line)",
-          opacity: active === 1 ? 0 : 0.28,
-          transform: active === 1 ? "translateY(-4px)" : "translateY(0)",
-          transition: "opacity .8s var(--e-out) .25s, transform .8s var(--e-out) .25s",
-        }}
-      >
-        <span className="mono text-[7px]" style={{ color: "var(--faint)" }}>MANUAL</span>
-      </span>
-
-      {/* Principle 2: interface layer + structure layer merge into alignment */}
+    <div
+      className="relative flex flex-col justify-between overflow-hidden rounded-[8px] border min-h-[340px] md:min-h-[380px] select-none transition-colors duration-500"
+      style={{
+        borderColor: "var(--line)",
+        background: "#0f0f12",
+        boxShadow: "0 18px 40px -12px rgba(0,0,0,0.6)",
+      }}
+      aria-label="Approach interactive architectural diagram"
+    >
+      {/* Top HUD: Step Switcher & Live Principle Title */}
       <div
-        className="absolute right-[16%] bottom-[16%] h-[60px] w-[88px] rounded-[4px] border p-[8px]"
-        style={{
-          borderColor: active === 2 ? "var(--accent-deep)" : "var(--line)",
-          opacity: active === 2 ? 0.9 : 0.18,
-          transform: active === 2 ? "translate(0, 0)" : "translate(-5px, -3px)",
-          transition: "border-color .6s, opacity .6s, transform .8s var(--e-inout)",
-        }}
+        className="flex items-center justify-between border-b px-[14px] py-[10px]"
+        style={{ borderColor: "rgba(244,242,237,0.08)", background: "rgba(20,20,24,0.7)" }}
       >
-        <span className="block h-[4px] w-[65%] rounded-full" style={{ background: "var(--line)" }} />
-        <span
-          className="mt-[6px] block h-[12px] w-[42px] rounded-full"
-          style={{ background: active === 2 ? "var(--accent-deep)" : "var(--line)", opacity: active === 2 ? 0.85 : 1, transition: "background .6s" }}
-        />
+        <div className="flex items-center gap-[8px] min-w-0">
+          <span className="block h-[6px] w-[6px] flex-none rounded-full bg-[var(--accent)] animate-pulse" />
+          <span className="mono text-[9.5px] font-medium tracking-wider truncate" style={{ color: "rgba(244,242,237,0.7)" }}>
+            0{active + 1} // {titles[active].name.toUpperCase()}
+          </span>
+        </div>
+
+        {/* 4 Interactive Selector Tabs */}
+        <div className="flex items-center gap-[4px] flex-none">
+          {titles.map((t, idx) => {
+            const isCur = active === idx;
+            return (
+              <button
+                key={t.num}
+                type="button"
+                onClick={() => onSelect?.(idx)}
+                className="mono text-[9px] px-[6px] py-[2px] rounded transition-all duration-200 cursor-pointer"
+                style={{
+                  background: isCur ? "var(--accent)" : "rgba(244,242,237,0.06)",
+                  color: isCur ? "#0c0c0d" : "rgba(244,242,237,0.45)",
+                  fontWeight: isCur ? 700 : 500,
+                  transform: isCur ? "scale(1.05)" : "scale(1)",
+                }}
+                title={t.name}
+              >
+                {t.num}
+              </button>
+            );
+          })}
+        </div>
       </div>
+
+      {/* Main Interactive Diagram Canvas Area */}
+      <div className="relative flex-1 flex items-center justify-center p-[16px] overflow-hidden min-h-[240px]">
+        
+        {/* ============================================================
+            STATE 0: SYSTEMS THINKING (Disconnected nodes drawing connections)
+            ============================================================ */}
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-center p-[14px] transition-all duration-500 ${
+            active === 0 ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"
+          }`}
+        >
+          <div className="relative h-full w-full max-w-[320px] max-h-[220px]">
+            {/* SVG Connecting Network (animates in when active === 0) */}
+            <svg className="absolute inset-0 h-full w-full pointer-events-none" viewBox="0 0 100 100" fill="none">
+              {/* Outer Perimeter Mesh */}
+              <line
+                x1="22" y1="24" x2="78" y2="24"
+                stroke="var(--accent)"
+                strokeWidth="1.2"
+                strokeDasharray="100"
+                style={{
+                  strokeDashoffset: active === 0 ? 0 : 100,
+                  transition: "stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s",
+                  filter: "drop-shadow(0 0 4px var(--accent))",
+                  opacity: 0.75,
+                }}
+              />
+              <line
+                x1="78" y1="24" x2="78" y2="76"
+                stroke="var(--accent)"
+                strokeWidth="1.2"
+                strokeDasharray="100"
+                style={{
+                  strokeDashoffset: active === 0 ? 0 : 100,
+                  transition: "stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.25s",
+                  filter: "drop-shadow(0 0 4px var(--accent))",
+                  opacity: 0.75,
+                }}
+              />
+              <line
+                x1="78" y1="76" x2="22" y2="76"
+                stroke="var(--accent)"
+                strokeWidth="1.2"
+                strokeDasharray="100"
+                style={{
+                  strokeDashoffset: active === 0 ? 0 : 100,
+                  transition: "stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s",
+                  filter: "drop-shadow(0 0 4px var(--accent))",
+                  opacity: 0.75,
+                }}
+              />
+              <line
+                x1="22" y1="76" x2="22" y2="24"
+                stroke="var(--accent)"
+                strokeWidth="1.2"
+                strokeDasharray="100"
+                style={{
+                  strokeDashoffset: active === 0 ? 0 : 100,
+                  transition: "stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.55s",
+                  filter: "drop-shadow(0 0 4px var(--accent))",
+                  opacity: 0.75,
+                }}
+              />
+
+              {/* Diagonal & Center Hub Spokes */}
+              <line
+                x1="22" y1="24" x2="50" y2="50"
+                stroke="var(--accent-deep)"
+                strokeWidth="1"
+                strokeDasharray="100"
+                style={{
+                  strokeDashoffset: active === 0 ? 0 : 100,
+                  transition: "stroke-dashoffset 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.3s",
+                }}
+              />
+              <line
+                x1="78" y1="24" x2="50" y2="50"
+                stroke="var(--accent-deep)"
+                strokeWidth="1"
+                strokeDasharray="100"
+                style={{
+                  strokeDashoffset: active === 0 ? 0 : 100,
+                  transition: "stroke-dashoffset 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.45s",
+                }}
+              />
+              <line
+                x1="78" y1="76" x2="50" y2="50"
+                stroke="var(--accent-deep)"
+                strokeWidth="1"
+                strokeDasharray="100"
+                style={{
+                  strokeDashoffset: active === 0 ? 0 : 100,
+                  transition: "stroke-dashoffset 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.6s",
+                }}
+              />
+              <line
+                x1="22" y1="76" x2="50" y2="50"
+                stroke="var(--accent-deep)"
+                strokeWidth="1"
+                strokeDasharray="100"
+                style={{
+                  strokeDashoffset: active === 0 ? 0 : 100,
+                  transition: "stroke-dashoffset 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.75s",
+                }}
+              />
+            </svg>
+
+            {/* 4 Outer System Nodes */}
+            <div
+              className="absolute flex items-center gap-[4px] rounded-[4px] border px-[6px] py-[3px] transition-all duration-500"
+              style={{
+                left: "22%",
+                top: "24%",
+                translate: "-50% -50%",
+                background: "#141416",
+                borderColor: active === 0 ? "var(--accent)" : "rgba(244,242,237,0.2)",
+                boxShadow: active === 0 ? "0 0 10px rgba(200,241,79,0.3)" : "none",
+              }}
+            >
+              <span className="h-[5px] w-[5px] rounded-full bg-[var(--accent)]" />
+              <span className="mono text-[8px] font-semibold text-[#f4f2ed]">TOOLS</span>
+            </div>
+
+            <div
+              className="absolute flex items-center gap-[4px] rounded-[4px] border px-[6px] py-[3px] transition-all duration-500"
+              style={{
+                left: "78%",
+                top: "24%",
+                translate: "-50% -50%",
+                background: "#141416",
+                borderColor: active === 0 ? "var(--accent)" : "rgba(244,242,237,0.2)",
+                boxShadow: active === 0 ? "0 0 10px rgba(200,241,79,0.3)" : "none",
+              }}
+            >
+              <span className="h-[5px] w-[5px] rounded-full bg-[var(--accent)]" />
+              <span className="mono text-[8px] font-semibold text-[#f4f2ed]">CONTENT</span>
+            </div>
+
+            <div
+              className="absolute flex items-center gap-[4px] rounded-[4px] border px-[6px] py-[3px] transition-all duration-500"
+              style={{
+                left: "78%",
+                top: "76%",
+                translate: "-50% -50%",
+                background: "#141416",
+                borderColor: active === 0 ? "var(--accent)" : "rgba(244,242,237,0.2)",
+                boxShadow: active === 0 ? "0 0 10px rgba(200,241,79,0.3)" : "none",
+              }}
+            >
+              <span className="h-[5px] w-[5px] rounded-full bg-[var(--accent)]" />
+              <span className="mono text-[8px] font-semibold text-[#f4f2ed]">PEOPLE</span>
+            </div>
+
+            <div
+              className="absolute flex items-center gap-[4px] rounded-[4px] border px-[6px] py-[3px] transition-all duration-500"
+              style={{
+                left: "22%",
+                top: "76%",
+                translate: "-50% -50%",
+                background: "#141416",
+                borderColor: active === 0 ? "var(--accent)" : "rgba(244,242,237,0.2)",
+                boxShadow: active === 0 ? "0 0 10px rgba(200,241,79,0.3)" : "none",
+              }}
+            >
+              <span className="h-[5px] w-[5px] rounded-full bg-[var(--accent)]" />
+              <span className="mono text-[8px] font-semibold text-[#f4f2ed]">WORKFLOWS</span>
+            </div>
+
+            {/* Central System Hub */}
+            <div
+              className="absolute flex flex-col items-center justify-center rounded-full border p-[8px] transition-all duration-700"
+              style={{
+                left: "50%",
+                top: "50%",
+                translate: "-50% -50%",
+                background: "rgba(200,241,79,0.08)",
+                borderColor: "var(--accent)",
+                boxShadow: "0 0 18px rgba(200,241,79,0.4)",
+              }}
+            >
+              <div className="h-[28px] w-[28px] rounded-full border border-dashed border-[var(--accent)] flex items-center justify-center animate-spin" style={{ animationDuration: "12s" }}>
+                <span className="h-[8px] w-[8px] rounded-full bg-[var(--accent)]" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ============================================================
+            STATE 1: AI WHERE IT EARNS (Manual Task Fades Out → Direct Agent Route)
+            ============================================================ */}
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-center p-[14px] transition-all duration-500 ${
+            active === 1 ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"
+          }`}
+        >
+          <div className="relative h-full w-full max-w-[320px] max-h-[220px] flex items-center justify-between">
+            {/* Ingest Node */}
+            <div className="flex flex-col items-center gap-[4px] z-[2]">
+              <span className="flex h-[32px] w-[32px] items-center justify-center rounded-full border text-[9px] mono" style={{ borderColor: "rgba(244,242,237,0.3)", background: "#141416", color: "#f4f2ed" }}>
+                INPUT
+              </span>
+              <span className="mono text-[7.5px]" style={{ color: "rgba(244,242,237,0.5)" }}>TASK STREAM</span>
+            </div>
+
+            {/* Split Routing Paths */}
+            <div className="relative flex-1 h-full mx-[10px] flex flex-col justify-between py-[12px]">
+              {/* UPPER: MANUAL BOTTLENECK (Visibly Fades Out / Disappears) */}
+              <div
+                className="relative flex items-center justify-between rounded-[4px] border border-dashed p-[8px] transition-all duration-700"
+                style={{
+                  borderColor: "rgba(244,242,237,0.2)",
+                  background: "rgba(244,242,237,0.02)",
+                  opacity: active === 1 ? 0.08 : 0.85,
+                  transform: active === 1 ? "scale(0.85) translateY(-8px)" : "scale(1) translateY(0)",
+                  filter: active === 1 ? "grayscale(100%) blur(1px)" : "none",
+                }}
+              >
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-[6px]">
+                    <span className="mono text-[9px] font-semibold text-[#f4f2ed] line-through">MANUAL TASK</span>
+                    <span className="mono text-[7px] px-[4px] py-[1px] rounded bg-red-950/60 text-red-400 border border-red-800/50">
+                      BOTTLENECK
+                    </span>
+                  </div>
+                  <span className="mono text-[7.5px]" style={{ color: "rgba(244,242,237,0.4)" }}>
+                    14 hrs/wk · Hand-offs & copy-paste
+                  </span>
+                </div>
+              </div>
+
+              {/* LOWER: AI AUTOMATION CONDUIT (Active Glowing Pipeline) */}
+              <div
+                className="relative flex items-center justify-between rounded-[6px] border p-[10px] transition-all duration-700 overflow-hidden"
+                style={{
+                  borderColor: active === 1 ? "var(--accent)" : "rgba(244,242,237,0.15)",
+                  background: active === 1 ? "rgba(200,241,79,0.1)" : "#141416",
+                  boxShadow: active === 1 ? "0 0 16px rgba(200,241,79,0.25)" : "none",
+                  transform: active === 1 ? "scale(1.02)" : "scale(1)",
+                }}
+              >
+                {/* Moving luminous beam inside AI conduit */}
+                {active === 1 && (
+                  <div className="approach-beam-flow pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-[rgba(200,241,79,0.2)] to-transparent" />
+                )}
+                <div className="flex flex-col z-[1]">
+                  <div className="flex items-center gap-[6px]">
+                    <span className="h-[6px] w-[6px] rounded-full bg-[var(--accent)] animate-ping" />
+                    <span className="mono text-[9.5px] font-bold text-[#f4f2ed]">AI REASONING AGENT</span>
+                    <span className="mono text-[7px] px-[4px] py-[1px] rounded bg-[var(--accent)] text-[#0c0c0d] font-bold">
+                      EARNED
+                    </span>
+                  </div>
+                  <span className="mono text-[8px]" style={{ color: "var(--accent)" }}>
+                    Instant execution · Zero manual latency
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Output Node */}
+            <div className="flex flex-col items-center gap-[4px] z-[2]">
+              <span
+                className="flex h-[32px] w-[32px] items-center justify-center rounded-full border text-[9px] mono font-bold transition-all duration-500"
+                style={{
+                  borderColor: active === 1 ? "var(--accent)" : "rgba(244,242,237,0.2)",
+                  background: active === 1 ? "var(--accent)" : "#141416",
+                  color: active === 1 ? "#0c0c0d" : "#f4f2ed",
+                  boxShadow: active === 1 ? "0 0 14px var(--accent)" : "none",
+                }}
+              >
+                DONE
+              </span>
+              <span className="mono text-[7.5px]" style={{ color: active === 1 ? "var(--accent)" : "rgba(244,242,237,0.5)" }}>
+                VERIFIED
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* ============================================================
+            STATE 2: DESIGN + ENGINEERING (Two layers merging into alignment)
+            ============================================================ */}
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-center p-[14px] transition-all duration-500 ${
+            active === 2 ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"
+          }`}
+        >
+          <div className="relative h-[180px] w-full max-w-[280px]">
+            {/* LAYER 1: DESIGN SPECIFICATION (Slides from top-left into 0,0) */}
+            <div
+              className="absolute inset-0 rounded-[6px] border p-[12px] flex flex-col justify-between transition-all duration-700"
+              style={{
+                borderColor: active === 2 ? "var(--accent)" : "rgba(200,241,79,0.4)",
+                background: active === 2 ? "rgba(20,20,24,0.75)" : "rgba(20,20,24,0.4)",
+                transform: active === 2 ? "translate(0px, 0px)" : "translate(-22px, -16px)",
+                boxShadow: active === 2 ? "0 0 20px rgba(200,241,79,0.2)" : "none",
+                zIndex: 2,
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <span className="mono text-[8.5px] font-bold text-[var(--accent)] flex items-center gap-[4px]">
+                  <span className="h-[5px] w-[5px] rounded-full bg-[var(--accent)]" />
+                  DESIGN // INTERFACE & MOTION
+                </span>
+                <span className="mono text-[7.5px] text-[rgba(244,242,237,0.5)]">TOKENS / SPRINGS</span>
+              </div>
+              <div className="h-[2px] w-3/4 rounded-full bg-[rgba(200,241,79,0.4)] my-[4px]" />
+              <div className="flex items-center justify-between mono text-[7px]" style={{ color: "rgba(244,242,237,0.6)" }}>
+                <span>GRID: 8PT FLUID</span>
+                <span>CURVE: EASE-OUT</span>
+              </div>
+            </div>
+
+            {/* LAYER 2: ENGINEERING RUNTIME (Slides from bottom-right into 0,0) */}
+            <div
+              className="absolute inset-0 rounded-[6px] border p-[12px] flex flex-col justify-between transition-all duration-700"
+              style={{
+                borderColor: active === 2 ? "var(--accent-deep)" : "rgba(127,174,0,0.5)",
+                background: active === 2 ? "rgba(20,20,24,0.75)" : "rgba(20,20,24,0.4)",
+                transform: active === 2 ? "translate(0px, 0px)" : "translate(22px, 16px)",
+                zIndex: 1,
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <span className="mono text-[8.5px] font-bold text-[var(--accent-deep)] flex items-center gap-[4px]">
+                  <span className="h-[5px] w-[5px] rounded-full bg-[var(--accent-deep)]" />
+                  ENGINEERING // RUNTIME & STATE
+                </span>
+                <span className="mono text-[7.5px] text-[rgba(244,242,237,0.5)]">&lt;/&gt; REACT / TS</span>
+              </div>
+              <div className="h-[2px] w-1/2 rounded-full bg-[rgba(127,174,0,0.4)] my-[4px]" />
+              <div className="flex items-center justify-between mono text-[7px]" style={{ color: "rgba(244,242,237,0.6)" }}>
+                <span>STATE: REACTIVE</span>
+                <span>HANDOFFS: 0</span>
+              </div>
+            </div>
+
+            {/* Corner Alignment Reticles Lock In when active === 2 */}
+            {active === 2 && (
+              <div className="pointer-events-none absolute inset-[-4px] flex flex-col justify-between z-[10] transition-opacity duration-500">
+                <div className="flex justify-between">
+                  <span className="mono text-[10px] text-[var(--accent)] font-bold">+</span>
+                  <span className="mono text-[10px] text-[var(--accent)] font-bold">+</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="mono text-[10px] text-[var(--accent)] font-bold">+</span>
+                  <span className="mono text-[10px] text-[var(--accent)] font-bold">+</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ============================================================
+            STATE 3: BUILT TO KEEP RUNNING (Slow Continuous Pulse)
+            ============================================================ */}
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-center p-[14px] transition-all duration-500 ${
+            active === 3 ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"
+          }`}
+        >
+          <div className="relative h-full w-full max-w-[300px] flex flex-col items-center justify-center">
+            {/* Concentric Breathing & Orbiting Pulse Core */}
+            <div className="relative flex items-center justify-center h-[120px] w-[120px]">
+              {/* Outer Pulsing Breathing Ring */}
+              <div
+                className="absolute inset-0 rounded-full border border-[var(--accent-deep)] approach-pulse-ring"
+                style={{
+                  background: "radial-gradient(circle, rgba(200,241,79,0.08) 0%, transparent 70%)",
+                }}
+              />
+
+              {/* Orbiting Satellite Node */}
+              <div className="absolute inset-[6px] rounded-full border border-dashed border-[rgba(244,242,237,0.2)] animate-spin" style={{ animationDuration: "6s" }}>
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[7px] w-[7px] rounded-full bg-[var(--accent)] shadow-[0_0_8px_var(--accent)]" />
+              </div>
+
+              {/* Central Resilient Core */}
+              <div className="pv-breath relative flex flex-col items-center justify-center h-[54px] w-[54px] rounded-full border border-[var(--accent)] bg-[#141416] shadow-[0_0_18px_rgba(200,241,79,0.35)]">
+                <span className="mono text-[8px] font-bold text-[var(--accent)]">RUNNING</span>
+                <span className="mono text-[6.5px] text-[rgba(244,242,237,0.6)]">99.99%</span>
+              </div>
+            </div>
+
+            {/* Live Uptime Waveform */}
+            <div className="w-full mt-[12px]">
+              <svg className="h-[24px] w-full" viewBox="0 0 200 24" fill="none">
+                <path
+                  d="M 0 12 Q 25 3, 50 12 T 100 12 T 150 12 T 200 12"
+                  stroke="var(--accent)"
+                  strokeWidth="1.5"
+                  className="approach-wave-loop"
+                  style={{ filter: "drop-shadow(0 0 4px var(--accent))" }}
+                />
+              </svg>
+              <div className="flex items-center justify-between mt-[2px] px-[6px]">
+                <span className="mono text-[7.5px]" style={{ color: "rgba(244,242,237,0.5)" }}>HEALTH: NOMINAL</span>
+                <span className="mono text-[7.5px]" style={{ color: "var(--accent)" }}>SELF-HEALING // 0 DRIFT</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Bottom Telemetry Readout Bar */}
       <div
-        className="pointer-events-none absolute right-[16%] bottom-[16%] h-[60px] w-[88px] rounded-[4px] border"
-        style={{
-          borderColor: active === 2 ? "var(--accent)" : "var(--line)",
-          opacity: active === 2 ? 0.55 : 0.12,
-          transform: active === 2 ? "translate(0, 0)" : "translate(5px, 3px)",
-          transition: "border-color .6s, opacity .6s, transform .8s var(--e-inout)",
-        }}
-      />
-
-      {/* Principle 3: built to keep running — same breathing language as Process EVOLVE */}
-      <span
-        className={`absolute bottom-[14%] left-[18%] block h-[38px] w-[38px] rounded-full border ${active === 3 ? "pv-breath" : ""}`}
-        style={{
-          borderColor: active === 3 ? "var(--accent-deep)" : "var(--line)",
-          opacity: active === 3 ? 1 : 0.15,
-          transition: "border-color .6s, opacity .6s",
-        }}
+        className="flex items-center justify-between border-t px-[14px] py-[8px]"
+        style={{ borderColor: "rgba(244,242,237,0.08)", background: "rgba(20,20,24,0.7)" }}
       >
-        {active === 3 && (
-          <span className="absolute inset-[6px] rounded-full border-t" style={{ borderColor: "var(--accent-deep)", animation: "spin 3.2s linear infinite" }} />
-        )}
-      </span>
-
-      <span className="mono absolute right-[12px] bottom-[10px] transition-colors duration-500" style={{ color: "var(--accent-deep)" }}>0{active + 1}</span>
+        <span className="mono text-[8.5px] truncate max-w-[85%]" style={{ color: "var(--accent)" }}>
+          ↳ {titles[active].sub}
+        </span>
+        <span className="mono text-[8.5px] font-bold" style={{ color: "rgba(244,242,237,0.5)" }}>
+          0{active + 1}/04
+        </span>
+      </div>
     </div>
   );
 }

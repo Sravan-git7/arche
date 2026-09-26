@@ -123,6 +123,12 @@ export const services: Service[] = [
         unit: "scope-based",
         includes: ["One conversion-focused page", "Custom design + motion", "Copy structure support", "2-week delivery"],
       },
+      {
+        name: "Marketing Site",
+        price: "Custom quote",
+        unit: "scope-based",
+        includes: ["Multi-page custom architecture", "CMS & component system", "Performance & analytics setup", "4-week delivery"],
+      },
     ],
     seo: {
       title: "Web Development — Arche",
@@ -168,6 +174,12 @@ export const services: Service[] = [
         price: "Custom quote",
         unit: "scope-based",
         includes: ["Grounded on your content", "Website embed", "Escalation to human inbox", "30-day tuning window"],
+      },
+      {
+        name: "Lead Qualification Bot",
+        price: "Custom quote",
+        unit: "scope-based",
+        includes: ["Custom qualification logic", "CRM & tool integrations", "Booking workflow automation", "30-day tuning window"],
       },
     ],
     seo: {
@@ -215,6 +227,12 @@ export const services: Service[] = [
         unit: "scope-based",
         includes: ["Process mapping session", "Automation opportunity report", "Priority roadmap", "Fixed quote for build phase"],
       },
+      {
+        name: "Core Workflow Pipeline",
+        price: "Custom quote",
+        unit: "scope-based",
+        includes: ["2–3 integrated workflows", "AI decision & extraction nodes", "CRM & tool sync", "Error monitoring & alerts"],
+      },
     ],
     seo: {
       title: "AI Automation — Arche",
@@ -234,6 +252,7 @@ export const siteContent = {
     links: [
       { label: "Work", to: "/work" },
       { label: "Services", to: "/services" },
+      { label: "Pricing", to: "/pricing" },
       { label: "Contact", to: "/contact" },
     ],
     cta: { label: "Start a Project", to: "/contact" },
@@ -328,7 +347,7 @@ export const siteContent = {
 
   footer: {
     cols: [
-      { t: "Studio", l: [{ label: "Work", to: "/work" }, { label: "Services", to: "/services" }, { label: "Contact", to: "/contact" }] },
+      { t: "Studio", l: [{ label: "Work", to: "/work" }, { label: "Services", to: "/services" }, { label: "Pricing", to: "/pricing" }, { label: "Contact", to: "/contact" }] },
       {
         t: "Services",
         l: [

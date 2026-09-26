@@ -14,8 +14,8 @@ import { announcePreviewDone, markPreviewPlayed } from "../lib/autoplay";
  */
 
 const SLUG = "ai-chatbots";
-/** Pause after entering view before the demo asks its own question. */
-const AUTO_ASK_MS = 1500;
+/** PROMPT 28: Pause exactly 1 second (1000ms) after entering view before auto-sending the first question. */
+const AUTO_ASK_MS = 1000;
 const QUESTIONS = [
   {
     id: "booking",
@@ -153,11 +153,11 @@ export function AgentDemo({
     });
   };
 
-  /* PROMPT 24 — first view: ask one suggested question by itself, once.
-     Nothing is booked as "played" until the question actually goes out, so
-     scrolling away inside the pause simply re-arms it on the way back. */
+  /* PROMPT 28 — AI Chatbots: the moment this tab becomes active and is in viewport,
+     wait exactly 1 second, then programmatically "send" the first suggested question
+     using the exact identical code path. */
   useEffect(() => {
-    if (autoStarted.current || !auto || !active || preview) return;
+    if (autoStarted.current || !active || preview) return;
     const id = window.setTimeout(() => {
       autoTimer.current = 0;
       autoStarted.current = true;
@@ -172,7 +172,7 @@ export function AgentDemo({
       if (autoTimer.current === id) autoTimer.current = 0;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auto, active, preview]);
+  }, [active, preview]);
 
   const reset = () => {
     clearTimers();

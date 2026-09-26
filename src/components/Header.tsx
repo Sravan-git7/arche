@@ -48,24 +48,12 @@ export function Header() {
   }, [route]);
 
   /*
-   * PROMPT 20 — nav hover preview → Services tab.
-   * A thumbnail click lands on the Services section with that service's
-   * tab already committed (sessionStorage carries it across a route
-   * change; the event covers same-page jumps).
+   * PROMPT 26 — Nav hover preview → dedicated service pages.
+   * Clicking a thumbnail or service item goes directly to /services/:slug.
    */
   const gotoService = (slug: string) => {
     setSvcOpen(false);
-    try {
-      sessionStorage.setItem("arche:svcTab", slug);
-    } catch {
-      /* ignore */
-    }
-    window.dispatchEvent(new CustomEvent("arche:select-service", { detail: slug }));
-    if (route !== "/") {
-      navigate("/");
-    } else {
-      document.getElementById("services-home")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    navigate(`/services/${slug}`);
   };
 
   const { links, cta } = siteContent.nav;
@@ -158,7 +146,7 @@ export function Header() {
         </div>
 
         {/* services drawer (desktop) — live idle previews; a thumbnail
-            click jumps to that service's tab in the Services section */}
+            click navigates directly to that dedicated service page */}
         <div
           className="hidden overflow-hidden md:block"
           style={{
@@ -171,10 +159,10 @@ export function Header() {
         >
           <div className="wrap grid grid-cols-4 gap-[18px] py-[26px]">
             {services.map((s, i) => (
-              <button
+              <Link
                 key={s.slug}
-                type="button"
-                onClick={() => gotoService(s.slug)}
+                to={`/services/${s.slug}`}
+                onClick={() => setSvcOpen(false)}
                 className="group flex flex-col gap-[8px] border-t pt-[14px] text-left"
                 style={{
                   borderColor: "var(--line)",
@@ -182,7 +170,7 @@ export function Header() {
                   transform: svcOpen ? "translateY(0)" : "translateY(10px)",
                   transition: `opacity .45s var(--e-out) ${80 + i * 55}ms, transform .45s var(--e-out) ${80 + i * 55}ms`,
                 }}
-                data-cursor="OPEN"
+                cursor="OPEN"
               >
                 <span className="mono">{s.n}</span>
                 <span className="d4 transition-colors duration-300 group-hover:text-[var(--accent-deep)]">
@@ -190,7 +178,7 @@ export function Header() {
                 </span>
                 <span className="body-s">{s.tagline}</span>
                 {svcOpen && <ServicePreview slug={s.slug} />}
-              </button>
+              </Link>
             ))}
           </div>
         </div>
@@ -213,23 +201,37 @@ export function Header() {
               .filter((l) => l.label !== "Services")
               .map((l, i) => (
                 <MobileItem key={l.label} open={open} i={i}>
-                  <Link to={l.to} className="d3 block border-b py-[16px]" style={{ borderColor: "var(--line)" }}>
+                  <Link
+                    to={l.to}
+                    onClick={() => setOpen(false)}
+                    className="d3 block border-b py-[16px]"
+                    style={{ borderColor: "var(--line)" }}
+                  >
                     {l.label}
                   </Link>
                 </MobileItem>
               ))}
             <MobileItem open={open} i={2}>
-              <p className="mono mt-[26px] mb-[6px]">Services</p>
+              <div className="flex items-center justify-between border-b pb-[6px] pt-[20px]" style={{ borderColor: "var(--line)" }}>
+                <span className="mono text-[11px] uppercase tracking-wider text-[var(--accent-deep)]">Services</span>
+                <Link to="/services" onClick={() => setOpen(false)} className="mono lnk text-[11px]">
+                  All services →
+                </Link>
+              </div>
             </MobileItem>
             {services.map((s, i) => (
               <MobileItem key={s.slug} open={open} i={3 + i}>
                 <Link
                   to={`/services/${s.slug}`}
-                  className="flex items-baseline gap-[14px] border-b py-[13px]"
+                  onClick={() => setOpen(false)}
+                  className="group flex items-baseline justify-between border-b py-[13px]"
                   style={{ borderColor: "var(--line)" }}
                 >
-                  <span className="mono mono-a">{s.n}</span>
-                  <span className="d4">{s.title}</span>
+                  <div className="flex items-baseline gap-[14px]">
+                    <span className="mono mono-a">{s.n}</span>
+                    <span className="d4 group-hover:text-[var(--accent-deep)] transition-colors">{s.title}</span>
+                  </div>
+                  <span className="mono text-[var(--muted)] group-hover:translate-x-1 transition-transform">→</span>
                 </Link>
               </MobileItem>
             ))}

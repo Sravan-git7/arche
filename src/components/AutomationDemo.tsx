@@ -26,8 +26,8 @@ import { announcePreviewDone, markPreviewPlayed } from "../lib/autoplay";
  */
 
 const SLUG = "ai-automation";
-/** Beat between the manual run finishing and the automated run starting. */
-const CHAIN_GAP = 900;
+/** PROMPT 28: Beat of exactly 1 second (1000ms) between manual run completing and automated run starting. */
+const CHAIN_GAP = 1000;
 
 type Mode = "manual" | "auto";
 type Phase = "idle" | "running" | "done";
@@ -88,7 +88,15 @@ const offsetIn = (el: HTMLElement, stop: HTMLElement) => {
 
 const fmt = (s: number) => `${s.toFixed(1)}s`;
 
-export function AutomationDemo({ preview = false, auto = false }: { preview?: boolean; auto?: boolean }) {
+export function AutomationDemo({
+  active = true,
+  preview = false,
+  auto = false,
+}: {
+  active?: boolean;
+  preview?: boolean;
+  auto?: boolean;
+}) {
   const root = useRef<HTMLDivElement>(null);
   const tl = useRef<gsap.core.Timeline | null>(null);
   const collapsed = useRef(false);
@@ -100,6 +108,7 @@ export function AutomationDemo({ preview = false, auto = false }: { preview?: bo
   const [ran, setRan] = useState<Mode>("manual");
   const [results, setResults] = useState<Partial<Record<Mode, number>>>({});
   const [chainOn, setChainOn] = useState(false); // unattended first-view preview
+  const [displayMult, setDisplayMult] = useState(1);
 
   /** Next run-completion hook — the autoplay chain lives here. */
   const chain = useRef<((m: Mode) => void) | null>(null);
@@ -111,6 +120,33 @@ export function AutomationDemo({ preview = false, auto = false }: { preview?: bo
   const setState = (el: HTMLElement, s: RowState) => {
     if (el.dataset.state !== s) el.dataset.state = s;
   };
+
+  // PROMPT 32 (Delight 5) — Multiplier counts up from 1× to final value over ~1s
+  useEffect(() => {
+    if (results.manual && results.auto) {
+      const target = Math.max(1, Math.round(results.manual / results.auto));
+      const startVal = 1;
+      const duration = 1000;
+      const startTime = performance.now();
+
+      let rafId = 0;
+      const step = (now: number) => {
+        const elapsed = now - startTime;
+        const progress = Math.min(1, elapsed / duration);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = Math.round(startVal + (target - startVal) * eased);
+        setDisplayMult(current);
+
+        if (progress < 1) {
+          rafId = requestAnimationFrame(step);
+        }
+      };
+      rafId = requestAnimationFrame(step);
+      return () => cancelAnimationFrame(rafId);
+    } else {
+      setDisplayMult(1);
+    }
+  }, [results.manual, results.auto]);
 
   // node starts collapsed-away
   useLayoutEffect(() => {
@@ -402,12 +438,12 @@ export function AutomationDemo({ preview = false, auto = false }: { preview?: bo
   };
 
   /*
-   * PROMPT 24 — the first-view preview: MANUAL once, a beat, AUTOMATED once.
-   * Marked as played the moment it starts, so switching tabs and coming back
-   * never replays it (and never fights the visitor's own run).
+   * PROMPT 28 — AI Automation autoplay: the moment this tab becomes active and is in viewport,
+   * auto-trigger the MANUAL run, wait for it to complete, wait 1 second, then auto-trigger
+   * the AUTOMATED run without requiring the RUN button to be clicked.
    */
   useEffect(() => {
-    if (autoStarted.current || !auto || preview) return;
+    if (autoStarted.current || !active || preview) return;
     const id = window.setTimeout(() => {
       autoStarted.current = true;
       markPreviewPlayed(SLUG);
@@ -428,7 +464,7 @@ export function AutomationDemo({ preview = false, auto = false }: { preview?: bo
     }, 420);
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auto, preview]);
+  }, [active, preview]);
 
   // hover preview: sample the automated run once
   useEffect(() => {
@@ -544,8 +580,17 @@ export function AutomationDemo({ preview = false, auto = false }: { preview?: bo
           )}
         </span>
         {both && (
-          <span className="mono mono-fg">
-            Manual {fmt(results.manual!)} → Automated {fmt(results.auto!)} · {Math.round(results.manual! / results.auto!)}× faster
+          <span className="mono mono-fg flex items-center gap-[4px]">
+            <span>Manual {fmt(results.manual!)} → Automated {fmt(results.auto!)} ·</span>
+            <strong
+              className="text-[var(--accent)] font-bold transition-transform duration-200"
+              style={{
+                display: "inline-block",
+                transform: displayMult === Math.round(results.manual! / results.auto!) ? "scale(1.08)" : "scale(1)",
+              }}
+            >
+              {displayMult}× faster
+            </strong>
           </span>
         )}
       </div>
