@@ -859,6 +859,42 @@ textarea.field {
   animation: clusterPulseRing 2.4s var(--e-out) infinite;
 }
 
+/* ---------- System Model stage glyphs (PROMPT 35) ----------
+   The rail drives ink via currentColor; these marks carry the motion:
+   dash-flow along signal lines, one scanning arc on the output seal,
+   and the hover answer (glyph glow + a faster pulse ring). */
+.glyph-flow {
+  stroke-dasharray: 10 14;
+  animation: glyphFlow 1.5s linear infinite;
+}
+@keyframes glyphFlow {
+  to {
+    stroke-dashoffset: -48;
+  }
+}
+.glyph-scan {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: glyphScan 6s linear infinite;
+}
+@keyframes glyphScan {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.cluster-hover .stage-glyph {
+  filter: drop-shadow(0 0 9px color-mix(in srgb, var(--accent) 75%, transparent));
+}
+.cluster-hover .cluster-pulse-ring {
+  animation-duration: 1.15s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .glyph-flow,
+  .glyph-scan {
+    animation: none;
+  }
+}
+
 /* ---------- Arche Labs hover previews (paused until hover/focus) ---------- */
 .lab-card:hover {
   transform: translateY(-4px);
