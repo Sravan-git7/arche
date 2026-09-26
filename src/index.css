@@ -2004,3 +2004,19 @@ img {
     opacity: 1;
   }
 }
+/* full routing reached — the event settles into the last system */
+.ba-settle {
+  animation: baSettle 0.7s var(--e-out) both;
+  border: 1.5px solid var(--accent);
+  box-shadow: 0 0 10px var(--accent-deep);
+}
+@keyframes baSettle {
+  0% {
+    transform: translate(-50%, -50%) scale(0.4);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.4);
+    opacity: 0;
+  }
+}

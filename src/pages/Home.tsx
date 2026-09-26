@@ -6,7 +6,6 @@ import { FAQ } from "../components/FAQ";
 import { ConnectedSystem } from "../components/ConnectedSystem";
 import { ArcheAssistant } from "../components/ArcheAssistant";
 import { ProblemSystem } from "../components/ProblemSystem";
-import { BeforeAfter } from "../components/BeforeAfter";
 import { Architecture3D } from "../components/Architecture3D";
 import { Labs } from "../components/Labs";
 import { ProgressRail } from "../components/ProgressRail";
@@ -54,7 +53,6 @@ export function Home() {
         <Chapters />
       </div>
       <div data-chapter="System">
-        <BeforeAfter />
         <Architecture3D />
         <ConnectedSystem />
       </div>
