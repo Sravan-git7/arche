@@ -888,9 +888,98 @@ textarea.field {
 .cluster-hover .cluster-pulse-ring {
   animation-duration: 1.15s;
 }
+/* ---------- Labs idle invitations (PROMPT 36) ----------
+   One distinct, very subtle looping micro-motion per sketch while
+   untouched — a pre-echo of each sketch's own triggered response,
+   dim and slow enough to read as "alive and waiting", never as a
+   competing animation. */
+/* 01 — ghost packet drifting the track when no payload is in flight */
+.lab-ghost-packet {
+  left: 8%;
+  opacity: 0;
+  animation: labGhostPacket 8s ease-in-out infinite;
+}
+@keyframes labGhostPacket {
+  0% {
+    left: 8%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.3;
+  }
+  55% {
+    left: 88%;
+    opacity: 0.26;
+  }
+  66% {
+    opacity: 0;
+  }
+  100% {
+    left: 8%;
+    opacity: 0;
+  }
+}
+/* 02 — slow diagonal breathing wave across the dot matrix; it stands
+   down while the pointer (or a touch) is driving the field */
+.lab-dot {
+  animation: labDotWave 4.6s ease-in-out infinite;
+}
+@keyframes labDotWave {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.3);
+  }
+}
+.attention-field:hover .lab-dot,
+.attention-field.attention-active .lab-dot {
+  animation: none;
+}
+/* 04 — soft anticipation halo on the node "Step" would enter next */
+.lab-idle-next {
+  animation: labNextBreath 3.8s ease-in-out infinite;
+}
+@keyframes labNextBreath {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(200, 241, 79, 0);
+  }
+  50% {
+    box-shadow: 0 0 14px 1px rgba(200, 241, 79, 0.22);
+  }
+}
+/* 05 — slow glow bloom behind the live type */
+.lab-bloom {
+  animation: labBloom 5.5s ease-in-out infinite;
+}
+@keyframes labBloom {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+  50% {
+    opacity: 0.6;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .glyph-flow,
   .glyph-scan {
+    animation: none;
+  }
+  .lab-ghost-packet {
+    animation: none;
+    opacity: 0.18;
+    left: 48%;
+  }
+  .lab-dot,
+  .lab-idle-next,
+  .lab-bloom {
     animation: none;
   }
 }
