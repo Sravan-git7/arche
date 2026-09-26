@@ -3,19 +3,12 @@ import { prefersReducedMotion } from "../lib/gsap";
 import { announcePreviewDone, markPreviewPlayed } from "../lib/autoplay";
 
 const PHASES = ["IDEA", "STRUCTURE", "INTERFACE", "LIVE"] as const;
-const sequencePlayed = new Set<string>();
 const SLUG = "web-development";
 
 /**
- * Web Development demo: IDEA → STRUCTURE → INTERFACE → LIVE.
+ * PROMPT 28 — Web Development demo: IDEA → STRUCTURE → INTERFACE → LIVE.
  *
- * The build sequence auto-plays once when the demo first becomes active,
- * then hands control to the visitor at LIVE. Scrolling away and back does
- * not reset it, and switching back to the tab does not replay the build.
- *
- * PROMPT 24 — at LIVE the demo says so out loud: a pulsing cursor-hand cue
- * invites the visitor to look around, and steps aside the moment they touch
- * anything (or after a few seconds on its own).
+ * The build sequence automatically plays on view, then hands control to the visitor at LIVE.
  */
 export function WebDevDemo({
   active = false,
@@ -26,8 +19,7 @@ export function WebDevDemo({
   preview?: boolean;
   auto?: boolean;
 }) {
-  const alreadyPlayed = sequencePlayed.has(SLUG);
-  const [phase, setPhase] = useState(alreadyPlayed ? 3 : 0);
+  const [phase, setPhase] = useState(0);
   const timers = useRef<number[]>([]);
   const started = useRef(false);
 
@@ -36,20 +28,24 @@ export function WebDevDemo({
   useEffect(() => {
     if (started.current || !active || preview) return;
     started.current = true;
-    if (auto) markPreviewPlayed(SLUG);
-    if (alreadyPlayed || prefersReducedMotion()) {
+    markPreviewPlayed(SLUG);
+
+    if (prefersReducedMotion()) {
       setPhase(3);
+      announcePreviewDone(SLUG);
       return;
     }
-    [750, 1750, 3300].forEach((ms, i) => timers.current.push(window.setTimeout(() => setPhase(i + 1), ms)));
-  }, [active, alreadyPlayed, preview, auto]);
 
-  useEffect(() => {
-    if (phase >= 3) {
-      sequencePlayed.add(SLUG);
-      announcePreviewDone(SLUG);
-    }
-  }, [phase]);
+    // Step through the phases: IDEA (0) -> STRUCTURE (1) -> INTERFACE (2) -> LIVE (3)
+    timers.current.push(
+      window.setTimeout(() => setPhase(1), 800),
+      window.setTimeout(() => setPhase(2), 1800),
+      window.setTimeout(() => {
+        setPhase(3);
+        announcePreviewDone(SLUG);
+      }, 3200)
+    );
+  }, [active, preview]);
 
   return <Core phase={phase} preview={preview} />;
 }

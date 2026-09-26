@@ -90,17 +90,38 @@ export function Link({
   cursor?: string;
   onNavigate?: () => void;
 }) {
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    const target = e.currentTarget;
+    const isBtn = target.classList.contains("btn") || target.dataset.magnetic !== undefined || (typeof children === "string" && children.toLowerCase().includes("start a project"));
+
+    if (isBtn && !prefersReducedMotion()) {
+      // PROMPT 32 (Delight 4): ~150ms tactile scale-down-then-up press micro-reward
+      gsap.to(target, {
+        scale: 0.94,
+        duration: 0.07,
+        yoyo: true,
+        repeat: 1,
+        ease: "power2.inOut",
+        onComplete: () => {
+          gsap.set(target, { scale: 1 });
+          onNavigate?.();
+          navigate(to);
+        },
+      });
+    } else {
+      onNavigate?.();
+      navigate(to);
+    }
+  };
+
   return (
     <a
       href={`#${to}`}
       className={className}
       style={style}
       data-cursor={cursor}
-      onClick={(e) => {
-        e.preventDefault();
-        onNavigate?.();
-        navigate(to);
-      }}
+      onClick={handleClick}
     >
       {children}
     </a>

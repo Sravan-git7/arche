@@ -293,7 +293,8 @@ body {
   transform: translateY(-2px);
 }
 .btn:active {
-  transform: translateY(0) scale(0.98);
+  transform: translateY(1px) scale(0.95);
+  transition-duration: 75ms;
 }
 .btn-ghost {
   background: transparent;
@@ -455,6 +456,50 @@ textarea.field {
 }
 .pv-breath {
   animation: pvBreath 2.2s ease-in-out infinite;
+}
+
+/* Approach Visual Custom Keyframes */
+@keyframes approachPulseRing {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 0.25;
+  }
+  100% {
+    transform: scale(0.9);
+    opacity: 0.8;
+  }
+}
+.approach-pulse-ring {
+  animation: approachPulseRing 2.8s ease-in-out infinite;
+}
+
+@keyframes approachWaveLoop {
+  0% {
+    stroke-dashoffset: 200;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+.approach-wave-loop {
+  stroke-dasharray: 40 10;
+  animation: approachWaveLoop 4s linear infinite;
+}
+
+@keyframes approachBeamFlow {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+.approach-beam-flow {
+  animation: approachBeamFlow 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 /* ---------- interactive demo primitives ---------- */
@@ -760,6 +805,58 @@ textarea.field {
 }
 .cs-edge {
   animation: drawLine 0.7s var(--e-out) both;
+}
+
+@keyframes csPulseFlash {
+  0% {
+    stroke: var(--accent);
+    filter: drop-shadow(0 0 12px var(--accent)) drop-shadow(0 0 4px var(--accent-deep));
+  }
+  50% {
+    stroke: var(--accent);
+    filter: drop-shadow(0 0 16px var(--accent)) drop-shadow(0 0 8px var(--accent));
+  }
+  100% {
+    stroke: var(--accent-deep);
+    filter: drop-shadow(0 0 2px var(--accent-deep));
+  }
+}
+
+.cs-pulsing-edge {
+  animation: csPulseFlash 1.4s var(--e-out) forwards;
+}
+
+/* ---------- 3D System Model: Cluster Activation Bloom (Prompt 29) ---------- */
+@keyframes clusterBloomGlow {
+  0%, 100% {
+    box-shadow: 0 0 28px rgba(200, 241, 79, 0.45), 0 0 65px rgba(127, 174, 0, 0.22), 0 30px 60px -25px rgba(12, 12, 13, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 44px rgba(200, 241, 79, 0.75), 0 0 95px rgba(200, 241, 79, 0.42), 0 30px 60px -20px rgba(12, 12, 13, 0.65);
+  }
+}
+
+.cluster-active-bloom {
+  animation: clusterBloomGlow 3.6s ease-in-out infinite;
+}
+
+@keyframes clusterPulseRing {
+  0% {
+    transform: scale(0.96);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1.18);
+    opacity: 0;
+  }
+}
+
+.cluster-pulse-ring {
+  animation: clusterPulseRing 2.4s var(--e-out) infinite;
 }
 
 /* ---------- Arche Labs hover previews (paused until hover/focus) ---------- */

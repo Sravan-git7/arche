@@ -47,17 +47,19 @@ export const STAGES: Record<string, (p: StageProps) => ReactElement> = Object.fr
   })
 );
 
-/** Video Editing — RAW → SELECT → CUT → MOTION → CAPTIONS → GRADE → EXPORT scrubber (Prompt 09). */
+/** Video Editing — RAW → SELECT → CUT → MOTION → CAPTIONS → GRADE → EXPORT scrubber (Prompt 09 / Prompt 28). */
 STAGES["video-editing"] = ({ active, preview, auto }: StageProps) => (
   <VideoEditingDemo active={active} preview={preview} auto={auto} />
 );
-/** Web Development — IDEA → STRUCTURE → INTERFACE → LIVE, then it is usable. */
+/** Web Development — IDEA → STRUCTURE → INTERFACE → LIVE (Prompt 08 / Prompt 28). */
 STAGES["web-development"] = ({ active, preview, auto }: StageProps) => (
   <WebDevDemo active={active} preview={preview} auto={auto} />
 );
-/** AI Automation — a real MANUAL vs AUTOMATED run (Prompt 06). */
-STAGES["ai-automation"] = ({ preview, auto }: StageProps) => <AutomationDemo preview={preview} auto={auto} />;
-/** AI Chatbots — three suggested questions; the full assistant owns free text. */
+/** AI Automation — a real MANUAL then AUTOMATED run (Prompt 06 / Prompt 28). */
+STAGES["ai-automation"] = ({ active, preview, auto }: StageProps) => (
+  <AutomationDemo active={active} preview={preview} auto={auto} />
+);
+/** AI Chatbots — three suggested questions; auto-sends first question on view (Prompt 07 / Prompt 28). */
 STAGES["ai-chatbots"] = ({ active, preview, auto }: StageProps) => (
   <AgentDemo active={active} preview={preview} auto={auto} />
 );

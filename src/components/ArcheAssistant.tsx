@@ -60,6 +60,7 @@ export function ArcheAssistant() {
   const timers = useRef<number[]>([]);
   const scroller = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const responseCount = useRef(0);
 
   useEffect(() => {
     const list = timers.current;
@@ -82,15 +83,61 @@ export function ArcheAssistant() {
     setInput("");
     setPhase("thinking");
 
+    responseCount.current += 1;
+    // PROMPT 32 (Delight 3): subtle typing correction once every 3-4 responses
+    const shouldCorrect = responseCount.current % 3 === 2;
+
     const finish = () => {
       setPhase("streaming");
       // the visual trigger fires immediately as the response begins streaming
       setTrigger(r.trigger);
       rememberLastTrigger(r.trigger); // Prompt 16 → 17 handoff
+
+      let initialFirstLine = r.response[0] || "";
+      const finalFirstLine = r.response[0] || "";
+
+      if (shouldCorrect && initialFirstLine.length > 20) {
+        // Pairs of [targetWord, draftWordToBrieflyShow]
+        const pairs: [string, string][] = [
+          ["systems", "tools"],
+          ["system", "tool"],
+          ["automated", "scripted"],
+          ["fast", "quick"],
+          ["build", "make"],
+          ["tailored", "custom"],
+          ["focused", "simple"],
+        ];
+        for (const [target, draft] of pairs) {
+          const regex = new RegExp(`\\b${target}\\b`, "i");
+          if (regex.test(initialFirstLine)) {
+            initialFirstLine = initialFirstLine.replace(regex, draft);
+            break;
+          }
+        }
+      }
+
+      const initialLines = [initialFirstLine, ...r.response.slice(1)];
+
       setMessages((m) => [
         ...m,
-        { role: "agent", lines: r.response, revealed: 1, label: r.label, id: seq++ },
+        { role: "agent", lines: initialLines, revealed: 1, label: r.label, id: seq++ },
       ]);
+
+      // If typing correction applied, replace draft word with final word after brief pause
+      if (initialFirstLine !== finalFirstLine) {
+        later(() => {
+          setMessages((m) => {
+            const next = [...m];
+            const last = next[next.length - 1];
+            if (last.role !== "agent") return m;
+            const updatedLines = [...last.lines];
+            updatedLines[0] = finalFirstLine;
+            next[next.length - 1] = { ...last, lines: updatedLines };
+            return next;
+          });
+        }, 220);
+      }
+
       r.response.slice(1).forEach((_, i) =>
         later(() => {
           setMessages((m) => {

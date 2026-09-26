@@ -5,32 +5,13 @@ import { KineticWord } from "./Kinetic";
 import { CARD, CONVERGE_AT, LAST, STAGES, focusIndex, linkProgress, project } from "../lib/rail3d";
 
 /**
- * PROMPT 13 — 3D System Moment (signature pinned camera-rail scene).
- * PROMPT 24 — legibility rebuild.
+ * PROMPT 13 / 24 / 29 — 3D System Model (Spatial Pinned Rail).
  *
- * Spatial representation of Arche's system model:
- *   INPUT → INTELLIGENCE → SYSTEM → ACTION → OUTPUT
- *
- * Camera: one fixed rail driven 1:1 by scroll progress (pinned sequence).
- * No orbit controls, no free rotate.
- *
- * Why the geometry is solved here instead of handed to CSS 3D:
- * The five clusters sit at even intervals along a SINGLE depth axis and the
- * camera travels that axis. Position, size and opacity for every cluster are
- * a pure function of scroll progress (`project()` in lib/rail3d), so
- *   · a cluster can never drift through the camera plane and blow up over
- *     the scene (the old failure mode — huge text printing on top of itself),
- *   · a cluster the camera has passed fades out and swings out of frame
- *     before the next one arrives,
- *   · the whole rail can be verified numerically at every scroll position.
- *
- * Text lives ONLY in fixed HUD slots, each with a solid background and its
- * own z-layer, so no two text elements can overlap at any scroll position:
- *   left    the camera rail — one dedicated row per stage, never shared
- *   bottom-right  the active stage card (identity + one-line role)
- *   top-right     the hover tooltip for the cluster under the cursor
- *   centre        SYSTEM CONVERGED → PROCESS, the final beat
- * The cluster planes themselves carry no text at all.
+ * PROMPT 29 updates:
+ *  - Vertical scroll distance increased by +52% (+=380%) for an unhurried, cinematic move.
+ *  - Spacing & padding around all HUD slots, labels, and tooltips increased by 2–3x.
+ *  - Continuous subtle camera drift / sway active even when scroll is static.
+ *  - Stronger node cluster activation pulse with pronounced brightness and luminous soft bloom.
  */
 
 export function Architecture3D() {
@@ -51,6 +32,10 @@ export function Architecture3D() {
     () => typeof window !== "undefined" && window.matchMedia("(min-width: 900px)").matches && !prefersReducedMotion()
   );
 
+  // Live camera drift / sway reference
+  const driftRef = useRef({ x: 0, y: 0 });
+  const scrollProgRef = useRef(0);
+
   /* The rail only exists where it can be pinned: desktop, motion allowed. */
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 900px)");
@@ -66,30 +51,31 @@ export function Architecture3D() {
     const scene = sceneRef.current;
     if (!pin || !scene || !rail3d) return;
 
-    let box = { w: scene.clientWidth || 800, h: scene.clientHeight || 420 };
+    let box = { w: scene.clientWidth || 900, h: scene.clientHeight || 500 };
     const measure = () => {
       box = { w: scene.clientWidth || box.w, h: scene.clientHeight || box.h };
     };
 
     let lastActive = -1;
     let lastConv: boolean | null = null;
+    let rafId = 0;
 
-    const frame = (p: number) => {
-      const pts = STAGES.map((_, i) => project(i, p, box));
+    const frame = (p: number, drift = driftRef.current) => {
+      scrollProgRef.current = p;
+      const pts = STAGES.map((_, i) => project(i, p, box, drift));
 
       pts.forEach((pt, i) => {
         const el = cards.current[i];
         if (!el) return;
-        // A slight rotateY per cluster turns the rail into a curved wall
-        // facing the camera; perspective lives on the scene container.
-        const tilt = -STAGES[i].ox * 13;
-        el.style.transform = `translate3d(${pt.x.toFixed(2)}px, ${pt.y.toFixed(2)}px, 0) scale(${pt.scale.toFixed(4)}) rotateY(${tilt.toFixed(2)}deg) rotateX(4deg)`;
+        // A slight rotateY per cluster turns the rail into a curved wall facing camera
+        const tilt = -STAGES[i].ox * 11;
+        el.style.transform = `translate3d(${pt.x.toFixed(2)}px, ${pt.y.toFixed(2)}px, 0) scale(${pt.scale.toFixed(4)}) rotateY(${tilt.toFixed(2)}deg) rotateX(3deg)`;
         el.style.opacity = pt.opacity.toFixed(3);
         el.style.visibility = pt.visible ? "visible" : "hidden";
         el.style.zIndex = String(pt.z);
       });
 
-      // Connectors draw in as the camera closes each gap.
+      // Connectors draw in as the camera closes each gap
       for (let i = 0; i < LAST; i += 1) {
         const line = links.current[i];
         if (!line) continue;
@@ -104,8 +90,8 @@ export function Architecture3D() {
         const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
         line.setAttribute("stroke-dasharray", `${len.toFixed(2)}`);
         line.setAttribute("stroke-dashoffset", (len * (1 - prog)).toFixed(2));
-        line.setAttribute("opacity", (on ? Math.min(a.opacity, b.opacity) * (0.35 + prog * 0.65) : 0).toFixed(3));
-        line.setAttribute("stroke-width", prog >= 1 ? "1.8" : "1.2");
+        line.setAttribute("opacity", (on ? Math.min(a.opacity, b.opacity) * (0.4 + prog * 0.6) : 0).toFixed(3));
+        line.setAttribute("stroke-width", prog >= 1 ? "2.2" : "1.4");
       }
 
       if (railFill.current) railFill.current.style.transform = `scaleY(${p.toFixed(4)})`;
@@ -123,6 +109,19 @@ export function Architecture3D() {
       }
     };
 
+    // Continuous subtle camera drift loop even when scroll position is static
+    const animateDrift = (time: number) => {
+      if (!prefersReducedMotion()) {
+        driftRef.current = {
+          x: Math.sin(time * 0.00075) * 8.5,
+          y: Math.cos(time * 0.00055) * 5.5,
+        };
+        frame(scrollProgRef.current, driftRef.current);
+      }
+      rafId = requestAnimationFrame(animateDrift);
+    };
+    rafId = requestAnimationFrame(animateDrift);
+
     const ro = new ResizeObserver(() => {
       measure();
       frame(ScrollTrigger.getById("3d-system-pinned-rail")?.progress ?? 0);
@@ -131,11 +130,12 @@ export function Architecture3D() {
     measure();
 
     const ctx = gsap.context(() => {
+      // PROMPT 29: Increased vertical scroll distance from +=250% to +=380% (+52%) for unhurried cinematic travel
       const st = ScrollTrigger.create({
         id: "3d-system-pinned-rail",
         trigger: pin,
         start: "top top",
-        end: "+=250%",
+        end: "+=380%",
         pin: true,
         anticipatePin: 1,
         invalidateOnRefresh: true,
@@ -149,6 +149,7 @@ export function Architecture3D() {
     }, pin);
 
     return () => {
+      cancelAnimationFrame(rafId);
       ro.disconnect();
       ctx.revert();
     };
@@ -166,14 +167,12 @@ export function Architecture3D() {
     labelTl.current?.kill();
     labelTl.current = gsap
       .timeline()
-      .to(el, { autoAlpha: 0, y: -7, duration: 0.15, ease: "power2.in" })
+      .to(el, { autoAlpha: 0, y: -8, duration: 0.16, ease: "power2.in" })
       .add(() => {
         shownRef.current = active;
         setShown(active);
       })
-      // immediateRender:false — the "from" state must not land before the
-      // outgoing label has finished leaving.
-      .fromTo(el, { y: 9 }, { autoAlpha: 1, y: 0, duration: 0.28, ease: "power3.out", immediateRender: false });
+      .fromTo(el, { y: 10 }, { autoAlpha: 1, y: 0, duration: 0.3, ease: "power3.out", immediateRender: false });
   }, [active]);
 
   useEffect(
@@ -183,13 +182,13 @@ export function Architecture3D() {
     []
   );
 
-  /** Clicking a stage number travels the rail there — scroll stays the source of truth. */
+  /** Clicking a stage number travels the rail there */
   const gotoStage = (i: number) => {
     const st = ScrollTrigger.getById("3d-system-pinned-rail");
     if (!st) return;
     const y = st.start + (i / LAST) * (st.end - st.start);
     const lenis = getLenis();
-    if (lenis) lenis.scrollTo(y, { duration: 1.15 });
+    if (lenis) lenis.scrollTo(y, { duration: 1.25 });
     else window.scrollTo({ top: y, behavior: prefersReducedMotion() ? "auto" : "smooth" });
   };
 
@@ -205,8 +204,8 @@ export function Architecture3D() {
     >
       {rail3d ? (
         /* ---------- desktop: pinned camera rail ---------- */
-        <div className="wrap flex h-[100svh] flex-col justify-center gap-[clamp(12px,1.8vh,20px)] pt-[86px] pb-[22px]">
-          <header className="flex flex-none flex-wrap items-end justify-between gap-x-[28px] gap-y-[12px]">
+        <div className="wrap flex h-[100svh] flex-col justify-center gap-[clamp(16px,2.2vh,28px)] pt-[80px] pb-[28px]">
+          <header className="flex flex-none flex-wrap items-end justify-between gap-x-[32px] gap-y-[14px]">
             <div className="flex flex-col gap-[8px]">
               <div className="flex items-center gap-[10px]">
                 <span className="mono mono-a">03 // SPATIAL ARCHITECTURE</span>
@@ -217,10 +216,10 @@ export function Architecture3D() {
                 word="SYSTEM MODEL"
                 mode="assemble"
                 className="block select-none"
-                style={{ fontSize: "clamp(28px,4.6vw,66px)", fontWeight: 600, letterSpacing: "-0.05em", lineHeight: 0.92 }}
+                style={{ fontSize: "clamp(28px,4.4vw,64px)", fontWeight: 600, letterSpacing: "-0.05em", lineHeight: 0.92 }}
               />
             </div>
-            <p className="body max-w-[42ch]" style={{ color: "var(--muted)" }}>
+            <p className="body max-w-[44ch] text-[var(--muted)] leading-relaxed">
               One fixed camera rail. Five clusters along a single depth axis:{" "}
               <strong style={{ color: "var(--fg)" }}>INPUT → INTELLIGENCE → SYSTEM → ACTION → OUTPUT</strong>. Scroll
               travels the rail.
@@ -230,7 +229,7 @@ export function Architecture3D() {
           {/* ---------- the scene ---------- */}
           <div
             ref={sceneRef}
-            className="relative min-h-[260px] w-full flex-1 overflow-hidden rounded-[8px] border"
+            className="relative min-h-[440px] w-full flex-1 overflow-hidden rounded-[8px] border shadow-xs"
             style={{
               borderColor: "var(--line)",
               background: "var(--bg-2)",
@@ -241,23 +240,35 @@ export function Architecture3D() {
           >
             {/* blueprint ground */}
             <div
-              className="pointer-events-none absolute inset-0 opacity-45"
+              className="pointer-events-none absolute inset-0 opacity-40"
               style={{
                 backgroundImage:
                   "linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px)",
-                backgroundSize: "44px 44px",
+                backgroundSize: "48px 48px",
               }}
               aria-hidden
             />
-            {/* depth vignette — the far end of the rail recedes */}
+            {/* depth vignette */}
             <div
               className="pointer-events-none absolute inset-0"
-              style={{ background: "radial-gradient(120% 90% at 50% 50%, transparent 42%, color-mix(in srgb, var(--bg-2) 88%, transparent) 100%)" }}
+              style={{
+                background:
+                  "radial-gradient(130% 95% at 50% 50%, transparent 40%, color-mix(in srgb, var(--bg-2) 90%, transparent) 100%)",
+              }}
               aria-hidden
             />
 
-            {/* connectors between clusters (under the planes) */}
+            {/* connectors between clusters */}
             <svg className="pointer-events-none absolute inset-0 z-[1] h-full w-full" aria-hidden>
+              <defs>
+                <filter id="rail-line-glow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
               {STAGES.slice(1).map((s, i) => (
                 <line
                   key={`link-${s.id}`}
@@ -269,16 +280,17 @@ export function Architecture3D() {
                   x2="0"
                   y2="0"
                   stroke="var(--accent-deep)"
-                  strokeWidth="1.2"
+                  strokeWidth="1.5"
                   strokeDasharray="1"
                   strokeDashoffset="1"
                   strokeLinecap="round"
                   opacity="0"
+                  filter="url(#rail-line-glow)"
                 />
               ))}
             </svg>
 
-            {/* the five cluster planes — no text, ever */}
+            {/* the five cluster planes — enhanced bloom & brightness */}
             {STAGES.map((s, i) => {
               const on = i === active;
               return (
@@ -287,7 +299,9 @@ export function Architecture3D() {
                   ref={(el) => {
                     cards.current[i] = el;
                   }}
-                  className="absolute top-0 left-0 rounded-[6px] border"
+                  className={`absolute top-0 left-0 rounded-[8px] border transition-colors duration-400 ${
+                    on ? "cluster-active-bloom" : ""
+                  }`}
                   style={{
                     width: CARD.w,
                     height: CARD.h,
@@ -295,10 +309,10 @@ export function Architecture3D() {
                     marginTop: -CARD.h / 2,
                     borderColor: on ? "var(--accent-deep)" : "rgba(12,12,13,0.16)",
                     background: on
-                      ? "linear-gradient(135deg, rgba(255,255,255,0.96), rgba(240,244,224,0.72)), repeating-linear-gradient(90deg, rgba(12,12,13,0.05) 0 1px, transparent 1px 40px)"
-                      : "linear-gradient(135deg, rgba(255,255,255,0.6), rgba(235,232,225,0.2)), repeating-linear-gradient(90deg, rgba(12,12,13,0.045) 0 1px, transparent 1px 40px)",
+                      ? "linear-gradient(135deg, rgba(255,255,255,1) 0%, rgba(246,252,228,0.96) 50%, rgba(200,241,79,0.18) 100%)"
+                      : "linear-gradient(135deg, rgba(255,255,255,0.65), rgba(235,232,225,0.22)), repeating-linear-gradient(90deg, rgba(12,12,13,0.04) 0 1px, transparent 1px 40px)",
                     boxShadow: on
-                      ? "0 26px 50px -34px rgba(12,12,13,0.6), 0 0 22px color-mix(in srgb, var(--accent-deep) 26%, transparent)"
+                      ? "0 0 35px rgba(200, 241, 79, 0.55), 0 0 80px rgba(127, 174, 0, 0.28), 0 30px 60px -20px rgba(12,12,13,0.55)"
                       : "0 26px 50px -42px rgba(12,12,13,0.45)",
                     pointerEvents: on && !converged ? "auto" : "none",
                     cursor: on && !converged ? "help" : "default",
@@ -309,65 +323,71 @@ export function Architecture3D() {
                   onMouseLeave={() => setHover(false)}
                   aria-hidden
                 >
-                  <span className="absolute inset-x-[14px] top-[14px] flex items-center justify-between">
+                  {/* Subtle Expanding Pulse Ring on active cluster */}
+                  {on && (
                     <span
-                      className="block h-[8px] w-[8px] rounded-full"
+                      className="cluster-pulse-ring pointer-events-none absolute -inset-[6px] rounded-[12px] border-2 border-[var(--accent)]"
+                      aria-hidden
+                    />
+                  )}
+
+                  <span className="absolute inset-x-[16px] top-[16px] flex items-center justify-between">
+                    <span
+                      className="block h-[9px] w-[9px] rounded-full transition-colors duration-300"
                       style={{
                         background: on ? "var(--accent-deep)" : "var(--faint)",
-                        transition: "background .35s var(--e-out)",
+                        boxShadow: on ? "0 0 10px var(--accent)" : "none",
                       }}
                     />
-                    <span className="block h-[5px] w-[44px] rounded-full" style={{ background: "var(--line)" }} />
+                    <span className="block h-[5px] w-[48px] rounded-full" style={{ background: "var(--line)" }} />
                   </span>
-                  <span className="absolute inset-x-[14px] bottom-[16px] flex flex-col gap-[7px]">
+
+                  <span className="absolute inset-x-[16px] bottom-[18px] flex flex-col gap-[8px]">
                     <span
-                      className="block h-[6px] rounded-full"
+                      className="block h-[6px] rounded-full transition-colors duration-300"
                       style={{
-                        width: "76%",
-                        background: on ? "color-mix(in srgb, var(--accent-deep) 55%, var(--line))" : "var(--line)",
-                        transition: "background .35s var(--e-out)",
+                        width: "78%",
+                        background: on ? "color-mix(in srgb, var(--accent-deep) 65%, var(--line))" : "var(--line)",
                       }}
                     />
-                    <span className="block h-[6px] w-[52%] rounded-full" style={{ background: "var(--line)" }} />
+                    <span className="block h-[6px] w-[50%] rounded-full" style={{ background: "var(--line)" }} />
                   </span>
+
                   {on && (
                     <>
-                      <span className="signal-dot absolute -top-[4px] -right-[4px]" style={{ width: 8, height: 8 }} />
-                      <span className="demo-pulse pointer-events-none absolute inset-0 rounded-[6px]" />
+                      <span className="signal-dot absolute -top-[5px] -right-[5px]" style={{ width: 10, height: 10 }} />
                     </>
                   )}
                 </div>
               );
             })}
 
-            {/* ---------- HUD: every label has its own slot ---------- */}
+            {/* ---------- HUD: Generous Padding & Spacing (Prompt 29) ---------- */}
 
-            {/* left — the camera rail. One dedicated row per stage. */}
+            {/* Left HUD: The Camera Rail */}
             <div
-              className="pointer-events-none absolute top-1/2 left-[14px] z-[30] -translate-y-1/2 rounded-[6px] border px-[12px] py-[11px]"
+              className="pointer-events-none absolute top-1/2 left-[24px] min-[1200px]:left-[38px] z-[30] -translate-y-1/2 rounded-[8px] border px-[18px] py-[16px]"
               style={{
-                width: 194,
+                width: 224,
                 borderColor: "var(--line)",
-                // solid: a cluster plane may drift behind this panel as the
-                // camera passes it — the rail text must never merge with it
                 background: "var(--bg)",
-                boxShadow: "0 16px 34px -28px rgba(12,12,13,0.6)",
-                opacity: converged ? 0.4 : 1,
+                boxShadow: "0 18px 40px -24px rgba(12,12,13,0.5)",
+                opacity: converged ? 0.35 : 1,
                 transition: "opacity .4s var(--e-out)",
               }}
               aria-hidden
             >
-              <div className="mb-[9px] flex items-center gap-[7px]">
-                <span className="signal-dot" style={{ width: 5, height: 5 }} />
-                <span className="mono" style={{ fontSize: 9, letterSpacing: ".16em", color: "var(--muted)" }}>
+              <div className="mb-[12px] flex items-center gap-[8px]">
+                <span className="signal-dot" style={{ width: 6, height: 6 }} />
+                <span className="mono font-semibold" style={{ fontSize: 9.5, letterSpacing: ".16em", color: "var(--muted)" }}>
                   CAMERA RAIL
                 </span>
               </div>
-              <div className="relative flex flex-col">
-                <span className="absolute top-[10px] bottom-[10px] left-[4px] w-px" style={{ background: "var(--line)" }} />
+              <div className="relative flex flex-col gap-[4px]">
+                <span className="absolute top-[12px] bottom-[12px] left-[5px] w-px" style={{ background: "var(--line)" }} />
                 <span
                   ref={railFill}
-                  className="absolute top-[10px] bottom-[10px] left-[4px] w-px origin-top"
+                  className="absolute top-[12px] bottom-[12px] left-[5px] w-px origin-top"
                   style={{ background: "var(--accent-deep)", transform: "scaleY(0)" }}
                 />
                 {STAGES.map((s, i) => {
@@ -375,37 +395,36 @@ export function Architecture3D() {
                   return (
                     <span
                       key={s.id}
-                      className="relative flex h-[26px] items-center gap-[9px]"
+                      className="relative flex h-[30px] items-center gap-[10px]"
                       style={{
-                        opacity: state === "past" ? 0.32 : state === "now" ? 1 : 0.66,
+                        opacity: state === "past" ? 0.35 : state === "now" ? 1 : 0.6,
                         transition: "opacity .35s var(--e-out)",
                       }}
                     >
                       <span
-                        className="relative z-[1] block h-[9px] w-[9px] flex-none rounded-full"
+                        className="relative z-[1] block h-[10px] w-[10px] flex-none rounded-full"
                         style={{
                           background: state === "now" ? "var(--accent-deep)" : "var(--bg)",
-                          border: `1px solid ${state === "now" ? "var(--accent-deep)" : "var(--faint)"}`,
-                          boxShadow: state === "now" ? "0 0 0 4px color-mix(in srgb, var(--accent-deep) 18%, transparent)" : "none",
+                          border: `1.5px solid ${state === "now" ? "var(--accent-deep)" : "var(--faint)"}`,
+                          boxShadow: state === "now" ? "0 0 0 4px color-mix(in srgb, var(--accent-deep) 22%, transparent)" : "none",
                           transition: "all .35s var(--e-out)",
                         }}
                       />
-                      <span className="mono" style={{ fontSize: 9, color: state === "now" ? "var(--accent-deep)" : "var(--faint)" }}>
+                      <span className="mono" style={{ fontSize: 9.5, color: state === "now" ? "var(--accent-deep)" : "var(--faint)" }}>
                         {s.num}
                       </span>
                       <span
-                        className="mono truncate"
+                        className="mono truncate font-medium"
                         style={{
-                          fontSize: 10,
-                          letterSpacing: ".13em",
-                          fontWeight: state === "now" ? 600 : 400,
+                          fontSize: 10.5,
+                          letterSpacing: ".12em",
                           color: state === "now" ? "var(--fg)" : "var(--muted)",
                           transition: "color .35s var(--e-out)",
                         }}
                       >
                         {s.title}
                       </span>
-                      <span className="mono ml-auto" style={{ fontSize: 8.5, color: "var(--faint)" }}>
+                      <span className="mono ml-auto" style={{ fontSize: 9, color: "var(--faint)" }}>
                         {state === "past" ? "✓" : state === "now" ? "●" : ""}
                       </span>
                     </span>
@@ -414,75 +433,85 @@ export function Architecture3D() {
               </div>
             </div>
 
-            {/* top-right — hover tooltip, solid ink, its own layer */}
+            {/* Top-Right HUD: Hover Tooltip */}
             <div
-              className="pointer-events-none absolute top-[14px] right-[14px] z-[36] max-w-[46%]"
+              className="pointer-events-none absolute top-[24px] min-[1200px]:top-[36px] right-[24px] min-[1200px]:right-[38px] z-[36] max-w-[48%]"
               style={{
                 opacity: hover && !converged ? 1 : 0,
-                transform: hover && !converged ? "none" : "translateY(-5px)",
-                transition: "opacity .2s linear, transform .3s var(--e-out)",
+                transform: hover && !converged ? "none" : "translateY(-6px)",
+                transition: "opacity .25s linear, transform .35s var(--e-out)",
               }}
               aria-hidden={!hover}
             >
-              <span
-                className="mono block rounded-[4px] px-[11px] py-[8px]"
-                style={{ background: "var(--fg)", color: "var(--bg)", fontSize: 10, lineHeight: 1.55, letterSpacing: ".06em" }}
+              <div
+                className="mono block rounded-[6px] px-[18px] py-[14px] shadow-lg"
+                style={{
+                  background: "var(--fg)",
+                  color: "var(--bg)",
+                  fontSize: 10.5,
+                  lineHeight: 1.6,
+                  letterSpacing: ".05em",
+                }}
               >
                 {live.label}
-              </span>
+              </div>
             </div>
 
-            {/* bottom-right — the active stage card (solid ground, no merge) */}
+            {/* Bottom-Right HUD: Active Stage Card */}
             <div
-              className="absolute right-[14px] bottom-[14px] z-[32]"
+              className="absolute right-[24px] min-[1200px]:right-[38px] bottom-[24px] min-[1200px]:bottom-[34px] z-[32]"
               style={{
-                width: "min(52%, 430px)",
+                width: "min(48%, 460px)",
                 opacity: converged ? 0 : 1,
-                transition: "opacity .35s var(--e-out)",
+                transition: "opacity .4s var(--e-out)",
               }}
               aria-live="polite"
             >
               <div
                 ref={labelSwap}
-                className="rounded-[6px] border p-[12px]"
-                style={{ borderColor: "var(--line)", background: "var(--bg)", boxShadow: "0 16px 34px -26px rgba(12,12,13,0.6)" }}
+                className="rounded-[8px] border p-[20px_24px] shadow-sm"
+                style={{
+                  borderColor: "var(--line)",
+                  background: "var(--bg)",
+                  boxShadow: "0 20px 45px -28px rgba(12,12,13,0.55)",
+                }}
               >
-                <div className="flex items-baseline justify-between gap-[10px]">
-                  <span className="mono" style={{ color: "var(--accent-deep)", fontSize: 11.5, fontWeight: 600, letterSpacing: ".1em" }}>
+                <div className="flex items-baseline justify-between gap-[12px] pb-[10px] border-b" style={{ borderColor: "var(--line)" }}>
+                  <span className="mono font-semibold" style={{ color: "var(--accent-deep)", fontSize: 12, letterSpacing: ".1em" }}>
                     {stage.num} // {stage.title}
                   </span>
-                  <span className="mono" style={{ color: "var(--muted)", fontSize: 9.5, letterSpacing: ".1em" }}>
+                  <span className="mono" style={{ color: "var(--muted)", fontSize: 10, letterSpacing: ".08em" }}>
                     {stage.subtitle}
                   </span>
                 </div>
-                <p className="mono mt-[8px]" style={{ fontSize: 10.5, lineHeight: 1.6, color: "var(--fg)", letterSpacing: ".04em" }}>
+                <p className="mono mt-[12px]" style={{ fontSize: 11, lineHeight: 1.65, color: "var(--fg)", letterSpacing: ".03em" }}>
                   {stage.label}
                 </p>
               </div>
             </div>
 
-            {/* centre — the pull-back convergence, on top of everything */}
+            {/* Centre HUD: Convergence Badge */}
             <div
-              className="pointer-events-none absolute inset-0 z-[40] grid place-items-center px-[16px]"
-              style={{ opacity: converged ? 1 : 0, transition: "opacity .4s var(--e-out)" }}
+              className="pointer-events-none absolute inset-0 z-[40] grid place-items-center px-[20px]"
+              style={{ opacity: converged ? 1 : 0, transition: "opacity .45s var(--e-out)" }}
               aria-hidden={!converged}
             >
               <div
-                className="flex flex-col items-center gap-[11px] rounded-[8px] border px-[22px] py-[18px]"
+                className="flex flex-col items-center gap-[16px] rounded-[10px] border px-[36px] py-[28px]"
                 style={{
                   borderColor: "var(--accent-deep)",
                   background: "var(--bg)",
-                  boxShadow: "0 26px 60px -34px rgba(12,12,13,0.65)",
-                  transform: converged ? "scale(1)" : "scale(0.9)",
-                  transition: "transform .55s var(--e-out)",
+                  boxShadow: "0 30px 70px -30px rgba(12,12,13,0.7), 0 0 35px rgba(200, 241, 79, 0.25)",
+                  transform: converged ? "scale(1)" : "scale(0.88)",
+                  transition: "transform .6s var(--e-out)",
                 }}
               >
-                <span className="flex items-center gap-[9px]">
+                <span className="flex items-center gap-[12px]">
                   {STAGES.map((s) => (
-                    <span key={s.id} className="signal-dot" style={{ width: 8, height: 8 }} />
+                    <span key={s.id} className="signal-dot" style={{ width: 9, height: 9 }} />
                   ))}
                 </span>
-                <span className="mono" style={{ color: "var(--accent-deep)", fontSize: 11, letterSpacing: ".14em" }}>
+                <span className="mono font-semibold" style={{ color: "var(--accent-deep)", fontSize: 12, letterSpacing: ".16em" }}>
                   SYSTEM CONVERGED → PROCESS
                 </span>
               </div>
@@ -490,8 +519,8 @@ export function Architecture3D() {
           </div>
 
           {/* ---------- rail controls ---------- */}
-          <div className="flex flex-none flex-wrap items-center justify-between gap-[12px]">
-            <div className="flex items-center gap-[6px]" role="group" aria-label="Jump the camera rail to a stage">
+          <div className="flex flex-none flex-wrap items-center justify-between gap-[14px]">
+            <div className="flex items-center gap-[8px]" role="group" aria-label="Jump the camera rail to a stage">
               {STAGES.map((s, i) => (
                 <button
                   key={s.id}
@@ -499,14 +528,13 @@ export function Architecture3D() {
                   onClick={() => gotoStage(i)}
                   aria-current={active === i}
                   aria-label={`${s.num} ${s.title}`}
-                  className="mono rounded-full border px-[9px] py-[4px]"
+                  className="mono rounded-full border px-[12px] py-[5px] transition-all duration-300"
                   style={{
-                    fontSize: 9.5,
+                    fontSize: 10,
                     letterSpacing: ".12em",
                     borderColor: active === i ? "var(--accent-deep)" : "var(--line)",
                     background: active === i ? "var(--accent-deep)" : "transparent",
                     color: active === i ? "var(--solid)" : "var(--muted)",
-                    transition: "all .3s var(--e-out)",
                   }}
                   data-cursor="JUMP"
                 >
@@ -514,14 +542,14 @@ export function Architecture3D() {
                 </button>
               ))}
             </div>
-            <span className="mono" style={{ color: "var(--faint)", fontSize: 10 }}>
+            <span className="mono text-[11px]" style={{ color: "var(--muted)" }}>
               {converged ? "Converged — the system becomes the process" : "Scroll to travel the rail · hover a cluster for its role"}
             </span>
           </div>
         </div>
       ) : (
         /* ---------- mobile / reduced motion: 2D vertical flow ---------- */
-        <div className="wrap flex flex-col gap-[22px] py-[clamp(56px,7vw,110px)]">
+        <div className="wrap flex flex-col gap-[24px] py-[clamp(56px,7vw,110px)]">
           <div className="flex flex-col gap-[10px]">
             <div className="flex items-center gap-[10px]">
               <span className="mono mono-a">03 // SPATIAL ARCHITECTURE</span>
@@ -531,25 +559,29 @@ export function Architecture3D() {
             <h2 className="d2" style={{ fontSize: "clamp(30px,7vw,54px)" }}>
               System model.
             </h2>
-            <p className="body max-w-[46ch]">
+            <p className="body max-w-[46ch] text-[var(--muted)]">
               Five clusters on one axis: <strong>INPUT → INTELLIGENCE → SYSTEM → ACTION → OUTPUT</strong>.
             </p>
           </div>
 
-          <div className="relative flex flex-col gap-[10px] pl-[26px]">
-            <span className="absolute top-[10px] bottom-[10px] left-[8px] w-px" style={{ background: "var(--accent-deep)", opacity: 0.55 }} />
+          <div className="relative flex flex-col gap-[14px] pl-[28px]">
+            <span className="absolute top-[12px] bottom-[12px] left-[8px] w-px" style={{ background: "var(--accent-deep)", opacity: 0.6 }} />
             {STAGES.map((st) => (
-              <div key={st.id} className="relative flex flex-col gap-[7px] rounded-[6px] border p-[16px]" style={{ borderColor: "var(--line)", background: "var(--card)" }}>
-                <span className="absolute top-[22px] left-[-22px] block h-[9px] w-[9px] rounded-full" style={{ background: "var(--accent-deep)" }} />
+              <div
+                key={st.id}
+                className="relative flex flex-col gap-[8px] rounded-[8px] border p-[20px]"
+                style={{ borderColor: "var(--line)", background: "var(--card)" }}
+              >
+                <span className="absolute top-[24px] left-[-25px] block h-[10px] w-[10px] rounded-full" style={{ background: "var(--accent-deep)" }} />
                 <div className="flex flex-wrap items-baseline justify-between gap-[8px]">
-                  <span className="mono" style={{ color: "var(--accent-deep)", fontSize: 11, letterSpacing: ".1em" }}>
+                  <span className="mono font-semibold" style={{ color: "var(--accent-deep)", fontSize: 11.5, letterSpacing: ".1em" }}>
                     {st.num} // {st.title}
                   </span>
-                  <span className="mono" style={{ color: "var(--muted)", fontSize: 9.5 }}>
+                  <span className="mono" style={{ color: "var(--muted)", fontSize: 10 }}>
                     {st.subtitle}
                   </span>
                 </div>
-                <p className="body-s">{st.label}</p>
+                <p className="body-s text-[var(--fg)]">{st.label}</p>
               </div>
             ))}
           </div>

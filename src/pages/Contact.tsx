@@ -71,8 +71,36 @@ export function ContactPage() {
   const pendingTag = useRef<TagKey | null>(null);
 
   // Prompt 16 → 17 handoff: the last Ask Arche trigger seeds the confirmation
+  // Prompt 26 handoff: prefilled service selection from dedicated service pages
   useEffect(() => {
     setSeed(readLastTrigger());
+    try {
+      const stored = sessionStorage.getItem("arche:prefill");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        let targetBuild: BuildOption | null = null;
+        if (parsed.build) {
+          targetBuild = parsed.build as BuildOption;
+        } else if (parsed.service) {
+          const map: Record<string, BuildOption> = {
+            "video-editing": "Video",
+            "web-development": "Website",
+            "ai-chatbots": "AI Agent",
+            "ai-automation": "Automation",
+          };
+          targetBuild = map[parsed.service] || null;
+        }
+        if (targetBuild) {
+          setBuild(targetBuild);
+        }
+        if (parsed.pkg) {
+          setChange(`Interested in ${parsed.pkg}.`);
+        }
+        sessionStorage.removeItem("arche:prefill");
+      }
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   // step slide-in from the right
@@ -323,11 +351,25 @@ export function ContactPage() {
                         </span>
                       </span>
                       <span className="mono" style={{ color: build === o.k ? "var(--accent-deep)" : "var(--faint)" }}>
-                        →
+                        {build === o.k ? "Selected →" : "→"}
                       </span>
                     </button>
                   ))}
                 </div>
+                {build && (
+                  <div className="mt-[16px] flex items-center justify-between p-[12px_16px] rounded-[6px] border" style={{ borderColor: "var(--accent-deep)", background: "var(--bg-2)" }}>
+                    <span className="mono text-[11px]">
+                      Pre-selected: <strong style={{ color: "var(--accent-deep)" }}>{build}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-primary text-[11px] py-[6px] px-[14px]"
+                      onClick={(e) => chooseBuild(build, e.currentTarget)}
+                    >
+                      Continue with {build} →
+                    </button>
+                  </div>
+                )}
                 <p className="body-s mt-[14px]" style={{ color: "var(--faint)" }}>
                   Pick the closest — "Other" is a perfectly good answer.
                 </p>

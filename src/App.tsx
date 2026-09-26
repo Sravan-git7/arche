@@ -5,6 +5,7 @@ import { Footer } from "./components/Footer";
 import { Home } from "./pages/Home";
 import { ServiceDetail } from "./pages/ServiceDetail";
 import { ServicesIndex, WorkPage } from "./pages/Misc";
+import { PricingPage } from "./pages/PricingPage";
 import { ContactPage } from "./pages/Contact";
 import { RouteWipe, useRoute } from "./lib/router";
 import { useLenis } from "./lib/useLenis";
@@ -31,6 +32,7 @@ export default function App() {
   let page = <Home />;
   if (route === "/services") page = <ServicesIndex />;
   else if (route.startsWith("/services/")) page = <ServiceDetail slug={route.split("/")[2]} />;
+  else if (route === "/pricing") page = <PricingPage />;
   else if (route === "/work") page = <WorkPage />;
   else if (route === "/contact") page = <ContactPage />;
 

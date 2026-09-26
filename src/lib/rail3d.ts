@@ -1,14 +1,13 @@
 /**
- * PROMPT 13 / 24 — the 3D System Model's rail geometry.
- *
- * Pure maths, kept apart from the component so it can be reasoned about (and
- * verified) on its own: given a scroll progress and a scene box, where does
- * each cluster appear, how big is it, and how visible is it?
+ * PROMPT 13 / 24 / 29 — the 3D System Model's rail geometry.
  *
  * Five clusters sit at even intervals along ONE depth axis. The camera
  * travels that axis, so a cluster's distance from the camera is simply
  * `focus + (i - p * 4) * step`, and everything else follows from the
  * pinhole projection `scale = focal / distance`.
+ *
+ * PROMPT 29 — Increased breathing room, unhurried depth pacing, and
+ * de-cluttered cluster offsets so stage 3 (SYSTEM) has ample whitespace.
  */
 
 export type StageDef = {
@@ -29,8 +28,8 @@ export const STAGES: StageDef[] = [
     title: "INPUT",
     subtitle: "Raw Ingestion",
     label: "RAW SIGNAL — ingests inbound unstructured data, events & requests.",
-    ox: -1,
-    oy: -0.55,
+    ox: -0.88,
+    oy: -0.44,
   },
   {
     id: "intelligence",
@@ -38,8 +37,8 @@ export const STAGES: StageDef[] = [
     title: "INTELLIGENCE",
     subtitle: "Context Resolution",
     label: "AI AGENT — reads intent, resolves context & plans action.",
-    ox: 0.94,
-    oy: 0.5,
+    ox: 0.82,
+    oy: 0.38,
   },
   {
     id: "system",
@@ -47,8 +46,8 @@ export const STAGES: StageDef[] = [
     title: "SYSTEM",
     subtitle: "Kernel & State",
     label: "SYSTEM KERNEL — orchestrates workflows, state logic & fallbacks.",
-    ox: -0.88,
-    oy: 0.44,
+    ox: -0.68,
+    oy: 0.32,
   },
   {
     id: "action",
@@ -56,8 +55,8 @@ export const STAGES: StageDef[] = [
     title: "ACTION",
     subtitle: "Execution Path",
     label: "EXECUTION PATH — triggers tool calls, API routes & automated tasks.",
-    ox: 0.96,
-    oy: -0.52,
+    ox: 0.82,
+    oy: -0.40,
   },
   {
     id: "output",
@@ -65,8 +64,8 @@ export const STAGES: StageDef[] = [
     title: "OUTPUT",
     subtitle: "Verified Deliverable",
     label: "DELIVERABLE — verified output, lead capture or clean story edit.",
-    ox: -0.18,
-    oy: -0.06,
+    ox: -0.10,
+    oy: -0.04,
   },
 ];
 
@@ -75,14 +74,14 @@ export const LAST = STAGES.length - 1;
 
 /** Rail geometry, in world units / pixels. */
 export const RAIL = {
-  step: 260, // distance between clusters along the depth axis
-  focal: 520, // perspective focal length (px)
-  focus: 520, // camera → active cluster distance, i.e. scale exactly 1.0
-  near: 330, // closer than this and the cluster is gone (already faded out)
+  step: 280, // distance between clusters along the depth axis
+  focal: 560, // perspective focal length (px)
+  focus: 560, // camera → active cluster distance, i.e. scale exactly 1.0
+  near: 350, // closer than this and the cluster is gone (already faded out)
 };
 
 /** Base size of a cluster plane, before perspective scaling. */
-export const CARD = { w: 168, h: 104 };
+export const CARD = { w: 172, h: 106 };
 
 export type RailPoint = {
   x: number;
@@ -100,7 +99,12 @@ export type RailPoint = {
  * rail, inside a scene box of `box` pixels. Pure function — the scene is a
  * deterministic read-out of scroll progress.
  */
-export function project(i: number, p: number, box: { w: number; h: number }): RailPoint {
+export function project(
+  i: number,
+  p: number,
+  box: { w: number; h: number },
+  drift: { x: number; y: number } = { x: 0, y: 0 }
+): RailPoint {
   const st = STAGES[i];
   // Signed distance from the camera's focus point, measured in stages:
   // negative = the camera has passed it, 0 = in focus, positive = ahead.
@@ -110,18 +114,19 @@ export function project(i: number, p: number, box: { w: number; h: number }): Ra
 
   // Passed clusters swing outward as they grow, so they leave the frame
   // instead of sliding over whatever is now in focus.
-  const spread = 1 + Math.max(0, -d) * 1.45;
-  const offX = Math.min(box.w * 0.17, 150);
-  const offY = Math.min(box.h * 0.15, 78);
+  const spread = 1 + Math.max(0, -d) * 1.5;
+  const offX = Math.min(box.w * 0.16, 140);
+  const offY = Math.min(box.h * 0.14, 72);
 
-  const x = box.w / 2 + st.ox * offX * spread * scale;
-  const y = box.h / 2 + st.oy * offY * spread * scale;
+  // Apply camera drift/sway to spatial positions
+  const x = box.w / 2 + (st.ox * offX * spread + drift.x * (1 - Math.abs(d) * 0.2)) * scale;
+  const y = box.h / 2 + (st.oy * offY * spread + drift.y * (1 - Math.abs(d) * 0.2)) * scale;
 
   // One cluster is ever in focus; the ones behind fade fast (they are also
   // the ones growing), the ones ahead stay faint but present.
   let opacity: number;
-  if (d >= 0) opacity = d < 0.4 ? 1 : Math.max(0.2, 1 - (d - 0.4) * 0.32);
-  else opacity = d > -0.35 ? 1 - (-d / 0.35) * 0.55 : Math.max(0, 0.45 - (-d - 0.35) * 1.6);
+  if (d >= 0) opacity = d < 0.38 ? 1 : Math.max(0.2, 1 - (d - 0.38) * 0.32);
+  else opacity = d > -0.32 ? 1 - (-d / 0.32) * 0.55 : Math.max(0, 0.45 - (-d - 0.32) * 1.6);
 
   return {
     x,

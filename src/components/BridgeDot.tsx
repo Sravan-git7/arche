@@ -10,6 +10,11 @@ import { gsap, ScrollTrigger, prefersReducedMotion } from "../lib/gsap";
  *                 then hands off (the pinned timeline owns the dot from there)
  *   mode "flow" → lands on it when it reaches the viewport centre
  * Position is a pure function of scroll progress — never a timed tween.
+ *
+ * PROMPT 32 (Delight 2) — First-scroll reward:
+ * The very first time a visitor scrolls past the hero, the signal dot
+ * briefly "looks around" with a tiny independent wobble before settling
+ * into the Problem section's opening state. One-time only, never repeats.
  */
 
 /** Layout position from the offset chain — unaffected by our transforms. */
@@ -27,10 +32,21 @@ const offsetPos = (n: HTMLElement, stop: HTMLElement | null = null) => {
 
 export function BridgeDot() {
   const ref = useRef<HTMLSpanElement>(null);
+  const innerDot = useRef<HTMLSpanElement>(null);
+  const rewardFired = useRef(false);
 
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el || prefersReducedMotion()) return;
+
+    // Check if first-scroll reward was already played this session
+    try {
+      if (sessionStorage.getItem("arche_first_scroll_reward")) {
+        rewardFired.current = true;
+      }
+    } catch {
+      // Storage access safety
+    }
 
     const ctx = gsap.context(() => {
       let from = { x: 0, y: 0 };
@@ -83,6 +99,21 @@ export function BridgeDot() {
             // takes over from the hero dot immediately, at the same position
             opacity: t > 0 ? 1 : 0,
           });
+
+          // PROMPT 32: One-time first-scroll reward wobble
+          if (!rewardFired.current && t > 0.06 && t < 0.4 && innerDot.current) {
+            rewardFired.current = true;
+            try {
+              sessionStorage.setItem("arche_first_scroll_reward", "1");
+            } catch {}
+
+            const dot = innerDot.current;
+            gsap.timeline()
+              .to(dot, { x: 4, y: -3, scale: 1.35, duration: 0.12, ease: "power1.out" })
+              .to(dot, { x: -4, y: 3, duration: 0.14, ease: "power1.inOut" })
+              .to(dot, { x: 2, y: -1, duration: 0.1, ease: "power1.inOut" })
+              .to(dot, { x: 0, y: 0, scale: 1, duration: 0.16, ease: "back.out(2)" });
+          }
         },
         // hand-off: the destination's own timeline takes the dot from here
         onLeave: () => gsap.set(el, { opacity: 0 }),
@@ -95,9 +126,11 @@ export function BridgeDot() {
   return (
     <span
       ref={ref}
-      className="signal-dot pointer-events-none fixed top-0 left-0 z-[5]"
+      className="pointer-events-none fixed top-0 left-0 z-[5]"
       style={{ marginLeft: -3, marginTop: -3, opacity: 0 }}
       aria-hidden
-    />
+    >
+      <span ref={innerDot} className="signal-dot block h-[6px] w-[6px]" />
+    </span>
   );
 }

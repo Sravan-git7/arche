@@ -13,19 +13,19 @@ import { AutomationDemo } from "./AutomationDemo";
  */
 
 export function SceneVideo({ active }: { active: boolean }) {
-  return <VideoEditingDemo active={active} />;
+  return <VideoEditingDemo active={active} auto={active} />;
 }
 
 export function SceneWeb({ active }: { active: boolean }) {
-  return <WebDevDemo active={active} />;
+  return <WebDevDemo active={active} auto={active} />;
 }
 
 export function SceneChatbot({ active }: { active: boolean }) {
-  return <AgentDemo active={active} />;
+  return <AgentDemo active={active} auto={active} />;
 }
 
 export function SceneAutomation({ active }: { active: boolean }) {
-  return <AutomationDemo preview={!active} />;
+  return <AutomationDemo active={active} auto={active} />;
 }
 
 export const SCENES: Record<string, (p: { active: boolean }) => ReactElement> = {
