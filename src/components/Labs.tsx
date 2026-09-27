@@ -27,6 +27,50 @@ import { hasFinePointer } from "../lib/interact";
  *    All are disabled under prefers-reduced-motion.
  */
 
+/* ================================================================
+   PROMPT 42 — shared material language for every sketch.
+   Light: lines = bright thin core + soft blurred glow behind it;
+          dots  = point-lights (white-hot centre → lime → transparent).
+   Weight: triggered changes settle on an under-damped spring (snappy
+          start, a few % overshoot at the end — never added latency).
+   Every glow/pulse is bound to real state: a connection that exists,
+   a packet that is travelling, a value that just changed.
+   ================================================================ */
+const LAB_SPRING = "cubic-bezier(0.34, 1.32, 0.64, 1)"; // ~4–6% overshoot
+/** point-light fill — `a` scales brightness 0..1 */
+const pointLight = (a = 1) =>
+  `radial-gradient(circle, rgba(250,252,240,${a}) 0 16%, rgba(200,241,79,${0.85 * a}) 34%, rgba(200,241,79,${0.22 * a}) 58%, transparent 72%)`;
+
+/** Under-damped spring follower for numeric values (rAF, settles & stops). */
+function useSpringValue(target: number, stiffness = 0.22, damping = 0.68) {
+  const [v, setV] = useState(target);
+  const st = useRef({ x: target, vel: 0, raf: 0 });
+  useEffect(() => {
+    const s0 = st.current;
+    if (prefersReducedMotion()) {
+      s0.x = target;
+      setV(target);
+      return;
+    }
+    const step = () => {
+      s0.vel = (s0.vel + (target - s0.x) * stiffness) * damping;
+      s0.x += s0.vel;
+      if (Math.abs(target - s0.x) < 0.01 * Math.max(1, Math.abs(target) / 100) && Math.abs(s0.vel) < 0.01) {
+        s0.x = target;
+        setV(target);
+        s0.raf = 0;
+        return;
+      }
+      setV(s0.x);
+      s0.raf = requestAnimationFrame(step);
+    };
+    cancelAnimationFrame(s0.raf);
+    s0.raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(s0.raf);
+  }, [target, stiffness, damping]);
+  return v;
+}
+
 export function Labs() {
   return (
     <section className="w-full py-[clamp(64px,8vw,120px)] on-ink bg-[#0c0c0d] text-[#f4f2ed]">
@@ -93,7 +137,7 @@ function LabCard({
 }) {
   return (
     <div
-      className="group relative flex flex-col justify-between rounded-[8px] border p-[18px] transition-all duration-300 hover:border-[var(--accent-deep)]"
+      className="lab-card-v2 group relative flex flex-col justify-between rounded-[8px] border p-[18px]"
       style={{
         borderColor: "var(--line)",
         background: "#141416",
@@ -109,8 +153,9 @@ function LabCard({
         </span>
       </div>
 
-      <div className="my-[8px] flex-1 flex flex-col justify-center overflow-hidden rounded-[6px] border p-[12px]" style={{ borderColor: "rgba(244, 242, 237, 0.08)", background: "#0c0c0d" }}>
-        {children}
+      <div className="lab-stage relative my-[8px] flex-1 flex flex-col justify-center overflow-hidden rounded-[6px] border p-[12px]" style={{ borderColor: "rgba(244, 242, 237, 0.08)", background: "#0c0c0d" }}>
+        <span className="lab-atmos pointer-events-none absolute inset-[-8px]" aria-hidden />
+        <div className="relative flex flex-1 flex-col justify-center">{children}</div>
       </div>
 
       <div className="mt-[12px] flex items-center justify-between pt-[10px] border-t" style={{ borderColor: "rgba(244, 242, 237, 0.08)" }}>
@@ -152,6 +197,9 @@ function SignalRouterLab() {
   const rafRef = useRef(0);
   const running = useRef(false);
   const stages = ["INGEST", "PARSE", "ROUTE", "DONE"];
+  // PROMPT 42: per-stage arrival counter → keyed flash when a packet reaches it
+  const arrivals = useRef([0, 0, 0, 0]);
+  const seenStage = useRef(new Map<number, number>());
 
   const inFlight = () => packetsRef.current.filter((p) => p.startTime >= 0);
   const queued = () => packetsRef.current.filter((p) => p.startTime < 0);
@@ -219,8 +267,14 @@ function SignalRouterLab() {
   const stageCounts = [0, 0, 0, 0];
   flying.forEach((p) => {
     const pr = Math.min(0.999, (now - p.startTime) / p.duration);
-    stageCounts[Math.floor(pr * 4)]++;
+    const si = Math.floor(pr * 4);
+    stageCounts[si]++;
+    if (seenStage.current.get(p.id) !== si) {
+      seenStage.current.set(p.id, si);
+      arrivals.current[si]++;
+    }
   });
+  if (seenStage.current.size > 40) seenStage.current = new Map([...seenStage.current].slice(-20));
 
   return (
     <div className="flex flex-col justify-between h-full min-h-[190px]">
@@ -241,20 +295,23 @@ function SignalRouterLab() {
       </div>
 
       <div className="relative my-[18px] flex items-center justify-between px-[10px]">
-        <div className="absolute inset-x-[24px] top-1/2 h-[2px] -translate-y-1/2" style={{ background: "rgba(244,242,237,0.12)" }} />
+        {/* PROMPT 42: the stage path is light — soft glow behind a thin bright core.
+            It brightens with load (real: packets are on it). */}
+        <div className="absolute inset-x-[24px] top-1/2 h-[6px] -translate-y-1/2 rounded-full" style={{ background: "var(--accent)", filter: "blur(4px)", opacity: 0.08 + Math.min(flying.length, 5) * 0.05, transition: "opacity .4s" }} />
+        <div className="absolute inset-x-[24px] top-1/2 h-px -translate-y-1/2" style={{ background: "linear-gradient(90deg, rgba(244,242,237,.22), rgba(230,248,170,.5), rgba(244,242,237,.22))" }} />
         {/* faint lane guides appear once the router is under load */}
         {LANES.map((off, i) => (
-          <div key={i} className="absolute inset-x-[24px] top-1/2 h-px transition-opacity duration-500" style={{ transform: `translateY(${off}px)`, background: "rgba(200,241,79,0.12)", opacity: flying.length > 1 ? 1 : 0 }} />
+          <div key={i} className="absolute inset-x-[24px] top-1/2 h-px transition-opacity duration-500" style={{ transform: `translateY(${off}px)`, background: "rgba(200,241,79,0.12)", opacity: flying.some((p) => p.lane === i) ? 1 : 0 }} />
         ))}
 
         {packetsRef.current.length === 0 && (
-          <span className="lab-ghost-packet pointer-events-none absolute top-1/2 h-[5px] w-[5px] -translate-y-1/2 rounded-full" style={{ background: "var(--accent)" }} aria-hidden />
+          <span className="lab-ghost-packet pointer-events-none absolute top-1/2 h-[10px] w-[10px] -translate-y-1/2 rounded-full" style={{ background: pointLight(0.8) }} aria-hidden />
         )}
 
         {/* queue — waiting packets stack up before INGEST */}
         <div className="pointer-events-none absolute left-[2px] top-1/2 z-[11] flex -translate-y-1/2 flex-col-reverse gap-[2px]" style={{ transform: "translate(-4px,-50%)" }}>
           {waiting.map((p) => (
-            <span key={p.id} className="lab-q-in block h-[4px] w-[4px] rounded-full" style={{ background: TINTS[p.hue], opacity: 0.8 }} />
+            <span key={p.id} className="lab-q-in block h-[6px] w-[6px] rounded-full" style={{ background: `radial-gradient(circle, ${TINTS[p.hue]} 0 35%, transparent 72%)` }} />
           ))}
         </div>
 
@@ -267,8 +324,9 @@ function SignalRouterLab() {
               className="pointer-events-none absolute top-1/2 z-[10]"
               style={{ left: `calc(24px + (${progress * 100}% * 0.82))`, transform: `translateY(calc(-50% + ${LANES[pkt.lane]}px))` }}
             >
-              <div className="absolute right-[4px] top-1/2 h-[3px] w-[28px] -translate-y-1/2 rounded-full" style={{ background: `linear-gradient(90deg, transparent, ${tint})`, opacity: 0.7 }} />
-              <div className="relative h-[8px] w-[8px] rounded-full" style={{ background: tint, boxShadow: `0 0 10px ${tint}` }} />
+              <div className="absolute right-[6px] top-1/2 h-[4px] w-[30px] -translate-y-1/2 rounded-full" style={{ background: `linear-gradient(90deg, transparent, ${tint})`, filter: "blur(1.5px)", opacity: 0.55 }} />
+              <div className="absolute right-[6px] top-1/2 h-px w-[24px] -translate-y-1/2" style={{ background: `linear-gradient(90deg, transparent, rgba(250,252,240,.9))` }} />
+              <div className="relative h-[16px] w-[16px] -translate-x-[4px] rounded-full" style={{ background: `radial-gradient(circle, rgba(250,252,240,1) 0 16%, ${tint} 36%, transparent 70%)` }} />
             </div>
           );
         })}
@@ -279,15 +337,18 @@ function SignalRouterLab() {
           return (
             <div key={st} className="relative z-[2] flex flex-col items-center gap-[6px]">
               <span
-                className="relative flex h-[30px] w-[30px] items-center justify-center rounded-full border text-[10px] font-mono transition-all duration-200"
+                className="relative flex h-[30px] w-[30px] items-center justify-center rounded-full border text-[10px] font-mono"
                 style={{
-                  borderColor: isCurrent ? "var(--accent)" : "rgba(244,242,237,0.2)",
-                  background: isCurrent ? "var(--accent-deep)" : "#141416",
-                  color: isCurrent ? "#0c0c0d" : "#f4f2ed",
-                  boxShadow: isCurrent ? `0 0 ${8 + n * 5}px var(--accent)` : "none",
+                  borderColor: isCurrent ? "rgba(200,241,79,.9)" : "rgba(244,242,237,0.16)",
+                  background: isCurrent ? "radial-gradient(circle, rgba(200,241,79,.32), rgba(20,20,22,.9) 70%)" : "#141416",
+                  color: isCurrent ? "#f4f2ed" : "rgba(244,242,237,.7)",
+                  boxShadow: isCurrent ? `0 0 ${8 + n * 5}px rgba(200,241,79,${0.25 + Math.min(n, 4) * 0.08})` : "none",
                   transform: `scale(${1 + Math.min(n, 4) * 0.05})`,
+                  transition: `transform .5s ${LAB_SPRING}, box-shadow .3s, background .25s, border-color .25s`,
                 }}
               >
+                {/* arrival flash — one per packet reaching this stage */}
+                {arrivals.current[i] > 0 && <span key={arrivals.current[i]} className="lab-flash pointer-events-none absolute inset-[-6px] rounded-full" aria-hidden />}
                 0{i + 1}
                 {n > 1 && (
                   <span className="mono absolute -right-[6px] -top-[6px] grid h-[13px] min-w-[13px] place-items-center rounded-full px-[3px] text-[7.5px] font-bold" style={{ background: "#f4f2ed", color: "#0c0c0d" }}>
@@ -332,7 +393,8 @@ function AttentionFieldLab() {
   useEffect(() => {
     const el = boxRef.current;
     if (!el || prefersReducedMotion()) return;
-    const offsets = dotsRef.current.map(() => ({ x: 0, y: 0, intensity: 0 }));
+    // PROMPT 42: spring state (position + velocity) instead of a plain lerp
+    const offsets = dotsRef.current.map(() => ({ x: 0, y: 0, vx: 0, vy: 0, intensity: 0 }));
 
     const frame = () => {
       const b = el.getBoundingClientRect();
@@ -363,25 +425,26 @@ function AttentionFieldLab() {
         }
 
         const o = offsets[i];
-        o.x += (tx - o.x) * 0.18;
-        o.y += (ty - o.y) * 0.18;
-        o.intensity += (targetIntensity - o.intensity) * 0.22;
+        o.vx = (o.vx + (tx - o.x) * 0.24) * 0.56;
+        o.vy = (o.vy + (ty - o.y) * 0.24) * 0.56;
+        o.x += o.vx;
+        o.y += o.vy;
+        o.intensity += (targetIntensity - o.intensity) * 0.25;
 
-        if (Math.abs(o.x - tx) > 0.1 || Math.abs(o.y - ty) > 0.1 || Math.abs(o.intensity - targetIntensity) > 0.02) {
+        if (Math.abs(o.x - tx) > 0.1 || Math.abs(o.y - ty) > 0.1 || Math.abs(o.vx) + Math.abs(o.vy) > 0.05 || Math.abs(o.intensity - targetIntensity) > 0.02) {
           moving = true;
         }
 
         // Apply physical transform and dynamic illumination with radial falloff
-        const scale = 1 + o.intensity * 1.6;
+        const scale = 1 + o.intensity * 1.4;
         d.style.transform = `translate3d(${o.x.toFixed(2)}px, ${o.y.toFixed(2)}px, 0) scale(${scale.toFixed(2)})`;
 
-        // Color & luminous glow interpolate smoothly with falloff intensity
-        if (o.intensity > 0.05) {
-          d.style.background = `color-mix(in srgb, var(--accent) ${(o.intensity * 100).toFixed(0)}%, rgba(244,242,237,0.25))`;
-          d.style.boxShadow = `0 0 ${(o.intensity * 10).toFixed(1)}px rgba(200, 241, 79, ${(o.intensity * 0.8).toFixed(2)})`;
+        // Point-light: brightness = real attention intensity at this dot
+        if (o.intensity > 0.03) {
+          const a = o.intensity;
+          d.style.background = `radial-gradient(circle, rgba(250,252,240,${(0.45 + a * 0.55).toFixed(2)}) 0 18%, rgba(200,241,79,${(a * 0.9).toFixed(2)}) 36%, rgba(200,241,79,${(a * 0.25).toFixed(2)}) 58%, transparent 72%)`;
         } else {
-          d.style.background = "rgba(244,242,237,0.35)";
-          d.style.boxShadow = "none";
+          d.style.background = "";
         }
       });
 
@@ -419,20 +482,21 @@ function AttentionFieldLab() {
   return (
     <div
       ref={boxRef}
-      className="attention-field relative grid h-[180px] w-full grid-cols-12 place-items-center rounded-[4px] cursor-crosshair select-none"
+      className="attention-field relative h-[180px] w-full rounded-[4px] cursor-crosshair select-none"
       style={{ background: "#0c0c0d", touchAction: "none" }}
       data-cursor="FIELD"
     >
+      {/* PROMPT 42: near-imperceptible ambient drift of the whole field */}
+      <div className="lab-drift pointer-events-none absolute inset-0 grid grid-cols-12 place-items-center">
       {Array.from({ length: COLS * ROWS }).map((_, i) => (
         <span key={i} className="grid place-items-center">
           <span
             ref={(n) => {
               dotsRef.current[i] = n;
             }}
-            className="lab-dot block h-[5px] w-[5px] rounded-full"
+            className="lab-dot block h-[11px] w-[11px] rounded-full"
             style={{
-              background: "rgba(244,242,237,0.35)",
-              willChange: "transform, background, box-shadow",
+              willChange: "transform, background",
               // PROMPT 36 idle invitation: a slow diagonal breathing wave —
               // per-dot delay runs from top-left to bottom-right.
               animationDelay: `${((i % COLS) + Math.floor(i / COLS)) * 130}ms`,
@@ -440,6 +504,7 @@ function AttentionFieldLab() {
           />
         </span>
       ))}
+      </div>
     </div>
   );
 }
@@ -465,6 +530,7 @@ function Spatial3DLab() {
   const projRef = useRef<{ x: number; y: number; z: number }[]>([]);
   const downAt = useRef({ x: 0, y: 0 });
   const focusT = useRef(0); // 0 → 1 eases the dimming in/out
+  const focusV = useRef(0); // PROMPT 42: spring velocity for focus
 
   // 3D Node Vertices & Edges
   const nodes = [
@@ -535,8 +601,9 @@ function Spatial3DLab() {
 
       projRef.current = projected;
       const sel = selectedRef.current;
-      focusT.current += ((sel !== null ? 1 : 0) - focusT.current) * 0.14;
-      const ft = focusT.current;
+      focusV.current = (focusV.current + ((sel !== null ? 1 : 0) - focusT.current) * 0.16) * 0.72;
+      focusT.current += focusV.current;
+      const ft = Math.max(0, focusT.current);
       const linked = new Set<number>();
       if (sel !== null) edges.forEach(([i, j]) => { if (i === sel) linked.add(j); if (j === sel) linked.add(i); });
       const pulse = (performance.now() % 1400) / 1400;
@@ -548,16 +615,42 @@ function Spatial3DLab() {
         const base = Math.min(0.85, Math.max(0.12, 0.2 + (p1.z + p2.z + 4) * 0.09));
         const mine = sel !== null && (i === sel || j === sel);
         const alpha = mine ? base + (1 - base) * ft : base * (1 - ft * 0.88);
-        ctx.lineWidth = mine ? 1.3 + ft * 1.2 : 1.3;
-        ctx.strokeStyle = `rgba(200, 241, 79, ${alpha})`;
+        // PROMPT 42: glow pass behind a thin bright core
+        const a = Math.max(0, Math.min(1, alpha));
+        ctx.save();
+        ctx.lineWidth = mine ? 4 + ft * 2 : 3.5;
+        ctx.strokeStyle = `rgba(200, 241, 79, ${(a * 0.22).toFixed(3)})`;
+        ctx.shadowColor = "rgba(200,241,79,0.6)";
+        ctx.shadowBlur = 6 * a;
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+        ctx.restore();
+        ctx.lineWidth = mine ? 1 + ft * 0.6 : 0.9;
+        ctx.strokeStyle = `rgba(232, 250, 180, ${a})`;
         if (mine && !prefersReducedMotion()) {
-          // a signal runs outward from the selected node along each of its links
+          // a light pulse runs outward from the selected node along each link,
+          // flashing as it arrives at the neighbour
           const from = i === sel ? p1 : p2, to = i === sel ? p2 : p1;
           const t = pulse;
-          ctx.fillStyle = `rgba(244,242,237,${ft * (1 - t)})`;
+          const px = from.x + (to.x - from.x) * t, py = from.y + (to.y - from.y) * t;
+          const g = ctx.createRadialGradient(px, py, 0, px, py, 6);
+          g.addColorStop(0, `rgba(250,252,240,${ft})`);
+          g.addColorStop(0.4, `rgba(200,241,79,${0.6 * ft})`);
+          g.addColorStop(1, "rgba(200,241,79,0)");
+          ctx.fillStyle = g;
           ctx.beginPath();
-          ctx.arc(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t, 2, 0, Math.PI * 2);
+          ctx.arc(px, py, 6, 0, Math.PI * 2);
           ctx.fill();
+          if (t > 0.86) {
+            const k = (t - 0.86) / 0.14;
+            ctx.strokeStyle = `rgba(200,241,79,${(1 - k) * 0.7 * ft})`;
+            ctx.beginPath();
+            ctx.arc(to.x, to.y, 3 + k * 9, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.strokeStyle = `rgba(232, 250, 180, ${a})`;
+          }
         }
         ctx.beginPath();
         ctx.moveTo(p1.x, p1.y);
@@ -573,10 +666,19 @@ function Spatial3DLab() {
       // Draw Node Vertices & Central Core
       projected.forEach((p, idx) => {
         const on = sel === null || idx === sel || linked.has(idx);
-        ctx.globalAlpha = on ? 1 : 1 - ft * 0.75;
-        ctx.fillStyle = idx === 8 || idx === sel ? "#c8f14f" : "#f4f2ed";
+        ctx.globalAlpha = Math.max(0.15, on ? 1 : 1 - ft * 0.75);
+        // PROMPT 42: point-light vertices; nearer (z) = brighter; hover blooms
+        const core = (idx === 8 ? 4.5 : 2.5) + (idx === sel ? 1.5 * ft : 0);
+        const bloom = core * (idx === hoverRef.current ? 4.2 : 3.2);
+        const depth = Math.max(0.55, Math.min(1, 0.8 - p.z * 0.15));
+        const lg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, bloom);
+        lg.addColorStop(0, `rgba(250,252,240,${depth})`);
+        lg.addColorStop(0.22, idx === 8 || idx === sel ? `rgba(200,241,79,${depth})` : `rgba(236,246,210,${depth * 0.85})`);
+        lg.addColorStop(0.5, `rgba(200,241,79,${0.22 * depth})`);
+        lg.addColorStop(1, "rgba(200,241,79,0)");
+        ctx.fillStyle = lg;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, (idx === 8 ? 4.5 : 2.5) + (idx === sel ? 1.5 * ft : 0) + (idx === hoverRef.current ? 1 : 0), 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, bloom, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 1;
         if (idx === sel) {
@@ -718,6 +820,12 @@ function StateMachineLab() {
   const [lastStateIndex, setLastStateIndex] = useState<number | null>(null);
   const [transitioning, setTransitioning] = useState(false);
   const [fallbackMode, setFallbackMode] = useState(false);
+  // PROMPT 42: a light pulse travels source → destination; the destination
+  // lights (with a flash + spring settle) when the pulse actually arrives.
+  const [arrived, setArrived] = useState(true);
+  const [hop, setHop] = useState(0);
+  const arriveT = useRef(0);
+  const TRAVEL = prefersReducedMotion() ? 0 : 340;
 
   const states = ["IDLE", "EVALUATE", "EXECUTE", "VERIFY"];
 
@@ -734,10 +842,14 @@ function StateMachineLab() {
     setLastStateIndex(stateIndex);
     setStateIndex(nextIdx);
     setTransitioning(true);
+    setArrived(false);
+    setHop((h) => h + 1);
+    window.clearTimeout(arriveT.current);
+    arriveT.current = window.setTimeout(() => setArrived(true), TRAVEL);
 
     window.setTimeout(() => {
       setTransitioning(false);
-    }, 450);
+    }, TRAVEL + 260);
   };
 
   const nextState = () => {
@@ -756,7 +868,7 @@ function StateMachineLab() {
         <button
           type="button"
           onClick={() => setFallbackMode((f) => !f)}
-          className="mono text-[9px] px-[8px] py-[3px] rounded-full border transition-colors"
+          className="lab-glow-hover mono text-[9px] px-[8px] py-[3px] rounded-full border transition-colors"
           style={{
             borderColor: fallbackMode ? "var(--accent)" : "rgba(244,242,237,0.2)",
             color: fallbackMode ? "var(--accent)" : "rgba(244,242,237,0.5)",
@@ -769,26 +881,43 @@ function StateMachineLab() {
       {/* State Node Grid with Dynamic Transition Line */}
       <div className="relative grid grid-cols-2 gap-[10px] my-[10px]">
         {/* SVG Transition Layer */}
-        <svg className="pointer-events-none absolute inset-0 h-full w-full z-[1]" aria-hidden>
+        <svg className="pointer-events-none absolute inset-0 h-full w-full z-[3]" aria-hidden>
+          {/* the machine's real transitions (the Step cycle) as light: glow + core */}
+          {nodeCoords.map((a, i) => {
+            const b = nodeCoords[(i + 1) % 4];
+            const lit = stateIndex === i || stateIndex === (i + 1) % 4;
+            return (
+              <g key={i} style={{ opacity: lit ? 1 : 0.45, transition: "opacity .4s" }}>
+                <line x1={`${a.x}%`} y1={`${a.y}%`} x2={`${b.x}%`} y2={`${b.y}%`} stroke="rgba(200,241,79,.16)" strokeWidth="5" style={{ filter: "blur(2px)" }} />
+                <line x1={`${a.x}%`} y1={`${a.y}%`} x2={`${b.x}%`} y2={`${b.y}%`} stroke="rgba(232,250,180,.28)" strokeWidth="0.8" strokeDasharray="2 3" />
+              </g>
+            );
+          })}
           {transitioning && fromCoord && toCoord && (
-            <line
-              className="cs-edge"
-              x1={`${fromCoord.x}%`}
-              y1={`${fromCoord.y}%`}
-              x2={`${toCoord.x}%`}
-              y2={`${toCoord.y}%`}
-              pathLength={1}
-              stroke="var(--accent)"
-              strokeWidth="2.5"
-              strokeDasharray="1"
-              strokeLinecap="round"
-              filter="drop-shadow(0 0 6px var(--accent))"
-            />
+            <g key={hop}>
+              <line className="cs-edge" x1={`${fromCoord.x}%`} y1={`${fromCoord.y}%`} x2={`${toCoord.x}%`} y2={`${toCoord.y}%`} pathLength={1} stroke="rgba(200,241,79,.35)" strokeWidth="6" strokeDasharray="1" strokeLinecap="round" style={{ filter: "blur(3px)" }} />
+              <line className="cs-edge" x1={`${fromCoord.x}%`} y1={`${fromCoord.y}%`} x2={`${toCoord.x}%`} y2={`${toCoord.y}%`} pathLength={1} stroke="rgba(245,252,225,.95)" strokeWidth="1.2" strokeDasharray="1" strokeLinecap="round" />
+              {TRAVEL > 0 && (
+                <circle r="7" fill="url(#lab-pl)">
+                  <animate attributeName="cx" from={`${fromCoord.x}%`} to={`${toCoord.x}%`} dur={`${TRAVEL}ms`} fill="freeze" calcMode="spline" keySplines="0.45 0 0.2 1" keyTimes="0;1" />
+                  <animate attributeName="cy" from={`${fromCoord.y}%`} to={`${toCoord.y}%`} dur={`${TRAVEL}ms`} fill="freeze" calcMode="spline" keySplines="0.45 0 0.2 1" keyTimes="0;1" />
+                  <animate attributeName="opacity" values="1;1;0" keyTimes="0;0.85;1" dur={`${TRAVEL + 80}ms`} fill="freeze" />
+                </circle>
+              )}
+            </g>
           )}
+          <defs>
+            <radialGradient id="lab-pl">
+              <stop offset="0" stopColor="#fafcf0" />
+              <stop offset="0.35" stopColor="#c8f14f" stopOpacity="0.85" />
+              <stop offset="1" stopColor="#c8f14f" stopOpacity="0" />
+            </radialGradient>
+          </defs>
         </svg>
 
         {states.map((st, idx) => {
-          const active = stateIndex === idx;
+          const target = stateIndex === idx;
+          const active = target && arrived;
           const isFrom = lastStateIndex === idx && transitioning;
           // PROMPT 36 idle invitation: the node "Step" would enter next
           // breathes a soft halo — anticipation, not a second active state.
@@ -799,7 +928,7 @@ function StateMachineLab() {
               key={st}
               type="button"
               onClick={() => goToState(idx)}
-              className={`relative z-[2] flex flex-col items-start p-[10px] rounded-[6px] border text-left transition-all duration-300 ${isNext ? "lab-idle-next" : ""}`}
+              className={`lab-glow-hover relative z-[2] flex flex-col items-start p-[10px] rounded-[6px] border text-left ${isNext ? "lab-idle-next" : ""}`}
               style={{
                 borderColor: active
                   ? "var(--accent)"
@@ -811,15 +940,17 @@ function StateMachineLab() {
                   : isFrom
                   ? "rgba(200, 241, 79, 0.05)"
                   : "#141416",
-                boxShadow: active ? "0 0 14px rgba(200, 241, 79, 0.18)" : "none",
-                transform: active ? "scale(1.02)" : "scale(1)",
+                boxShadow: active ? "0 0 18px rgba(200, 241, 79, 0.22), inset 0 0 14px rgba(200,241,79,.08)" : undefined,
+                transform: active ? "scale(1.03)" : "scale(1)",
+                transition: `transform .55s ${LAB_SPRING}, box-shadow .35s, background .3s, border-color .3s`,
               }}
             >
+              {active && lastStateIndex !== null && <span key={hop} className="lab-flash pointer-events-none absolute inset-0 rounded-[6px]" aria-hidden />}
               <div className="flex items-center justify-between w-full mb-[2px]">
                 <span className="mono text-[8.5px]" style={{ color: active ? "var(--accent)" : "rgba(244,242,237,0.4)" }}>
                   NODE 0{idx + 1}
                 </span>
-                {active && <span className="block h-[5px] w-[5px] rounded-full bg-[var(--accent)] animate-ping" />}
+                <span className="block h-[12px] w-[12px] rounded-full" style={{ background: pointLight(active ? 1 : 0.18), transform: active ? "scale(1)" : "scale(.6)", transition: `transform .5s ${LAB_SPRING}, background .3s` }} />
               </div>
               <span className="mono text-[11px] font-medium" style={{ color: active ? "#f4f2ed" : "rgba(244,242,237,0.6)" }}>
                 {st}
@@ -846,9 +977,13 @@ function StateMachineLab() {
 function KineticScrubberLab() {
   const [weight, setWeight] = useState(500);
   const [speed, setSpeed] = useState(1.4);
+  // PROMPT 42: the type follows the slider on a spring — it tracks the thumb
+  // immediately and settles with a small overshoot when the value locks in.
+  const weightS = useSpringValue(weight, 0.28, 0.66);
+  const wght = Math.round(Math.max(100, Math.min(900, weightS)));
 
   // Live interpolated tracking, stretch, and kinetic pulse
-  const letterSpacing = `${((weight - 400) / 1600).toFixed(3)}em`;
+  const letterSpacing = `${((weightS - 400) / 1600).toFixed(3)}em`;
   const animationDuration = `${(2.2 / Math.max(0.5, speed)).toFixed(2)}s`;
 
   return (
@@ -859,14 +994,11 @@ function KineticScrubberLab() {
         style={{ borderColor: "rgba(244,242,237,0.12)", background: "#0c0c0d" }}
       >
         {/* Kinetic scanning indicator reacting to speed */}
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-[2px]"
-          style={{
-            background: "linear-gradient(90deg, transparent, var(--accent), transparent)",
-            animation: `drawLine 0.8s ease-in-out infinite alternate`,
-            animationDuration,
-          }}
-        />
+        {/* scan line = the velocity value, rendered as light: glow + core + point-light head */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[8px]">
+          <div className="lab-scan absolute top-[1px] h-[6px] w-[38%] rounded-full" style={{ background: "linear-gradient(90deg, transparent, rgba(200,241,79,.55), transparent)", filter: "blur(3px)", animationDuration }} />
+          <div className="lab-scan absolute top-[3.5px] h-px w-[38%]" style={{ background: "linear-gradient(90deg, transparent, rgba(245,252,225,.95), transparent)", animationDuration }} />
+        </div>
 
         {/* PROMPT 36 idle invitation: a slow glow bloom behind the type —
             the sketch's "resting breath" while the scan line keeps moving. */}
@@ -879,12 +1011,12 @@ function KineticScrubberLab() {
         <p
           className="uppercase select-none text-center font-display"
           style={{
-            fontWeight: weight,
+            fontWeight: wght,
             fontSize: "clamp(20px, 2.4vw, 28px)",
             letterSpacing,
             color: "var(--accent)",
-            textShadow: `0 0 ${(weight / 80).toFixed(1)}px rgba(200, 241, 79, 0.4)`,
-            transform: `scaleY(${(0.95 + weight / 2000).toFixed(3)})`,
+            textShadow: `0 0 ${(weightS / 80).toFixed(1)}px rgba(200, 241, 79, 0.4), 0 0 2px rgba(245,252,225,.35)`,
+            transform: `scaleY(${(0.95 + weightS / 2000).toFixed(3)})`,
             transition: "none", // Instant 60fps frame reactivity
           }}
         >
@@ -909,7 +1041,7 @@ function KineticScrubberLab() {
             step={5}
             value={weight}
             onChange={(e) => setWeight(Number(e.target.value))}
-            className="w-[124px] accent-[var(--accent)] cursor-pointer"
+            className="lab-range w-[124px] cursor-pointer"
           />
         </div>
 
@@ -924,7 +1056,7 @@ function KineticScrubberLab() {
             step={0.1}
             value={speed}
             onChange={(e) => setSpeed(Number(e.target.value))}
-            className="w-[124px] accent-[var(--accent)] cursor-pointer"
+            className="lab-range w-[124px] cursor-pointer"
           />
         </div>
       </div>
