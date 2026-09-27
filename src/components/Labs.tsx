@@ -1,37 +1,39 @@
-import { useEffect, useRef, useState, useLayoutEffect } from "react";
-import { gsap, ScrollTrigger, prefersReducedMotion } from "../lib/gsap";
-import { hasFinePointer } from "../lib/interact";
+import { useEffect, useRef, useState, type ReactNode, type PointerEvent as RPointerEvent } from "react";
+import { prefersReducedMotion } from "../lib/gsap";
 
 /**
- * PROMPT 12 / 30 — Arche Labs (Playable Experiments)
+ * PROMPT 43 — Arche Labs, rebuilt. Five new sketches, five different
+ * input mechanics (none of the retired Router / Field / Cluster / State
+ * Machine / Scrubber mechanics survive):
  *
- * PROMPT 30 updates — Deepen the payoff per sketch:
- *  1. Signal Router: Live traveling packet with trailing glow tail moving along the stage track.
- *  2. Attention Field: Multi-dot radial falloff so adjacent dots dim-brighten smoothly.
- *  3. Spatial 3D Cluster: Drag-to-rotate with physics momentum / inertia deceleration on release.
- *  4. State Machine: Visual transition line drawing from old active node to the new one on state step.
- *  5. Kinetic Scrubber: Real-time variable typography and speed-reactive kinetic wave.
+ *   01 Load Balancer   — slider      · workers scale to traffic, queue forms past capacity
+ *   02 Failover        — click-to-kill · traffic reroutes; kill both → honest "no path"
+ *   03 Live Parser     — typing      · unstructured text → structured tags, live
+ *   04 Manual vs Auto  — urgent repeated clicking · YOU are the manual bottleneck
+ *   05 Build a Flow    — drag & drop construction · RUN validates honestly
  *
- * PROMPT 36 updates — the idle "invitation" pass:
- *  - Sketch 01's status line may no longer truncate: it wraps instead,
- *    so no status text ever hides behind an ellipsis.
- *  - Every sketch now carries one distinct, very subtle looping
- *    micro-motion while untouched, so the grid reads as alive and
- *    waiting to be touched — not as static screenshots. Each borrows a
- *    faint pre-echo of its own triggered response:
- *      01 a ghost packet drifting the track when no payload is in flight
- *      02 a slow diagonal breathing wave across the dot matrix
- *      03 the central core's glow breathing (on top of the idle drift)
- *      04 a soft anticipation halo on the node "Step" would enter next
- *      05 a slow glow bloom behind the live type (the scan line already lives)
- *    All are disabled under prefers-reduced-motion.
+ * Rendering follows Prompt 42's light language (glow-behind-core lines,
+ * point-light nodes, spring settles, travelling pulses) — every glow maps
+ * to real state: a worker that is busy, a path carrying traffic, a field
+ * that was extracted, a checkpoint being processed, a block executing.
+ * All five are deliberately small toys, not previews of a product.
  */
+
+const LAB_SPRING = "cubic-bezier(0.34, 1.32, 0.64, 1)";
+const LIME = "#c8f14f";
+const HOT = "#fafcf0";
+const FAULT = "#ff7a66"; // used only for genuinely failed state (Failover, invalid flow)
+const pointLight = (a = 1, c = "200,241,79") =>
+  `radial-gradient(circle, rgba(250,252,240,${a}) 0 16%, rgba(${c},${0.85 * a}) 34%, rgba(${c},${0.22 * a}) 58%, transparent 72%)`;
+const reduced = () => prefersReducedMotion();
+const mono = "mono";
+const dim = "rgba(244,242,237,0.5)";
+const faint = "rgba(244,242,237,0.32)";
 
 export function Labs() {
   return (
     <section className="w-full py-[clamp(64px,8vw,120px)] on-ink bg-[#0c0c0d] text-[#f4f2ed]">
       <div className="wrap">
-        {/* Header */}
         <div className="mb-[clamp(32px,4vw,56px)] flex flex-wrap items-end justify-between gap-[20px] border-b pb-[20px]" style={{ borderColor: "var(--line)" }}>
           <div>
             <div className="flex items-center gap-[10px] mb-[8px]">
@@ -44,35 +46,25 @@ export function Labs() {
             </h2>
           </div>
           <p className="body max-w-[42ch]" style={{ color: "rgba(244, 242, 237, 0.65)" }} data-r="meta">
-            Not deliverables or case studies. Small working prototypes — click, drag, or trigger any sketch to observe real state logic.
+            Not deliverables or case studies. Small working prototypes — slide, break, type, race and build to see real system behaviour.
           </p>
         </div>
 
-        {/* 5 Playable Sketches Grid */}
         <div className="grid gap-[20px] sm:grid-cols-2 lg:grid-cols-3">
-          {/* Sketch 1: Signal Router */}
-          <LabCard tag="SKETCH 01" title="Signal Router" subtitle="Click to dispatch packet">
-            <SignalRouterLab />
+          <LabCard tag="SKETCH 01" title="Load Balancer" subtitle="Slide the traffic">
+            <LoadBalancerLab />
           </LabCard>
-
-          {/* Sketch 2: Attention Field */}
-          <LabCard tag="SKETCH 02" title="Attention Field" subtitle="Drag pointer across matrix">
-            <AttentionFieldLab />
+          <LabCard tag="SKETCH 02" title="Failover" subtitle="Click a node to kill it">
+            <FailoverLab />
           </LabCard>
-
-          {/* Sketch 3: Spatial 3D Cluster */}
-          <LabCard tag="SKETCH 03" title="Spatial Node Cluster" subtitle="Drag to rotate with inertia">
-            <Spatial3DLab />
+          <LabCard tag="SKETCH 03" title="Live Parser" subtitle="Just start typing">
+            <LiveParserLab />
           </LabCard>
-
-          {/* Sketch 4: State Machine Toy */}
-          <LabCard tag="SKETCH 04" title="State Machine" subtitle="Click nodes or step state">
-            <StateMachineLab />
+          <LabCard tag="SKETCH 04" title="Manual vs Automated" subtitle="You are the bottleneck">
+            <RaceLab />
           </LabCard>
-
-          {/* Sketch 5: Kinetic Scrubber */}
-          <LabCard tag="SKETCH 05" title="Kinetic Scrubber" subtitle="Scrub font weight & speed">
-            <KineticScrubberLab />
+          <LabCard tag="SKETCH 05" title="Build a Flow" subtitle="Drag blocks, then run">
+            <BuildFlowLab />
           </LabCard>
         </div>
       </div>
@@ -80,26 +72,9 @@ export function Labs() {
   );
 }
 
-function LabCard({
-  tag,
-  title,
-  subtitle,
-  children,
-}: {
-  tag: string;
-  title: string;
-  subtitle: string;
-  children: React.ReactNode;
-}) {
+function LabCard({ tag, title, subtitle, children }: { tag: string; title: string; subtitle: string; children: ReactNode }) {
   return (
-    <div
-      className="group relative flex flex-col justify-between rounded-[8px] border p-[18px] transition-all duration-300 hover:border-[var(--accent-deep)]"
-      style={{
-        borderColor: "var(--line)",
-        background: "#141416",
-        minHeight: 340,
-      }}
-    >
+    <div className="lab-card-v2 group relative flex flex-col justify-between rounded-[8px] border p-[18px]" style={{ borderColor: "var(--line)", background: "#141416", minHeight: 360 }}>
       <div className="mb-[12px] flex items-center justify-between">
         <span className="mono rounded-full border px-[8px] py-[3px] text-[9.5px]" style={{ borderColor: "rgba(244, 242, 237, 0.2)", color: "var(--accent)" }}>
           {tag}
@@ -108,14 +83,13 @@ function LabCard({
           {subtitle}
         </span>
       </div>
-
-      <div className="my-[8px] flex-1 flex flex-col justify-center overflow-hidden rounded-[6px] border p-[12px]" style={{ borderColor: "rgba(244, 242, 237, 0.08)", background: "#0c0c0d" }}>
-        {children}
+      <div className="lab-stage relative my-[8px] flex-1 flex flex-col overflow-hidden rounded-[6px] border p-[12px]" style={{ borderColor: "rgba(244, 242, 237, 0.08)", background: "#0c0c0d" }}>
+        <span className="lab-atmos pointer-events-none absolute inset-[-8px]" aria-hidden />
+        <div className="relative flex flex-1 flex-col">{children}</div>
       </div>
-
       <div className="mt-[12px] flex items-center justify-between pt-[10px] border-t" style={{ borderColor: "rgba(244, 242, 237, 0.08)" }}>
         <h3 className="mono font-medium text-[13px] text-[#f4f2ed]">{title}</h3>
-        <span className="mono text-[10px] transition-transform duration-300 group-hover:translate-x-[4px]" style={{ color: "var(--accent)" }}>
+        <span className="mono text-[10px]" style={{ color: "var(--accent)" }}>
           Interactive →
         </span>
       </div>
@@ -123,687 +97,740 @@ function LabCard({
   );
 }
 
-/* ============================================================
-   SKETCH 1: SIGNAL ROUTER (PROMPT 30: Traveling packet + tail)
-   ============================================================ */
-type ActivePacket = {
-  id: number;
-  startTime: number;
-  duration: number;
-};
-
-function SignalRouterLab() {
-  const [packets, setPackets] = useState<ActivePacket[]>([]);
-  const [activeStage, setActiveStage] = useState(0);
-  const [statusText, setStatusText] = useState("Status: Idle — Click 'Dispatch Packet' to simulate payload.");
-  const nextId = useRef(1);
-  const rafRef = useRef(0);
-
-  const stages = ["INGEST", "PARSE", "ROUTE", "DONE"];
-
-  const dispatch = () => {
-    const id = nextId.current++;
-    const now = performance.now();
-    setStatusText(`Payload #${id} dispatched into INGEST pipeline...`);
-
-    setPackets((prev) => [...prev.slice(-3), { id, startTime: now, duration: 1600 }]);
-  };
-
+/* tiny rAF hook: calls fn(dt seconds) every frame while `on` */
+function useFrame(fn: (dt: number) => void, on = true) {
+  const ref = useRef(fn);
+  ref.current = fn;
   useEffect(() => {
-    const loop = (now: number) => {
-      setPackets((current) => {
-        if (current.length === 0) return current;
-
-        const updated = current.filter((p) => now - p.startTime <= p.duration);
-        if (updated.length > 0) {
-          const latest = updated[updated.length - 1];
-          const progress = Math.min(1, (now - latest.startTime) / latest.duration);
-          const stageIdx = Math.min(3, Math.floor(progress * 4));
-          setActiveStage(stageIdx);
-        } else {
-          setStatusText("All payloads processed: ROUTE → DONE [ACK 200]");
-        }
-        return updated;
-      });
-
-      rafRef.current = requestAnimationFrame(loop);
+    if (!on) return;
+    let raf = 0;
+    let last = performance.now();
+    const loop = (t: number) => {
+      const dt = Math.min(0.05, (t - last) / 1000);
+      last = t;
+      ref.current(dt);
+      raf = requestAnimationFrame(loop);
     };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [on]);
+}
 
-    rafRef.current = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, []);
+/* ================================================================
+   01 — LOAD BALANCER
+   Traffic (0–100%) arrives at up to 120 req/s. Each worker absorbs
+   15 req/s. The autoscaler adds a worker every 0.25s while demand
+   exceeds capacity and retires one every 0.6s once the queue is empty
+   and capacity is comfortably spare. Max capacity (8 × 15 = 120) is
+   reached at 100%; spikes while scaling, or sustained >~95%, queue.
+   ================================================================ */
+const WORKERS = 8;
+const PER_WORKER = 15;
 
+function LoadBalancerLab() {
+  const [traffic, setTraffic] = useState(0);
+  const sim = useRef({ active: 0, queue: 0, scaleT: 0, util: 0 });
+  const [, force] = useState(0);
+  const [pops, setPops] = useState<number[]>(Array(WORKERS).fill(0));
+
+  useFrame((dt) => {
+    const s = sim.current;
+    const demand = (traffic / 100) * 128; // headroom: 100% slightly exceeds max capacity
+    const cap = s.active * PER_WORKER;
+    const want = Math.min(WORKERS, Math.ceil((demand + s.queue * 0.5) / PER_WORKER));
+    s.scaleT += dt;
+    if (want > s.active && (s.scaleT > 0.18 || s.active === 0)) {
+      s.active++;
+      s.scaleT = 0;
+      const i = s.active - 1;
+      setPops((p) => p.map((v, k) => (k === i ? v + 1 : v)));
+    } else if (want < s.active && s.queue < 0.5 && s.scaleT > 0.6) {
+      s.active--;
+      s.scaleT = 0;
+    }
+    // backlog grows with unmet demand; spare capacity drains it quickly
+    const net = demand - cap;
+    s.queue = Math.max(0, s.queue + (net > 0 ? net * 0.22 : net * 0.9) * dt);
+    s.queue = Math.min(s.queue, 40);
+    s.util = cap ? Math.min(1, demand / cap) : 0;
+    force((n) => n + 1);
+  }, traffic > 0 || sim.current.active > 0 || sim.current.queue > 0);
+
+  const s = sim.current;
+  const q = Math.round(s.queue);
+  const saturated = s.active === WORKERS && q > 0;
   return (
-    <div className="flex flex-col justify-between h-full min-h-[190px]">
-      <div className="flex items-center justify-between">
-        <span className="mono text-[10px]" style={{ color: "rgba(244,242,237,0.5)" }}>
-          Active Stage: <strong style={{ color: "var(--accent)" }}>{stages[activeStage]}</strong>
-        </span>
-        <button
-          type="button"
-          onClick={dispatch}
-          className="btn btn-ghost py-[6px] px-[12px] text-[9.5px]"
-          data-cursor="TRIGGER"
-        >
-          Dispatch Packet +
-        </button>
+    <div className="flex flex-1 flex-col justify-between gap-[12px]">
+      <div>
+        <div className="mb-[4px] flex items-center justify-between">
+          <span className={`${mono} text-[9px] tracking-wider`} style={{ color: dim }}>INCOMING TRAFFIC</span>
+          <span className={`${mono} text-[10px] font-bold`} style={{ color: LIME }}>{traffic}%</span>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={traffic}
+          onChange={(e) => setTraffic(Number(e.target.value))}
+          className="lab-range w-full cursor-pointer"
+          aria-label="Incoming traffic"
+        />
       </div>
 
-      {/* Track & Traveling Packet */}
-      <div className="relative my-[20px] flex items-center justify-between px-[10px]">
-        {/* Background Track Line */}
-        <div className="absolute inset-x-[24px] top-1/2 h-[2px] -translate-y-1/2" style={{ background: "rgba(244,242,237,0.12)" }} />
+      {/* request bus → workers */}
+      <div className="relative">
+        <div className="relative mx-[6px] h-[10px]">
+          <div className="absolute inset-x-0 top-1/2 h-[5px] -translate-y-1/2 rounded-full" style={{ background: LIME, filter: "blur(3px)", opacity: 0.05 + (traffic / 100) * 0.3 }} />
+          <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2" style={{ background: `rgba(232,250,180,${0.2 + (traffic / 100) * 0.5})` }} />
+        </div>
+        <div className="grid grid-cols-8 gap-[6px]">
+          {Array.from({ length: WORKERS }).map((_, i) => {
+            const on = i < s.active;
+            const load = on ? s.util : 0;
+            return (
+              <div key={i} className="flex flex-col items-center gap-[5px]">
+                {/* feeder line carries pulses only into busy workers */}
+                <div className="relative h-[16px] w-px" style={{ background: on ? "rgba(232,250,180,.45)" : "rgba(244,242,237,.08)" }}>
+                  {on && load > 0.05 && !reduced() && (
+                    <span className="lab-feed absolute left-1/2 h-[7px] w-[7px] -translate-x-1/2 rounded-full" style={{ background: pointLight(1), animationDuration: `${(1.1 - load * 0.7).toFixed(2)}s`, animationDelay: `${i * 90}ms` }} />
+                  )}
+                </div>
+                <div
+                  className="relative grid aspect-[3/4] w-full place-items-center rounded-[4px] border"
+                  style={{
+                    borderColor: on ? `rgba(200,241,79,${0.4 + load * 0.5})` : "rgba(244,242,237,.1)",
+                    background: on ? `rgba(200,241,79,${0.04 + load * 0.1})` : "#111113",
+                    boxShadow: on ? `0 0 ${6 + load * 12}px rgba(200,241,79,${0.1 + load * 0.25})` : "none",
+                    transform: on ? "scale(1)" : "scale(.92)",
+                    transition: `transform .5s ${LAB_SPRING}, border-color .3s, background .3s, box-shadow .3s`,
+                  }}
+                >
+                  {pops[i] > 0 && on && <span key={pops[i]} className="lab-flash pointer-events-none absolute inset-0 rounded-[4px]" />}
+                  <span className="h-[12px] w-[12px] rounded-full" style={{ background: on ? pointLight(0.5 + load * 0.5) : "radial-gradient(circle, rgba(244,242,237,.18) 0 25%, transparent 60%)" }} />
+                </div>
+                <span className={`${mono} text-[7px]`} style={{ color: on ? "rgba(244,242,237,.6)" : faint }}>W{i + 1}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
-        {/* PROMPT 36 idle invitation: a faint ghost packet drifts the track
-            whenever no payload is in flight — a pre-echo of the real
-            dispatch, dim enough to read as "waiting", not "running". */}
-        {packets.length === 0 && (
-          <span className="lab-ghost-packet pointer-events-none absolute top-1/2 h-[5px] w-[5px] -translate-y-1/2 rounded-full" style={{ background: "var(--accent)" }} aria-hidden />
+      {/* queue */}
+      <div className="flex min-h-[26px] items-center gap-[8px]">
+        <span className={`${mono} flex-none text-[8px]`} style={{ color: q ? LIME : faint }}>QUEUE</span>
+        <div className="flex flex-wrap gap-[3px]">
+          {Array.from({ length: Math.min(q, 32) }).map((_, i) => (
+            <span key={i} className="lab-q-in block h-[6px] w-[6px] rounded-[1px]" style={{ background: saturated ? "rgba(244,242,237,.75)" : "rgba(200,241,79,.7)" }} />
+          ))}
+          {q === 0 && <span className={`${mono} text-[8px]`} style={{ color: faint }}>empty</span>}
+        </div>
+      </div>
+
+      <div className="rounded-[4px] border px-[8px] py-[6px]" style={{ borderColor: "rgba(244,242,237,0.08)", background: "#141416" }}>
+        <p className={`${mono} text-[9px] leading-[1.5]`} style={{ color: "rgba(244,242,237,.7)" }} aria-live="polite">
+          <strong style={{ color: LIME }}>{s.active}/{WORKERS}</strong> workers active · queue: <strong style={{ color: q ? "#f4f2ed" : faint }}>{q}</strong>
+          <span style={{ color: faint }}>
+            {" "}· {traffic === 0 ? "idle" : saturated ? "at capacity — queue absorbing the spike" : q ? "scaling up…" : s.active ? "keeping pace" : "warming up"}
+          </span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ================================================================
+   02 — FAILOVER
+   PRIMARY → OUTPUT by default. Kill PRIMARY: route redraws through
+   BACKUP. Nodes self-recover after 5s; traffic fails back to PRIMARY
+   once it is healthy. Kill both: OUTPUT honestly degrades.
+   ================================================================ */
+type NodeId = "primary" | "backup";
+const RECOVER_MS = 5000;
+
+function FailoverLab() {
+  const [down, setDown] = useState<Record<NodeId, number>>({ primary: 0, backup: 0 }); // timestamp killed, 0 = up
+  const [now, setNow] = useState(performance.now());
+  const [log, setLog] = useState("Traffic flowing PRIMARY → OUTPUT. Click PRIMARY to kill it.");
+  const anyDown = down.primary || down.backup;
+  useFrame(() => setNow(performance.now()), !!anyDown);
+
+  // self-recovery
+  useEffect(() => {
+    (["primary", "backup"] as NodeId[]).forEach((n) => {
+      if (down[n] && now - down[n] > RECOVER_MS) {
+        setDown((d) => ({ ...d, [n]: 0 }));
+        setLog(n === "primary" ? "PRIMARY recovered — health checks pass, traffic failed back." : "BACKUP recovered — standing by again.");
+      }
+    });
+  }, [now, down]);
+
+  const route: NodeId | null = !down.primary ? "primary" : !down.backup ? "backup" : null;
+  const kill = (n: NodeId) => {
+    if (down[n]) return;
+    const t = performance.now();
+    setNow(t);
+    setDown((d) => ({ ...d, [n]: t }));
+    const other = n === "primary" ? "backup" : "primary";
+    if (down[other]) setLog("Both nodes down — OUTPUT has no path. This is the limit of this setup.");
+    else if (n === "primary") setLog("PRIMARY killed — rerouting through BACKUP. No request dropped.");
+    else setLog("BACKUP killed — PRIMARY still serving. Kill it too to see the limit.");
+  };
+
+  const P = { x: 22, y: 26 }, B = { x: 22, y: 78 }, O = { x: 80, y: 52 };
+  const pathOf = (a: { x: number; y: number }) => `M ${a.x} ${a.y} C ${(a.x + O.x) / 2} ${a.y}, ${(a.x + O.x) / 2} ${O.y}, ${O.x} ${O.y}`;
+  const node = (id: NodeId, at: { x: number; y: number }, label: string) => {
+    const isDown = !!down[id];
+    const left = isDown ? Math.max(0, RECOVER_MS - (now - down[id])) : 0;
+    const serving = route === id;
+    return (
+      <g
+        role="button"
+        tabIndex={0}
+        aria-label={`${label} node — ${isDown ? "down" : "click to kill"}`}
+        onClick={() => kill(id)}
+        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), kill(id))}
+        style={{ cursor: isDown ? "default" : "pointer", outline: "none" }}
+        className="lab-svg-node"
+      >
+        <circle cx={at.x} cy={at.y} r="11" fill="transparent" />
+        {serving && <circle cx={at.x} cy={at.y} r="9" fill="url(#fo-glow)" />}
+        <circle
+          cx={at.x} cy={at.y} r="6.5"
+          fill={isDown ? "rgba(255,122,102,.12)" : "#141416"}
+          stroke={isDown ? FAULT : serving ? LIME : "rgba(244,242,237,.35)"}
+          strokeWidth="0.8"
+          style={{ transition: "stroke .3s, fill .3s" }}
+        />
+        <circle cx={at.x} cy={at.y} r="2.2" fill={isDown ? "rgba(255,122,102,.55)" : serving ? HOT : "rgba(244,242,237,.45)"} />
+        {isDown && (
+          <circle cx={at.x} cy={at.y} r="9" fill="none" stroke={FAULT} strokeWidth="0.6" strokeDasharray={`${(1 - left / RECOVER_MS) * 56.5} 56.5`} transform={`rotate(-90 ${at.x} ${at.y})`} opacity="0.8" />
         )}
+        <text x={at.x} y={at.y + 15.5} textAnchor="middle" className="mono" fontSize="4" fill={isDown ? FAULT : serving ? LIME : dim}>
+          {label}
+        </text>
+        <text x={at.x} y={at.y + 20.5} textAnchor="middle" className="mono" fontSize="3.1" fill={faint}>
+          {isDown ? `recovering ${Math.ceil(left / 1000)}s` : serving ? "serving" : "standby"}
+        </text>
+      </g>
+    );
+  };
 
-        {/* Traveling Animated Packets with Trailing Glow Tails */}
-        {packets.map((pkt) => {
-          const now = performance.now();
-          const progress = Math.min(1, Math.max(0, (now - pkt.startTime) / pkt.duration));
-          const leftPct = progress * 100;
+  return (
+    <div className="flex flex-1 flex-col justify-between gap-[8px]">
+      <svg viewBox="0 0 100 100" className="w-full flex-1 select-none" style={{ maxHeight: 210 }} aria-label="Failover diagram">
+        <defs>
+          <radialGradient id="fo-glow">
+            <stop offset="0" stopColor={LIME} stopOpacity=".5" />
+            <stop offset="1" stopColor={LIME} stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id="fo-pl">
+            <stop offset="0" stopColor={HOT} />
+            <stop offset=".4" stopColor={LIME} stopOpacity=".85" />
+            <stop offset="1" stopColor={LIME} stopOpacity="0" />
+          </radialGradient>
+          <path id="fo-p" d={pathOf(P)} />
+          <path id="fo-b" d={pathOf(B)} />
+        </defs>
+        {/* idle (unrouted) links */}
+        {(["primary", "backup"] as NodeId[]).map((id) => (
+          <path key={id} d={pathOf(id === "primary" ? P : B)} fill="none" stroke={down[id] ? "rgba(255,122,102,.25)" : "rgba(244,242,237,.12)"} strokeWidth="0.6" strokeDasharray={down[id] ? "1.5 2" : undefined} />
+        ))}
+        {/* live route — redraws along the new path whenever the route changes */}
+        {route && (
+          <g key={route}>
+            <path d={pathOf(route === "primary" ? P : B)} fill="none" stroke="rgba(200,241,79,.35)" strokeWidth="3" pathLength={1} className="lab-route" style={{ filter: "blur(1.2px)" }} />
+            <path d={pathOf(route === "primary" ? P : B)} fill="none" stroke="rgba(240,252,210,.95)" strokeWidth="0.7" pathLength={1} className="lab-route" />
+            {!reduced() &&
+              [0, 0.33, 0.66].map((d) => (
+                <circle key={d} r="2.4" fill="url(#fo-pl)">
+                  <animateMotion dur="1.2s" begin={`${0.7 + d * 1.2}s`} repeatCount="indefinite">
+                    <mpath href={route === "primary" ? "#fo-p" : "#fo-b"} />
+                  </animateMotion>
+                </circle>
+              ))}
+          </g>
+        )}
+        {node("primary", P, "PRIMARY")}
+        {node("backup", B, "BACKUP")}
+        {/* OUTPUT */}
+        <g>
+          {route && <circle cx={O.x} cy={O.y} r="10" fill="url(#fo-glow)" />}
+          <rect x={O.x - 8} y={O.y - 6} width="16" height="12" rx="2" fill={route ? "#141416" : "rgba(255,122,102,.08)"} stroke={route ? LIME : FAULT} strokeWidth="0.8" className={route ? "" : "lab-degraded"} />
+          <text x={O.x} y={O.y + 1.3} textAnchor="middle" className="mono" fontSize="3.4" fill={route ? LIME : FAULT}>
+            {route ? "200 OK" : "NO PATH"}
+          </text>
+          <text x={O.x} y={O.y + 13} textAnchor="middle" className="mono" fontSize="4" fill={route ? dim : FAULT}>
+            OUTPUT
+          </text>
+          <text x={O.x} y={O.y + 18} textAnchor="middle" className="mono" fontSize="3.1" fill={faint}>
+            {route ? `via ${route}` : "degraded"}
+          </text>
+        </g>
+      </svg>
+      <div className="rounded-[4px] border px-[8px] py-[6px]" style={{ borderColor: route ? "rgba(244,242,237,0.08)" : "rgba(255,122,102,.35)", background: "#141416" }}>
+        <p key={log} className={`${mono} swap-fade text-[9px] leading-[1.5]`} style={{ color: route ? "rgba(244,242,237,.7)" : FAULT }} aria-live="polite">
+          {log}
+        </p>
+      </div>
+    </div>
+  );
+}
 
+/* ================================================================
+   03 — LIVE PARSER
+   Plain pattern matching (not NLP) — the copy says so. Every keystroke
+   re-extracts; new fields pop in, removed ones leave.
+   ================================================================ */
+type Field = { k: string; v: string };
+const EXAMPLE = "need a website for my bakery, budget 50k, contact me at a@b.com by next month";
+
+function extract(t: string): Field[] {
+  const out: Field[] = [];
+  const low = t.toLowerCase();
+  const intents: [RegExp, string][] = [
+    [/\b(web ?site|landing page|web app|site)\b/, "WEBSITE"],
+    [/\b(automat\w*|workflow|zapier)\b/, "AUTOMATION"],
+    [/\b(chat ?bot|bot|ai agent|agent|assistant)\b/, "AI AGENT"],
+    [/\b(video|reel|edit\w*)\b/, "VIDEO"],
+  ];
+  const seen = new Set<string>();
+  intents.forEach(([re, v]) => { if (re.test(low) && !seen.has(v)) { seen.add(v); out.push({ k: "INTENT", v }); } });
+  const email = t.match(/[\w.+-]+@[\w-]+\.[a-z]{2,}/i);
+  if (email) out.push({ k: "EMAIL", v: email[0] });
+  const money = t.match(/(?:₹|rs\.?|inr|\$|usd)\s?(\d[\d,.]*)\s?(k|l|lakh|lakhs|m)?\b|budget\D{0,12}(\d[\d,.]*)\s?(k|l|lakh|lakhs|m)?\b|\b(\d[\d,.]*)\s?(k|lakh|lakhs)\b/i);
+  if (money) {
+    const num = money[1] ?? money[3] ?? money[5];
+    const unit = (money[2] ?? money[4] ?? money[6] ?? "").toLowerCase();
+    const cur = /\$|usd/i.test(money[0]) ? "$" : "₹";
+    const n = parseFloat(num.replace(/,/g, "")) * (unit === "k" ? 1e3 : unit.startsWith("l") ? 1e5 : unit === "m" ? 1e6 : 1);
+    if (!isNaN(n) && n > 0) out.push({ k: "BUDGET", v: `${cur}${n.toLocaleString("en-IN")}` });
+  }
+  const phone = t.match(/(?:\+?\d{1,3}[\s-]?)?\d{5}[\s-]?\d{5}\b/);
+  if (phone) out.push({ k: "PHONE", v: phone[0].trim() });
+  const biz = t.match(/\bfor (?:my|our|a) ([a-z][a-z-]{2,20})/i);
+  if (biz && !/^(website|site|business|company)$/i.test(biz[1])) out.push({ k: "BUSINESS", v: biz[1].toLowerCase() });
+  const when = t.match(/\b(by|before|within|in) (next (week|month|year)|\d+ (days?|weeks?|months?)|(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*|monday|tuesday|wednesday|thursday|friday|tomorrow)\b/i);
+  if (when) out.push({ k: "TIMELINE", v: when[0].toLowerCase() });
+  if (/\b(asap|urgent\w*|quickly|rush)\b/i.test(t)) out.push({ k: "PRIORITY", v: "high" });
+  return out;
+}
+
+function LiveParserLab() {
+  const [text, setText] = useState("");
+  const typing = useRef(0);
+  const fields = extract(text);
+  const autoType = () => {
+    window.clearInterval(typing.current);
+    let i = 0;
+    setText("");
+    typing.current = window.setInterval(() => {
+      i += 1;
+      setText(EXAMPLE.slice(0, i));
+      if (i >= EXAMPLE.length) window.clearInterval(typing.current);
+    }, reduced() ? 1 : 32);
+  };
+  useEffect(() => () => window.clearInterval(typing.current), []);
+
+  return (
+    <div className="flex flex-1 flex-col gap-[10px]">
+      <textarea
+        value={text}
+        onChange={(e) => { window.clearInterval(typing.current); setText(e.target.value); }}
+        rows={3}
+        placeholder={`Type a message, e.g. '${EXAMPLE.replace(" by next month", "")}'`}
+        className={`${mono} lab-input w-full resize-none rounded-[5px] border px-[9px] py-[8px] text-[10px] leading-[1.5] outline-none`}
+        style={{ borderColor: "rgba(244,242,237,.14)", background: "#111113", color: "#f4f2ed" }}
+        aria-label="Message to parse"
+      />
+      <div className="flex items-center justify-between">
+        <span className={`${mono} text-[8.5px]`} style={{ color: fields.length ? LIME : faint }}>
+          {fields.length ? `${fields.length} field${fields.length > 1 ? "s" : ""} extracted` : "waiting for input…"}
+        </span>
+        <button type="button" onClick={autoType} className={`${mono} lab-glow-hover rounded-full border px-[8px] py-[2px] text-[8.5px]`} style={{ borderColor: "rgba(244,242,237,.2)", color: dim }}>
+          {text ? "replay example" : "type example ↵"}
+        </button>
+      </div>
+      {/* the structured record — each tag is keyed by its content so new/changed fields pop in */}
+      <div className="flex min-h-[70px] flex-wrap content-start gap-[6px]">
+        {fields.map((f) => (
+          <span
+            key={f.k + f.v}
+            className="lab-tag-in flex items-center gap-[6px] rounded-[4px] border py-[3px] pl-[4px] pr-[7px]"
+            style={{ borderColor: "rgba(200,241,79,.45)", background: "rgba(200,241,79,.06)", boxShadow: "0 0 12px -4px rgba(200,241,79,.4)" }}
+          >
+            <span className="h-[9px] w-[9px] rounded-full" style={{ background: pointLight(0.9) }} />
+            <span className={`${mono} text-[7.5px] tracking-wider`} style={{ color: LIME }}>{f.k}</span>
+            <span className={`${mono} text-[9px]`} style={{ color: "#f4f2ed" }}>{f.v}</span>
+          </span>
+        ))}
+      </div>
+      <p className={`${mono} mt-auto text-[8px]`} style={{ color: faint }}>
+        Simple pattern matching, run on every keystroke — no AI, no network.
+      </p>
+    </div>
+  );
+}
+
+/* ================================================================
+   04 — MANUAL vs AUTOMATED RACE
+   Both tokens start together. AUTOMATED flows through 5 checkpoints in
+   ~2s no matter what. MANUAL stops dead at each checkpoint until the
+   visitor presses PROCESS — the visitor is the bottleneck.
+   ================================================================ */
+const CPS = 5;
+const AUTO_TOTAL = 2.0; // seconds
+const TRAVEL_S = 0.28; // manual token travel between checkpoints
+const cpAt = (i: number) => (i + 1) / (CPS + 1); // checkpoint i (0-based) position; finish line = 1
+
+function RaceLab() {
+  type Phase = "ready" | "running" | "done";
+  const [phase, setPhase] = useState<Phase>("ready");
+  const st = useRef({ t0: 0, autoPos: 0, autoDone: 0, manPos: 0, manStop: 0, manDone: 0, waiting: false, now: 0 });
+  const [, force] = useState(0);
+  const [flashA, setFlashA] = useState(-1);
+  const [flashM, setFlashM] = useState(-1);
+  const processBtn = useRef<HTMLButtonElement>(null);
+
+  useFrame((dt) => {
+    const s = st.current;
+    s.now = performance.now();
+    const el = (s.now - s.t0) / 1000;
+    // automated: continuous, checkpoint flashes as it passes
+    if (!s.autoDone) {
+      const p = Math.min(1, el / AUTO_TOTAL);
+      for (let i = 0; i < CPS; i++) if (s.autoPos < cpAt(i) && p >= cpAt(i)) setFlashA(i);
+      s.autoPos = p;
+      if (p >= 1) s.autoDone = el;
+    }
+    // manual: travel to target checkpoint, then wait
+    if (!s.manDone && !s.waiting) {
+      const target = s.manStop < CPS ? cpAt(s.manStop) : 1;
+      s.manPos = Math.min(target, s.manPos + dt / (TRAVEL_S * (CPS + 1)));
+      if (s.manPos >= target) {
+        if (s.manStop >= CPS) s.manDone = el;
+        else s.waiting = true; // stopped dead at checkpoint manStop
+      }
+    }
+    if (s.autoDone && s.manDone) setPhase("done");
+    force((n) => n + 1);
+  }, phase === "running");
+
+  useEffect(() => {
+    if (st.current.waiting) processBtn.current?.focus({ preventScroll: true });
+  });
+
+  const start = () => {
+    st.current = { t0: performance.now(), autoPos: 0, autoDone: 0, manPos: 0, manStop: 0, manDone: 0, waiting: false, now: performance.now() };
+    setFlashA(-1);
+    setFlashM(-1);
+    setPhase("running");
+  };
+  const process = () => {
+    const s = st.current;
+    if (!s.waiting) return;
+    s.waiting = false;
+    setFlashM(s.manStop);
+    s.manStop += 1;
+  };
+
+  const s = st.current;
+  const elapsed = phase === "ready" ? 0 : (s.now - s.t0) / 1000;
+  const autoT = s.autoDone || (phase === "ready" ? 0 : elapsed);
+  const manT = s.manDone || (phase === "ready" ? 0 : elapsed);
+  const waitingAt = s.waiting ? s.manStop : -1; // 0-based checkpoint index the manual token is stuck at
+
+  const track = (label: string, pos: number, time: number, done: number, flash: number, manual: boolean) => (
+    <div>
+      <div className="mb-[5px] flex items-center justify-between">
+        <span className={`${mono} text-[8.5px] tracking-wider`} style={{ color: manual ? "#f4f2ed" : LIME }}>{label}</span>
+        <span className={`${mono} text-[10px] tabular-nums`} style={{ color: done ? (manual ? "#f4f2ed" : LIME) : dim }}>
+          {time.toFixed(2)}s{done ? " ✓" : ""}
+        </span>
+      </div>
+      <div className="relative h-[34px]">
+        <div className="absolute inset-x-[6px] top-[10px] h-[5px] -translate-y-1/2 rounded-full" style={{ background: LIME, filter: "blur(3px)", opacity: manual ? 0.06 : 0.16 }} />
+        <div className="absolute inset-x-[6px] top-[10px] h-px" style={{ background: manual ? "rgba(244,242,237,.2)" : "rgba(232,250,180,.5)" }} />
+        {/* lit progress */}
+        <div className="absolute left-[6px] top-[10px] h-px" style={{ width: `calc((100% - 12px) * ${pos})`, background: manual ? "rgba(244,242,237,.7)" : "rgba(245,252,225,.95)", boxShadow: manual ? "none" : "0 0 6px rgba(200,241,79,.8)" }} />
+        {Array.from({ length: CPS }).map((_, i) => {
+          const at = cpAt(i);
+          const passed = manual ? pos > at + 1e-6 || (pos >= at - 1e-6 && waitingAt !== i) : pos >= at - 1e-6;
+          const isWait = manual && waitingAt === i;
           return (
-            <div
-              key={pkt.id}
-              className="pointer-events-none absolute top-1/2 z-[10] -translate-y-1/2"
-              style={{
-                left: `calc(24px + (${leftPct}% * 0.82))`,
-                transition: "none",
-              }}
-            >
-              {/* Trailing Tail Effect */}
-              <div
-                className="absolute right-[4px] top-1/2 h-[4px] w-[34px] -translate-y-1/2 rounded-full"
+            <span key={i} className="absolute top-[10px] -translate-x-1/2 -translate-y-1/2" style={{ left: `calc(6px + (100% - 12px) * ${at})` }}>
+              <span
+                className="relative block h-[9px] w-[9px] rotate-45 border"
                 style={{
-                  background: "linear-gradient(90deg, transparent, rgba(200,241,79,0.3) 50%, var(--accent) 100%)",
-                  filter: "drop-shadow(0 0 6px var(--accent))",
+                  borderColor: passed ? (manual ? "#f4f2ed" : LIME) : isWait ? "#f4f2ed" : "rgba(244,242,237,.25)",
+                  background: passed ? (manual ? "rgba(244,242,237,.35)" : "rgba(200,241,79,.45)") : "#0c0c0d",
+                  transform: `rotate(45deg) scale(${isWait ? 1.3 : 1})`,
+                  transition: `transform .45s ${LAB_SPRING}, background .25s`,
                 }}
               />
-              {/* Leading Packet Node */}
-              <div
-                className="relative h-[11px] w-[11px] rounded-full"
-                style={{
-                  background: "var(--accent)",
-                  boxShadow: "0 0 12px var(--accent), 0 0 20px rgba(200,241,79,0.8)",
-                }}
-              />
-            </div>
+              {flash === i && <span key={`f${i}`} className="lab-flash pointer-events-none absolute inset-[-5px] rounded-full" />}
+            </span>
           );
         })}
+        {/* token */}
+        <span className="absolute top-[10px] h-[16px] w-[16px] -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ left: `calc(6px + (100% - 12px) * ${pos})`, background: manual ? pointLight(0.9, "244,242,237") : pointLight(1) }} />
+        {/* PROCESS appears at the checkpoint the manual token is stuck on */}
+        {/* finish line */}
+        <span className="absolute right-[6px] top-[3px] h-[14px] w-px" style={{ background: "rgba(244,242,237,.35)" }} />
+        {manual && waitingAt >= 0 && (
+          <button
+            ref={processBtn}
+            key={waitingAt}
+            type="button"
+            onClick={process}
+            className={`${mono} lab-proc absolute top-[18px] -translate-x-1/2 whitespace-nowrap rounded-[3px] px-[6px] py-[2px] text-[8px] font-bold`}
+            style={{ left: `calc(6px + (100% - 12px) * ${cpAt(waitingAt)})`, background: "#f4f2ed", color: "#0c0c0d" }}
+          >
+            PROCESS
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
-        {/* Four Stage Nodes */}
-        {stages.map((st, i) => {
-          const isCurrent = activeStage === i && packets.length > 0;
+  const ratio = s.autoDone && s.manDone ? s.manDone / s.autoDone : 0;
+  return (
+    <div className="flex flex-1 flex-col justify-between gap-[10px]">
+      <div className="flex flex-col gap-[14px]">
+        {track("AUTOMATED", s.autoPos, autoT, s.autoDone, flashA, false)}
+        {track("MANUAL — YOU", s.manPos, manT, s.manDone, flashM, true)}
+      </div>
+      <div className="flex items-center justify-between gap-[8px]">
+        <p className={`${mono} text-[9px] leading-[1.5]`} style={{ color: "rgba(244,242,237,.7)" }} aria-live="polite">
+          {phase === "ready" && "Press START. Automated runs itself — you click PROCESS at every checkpoint."}
+          {phase === "running" && (s.waiting ? `Checkpoint ${waitingAt + 1}/${CPS} waiting on you…` : s.autoDone ? "Automated already finished. Keep clicking." : "Both running…")}
+          {phase === "done" && (
+            <>
+              Automated <strong style={{ color: LIME }}>{s.autoDone.toFixed(2)}s</strong> · You <strong style={{ color: "#f4f2ed" }}>{s.manDone.toFixed(2)}s</strong>
+              {ratio > 1.05 && <span style={{ color: faint }}> — {ratio.toFixed(1)}× slower, and you were trying.</span>}
+            </>
+          )}
+        </p>
+        <button type="button" onClick={start} disabled={phase === "running"} className="btn btn-ghost flex-none px-[12px] py-[6px] text-[9.5px] disabled:opacity-40">
+          {phase === "done" ? "RETRY" : "START"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ================================================================
+   05 — BUILD A FLOW
+   Pointer-based drag (works for mouse + touch) from the palette onto the
+   canvas, or reorder within it; tap a palette block to append. RUN
+   validates honestly before executing anything.
+   ================================================================ */
+type BlockType = "TRIGGER" | "CONDITION" | "ACTION";
+type Block = { id: number; type: BlockType };
+const MAX_BLOCKS = 5;
+const RESULTS: Record<BlockType, string[]> = {
+  TRIGGER: ["Form submitted"],
+  CONDITION: ["Budget > 10k? Yes", "Email valid? Yes", "New client? Yes"],
+  ACTION: ["Task created", "Reply sent", "CRM updated", "Team notified"],
+};
+const BLOCK_ICON: Record<BlockType, string> = { TRIGGER: "⚡", CONDITION: "◇", ACTION: "▶" };
+
+function validate(bs: Block[]): { at: number; msg: string } | null {
+  if (!bs.length) return { at: -1, msg: "Nothing to run — drag a TRIGGER onto the canvas first." };
+  if (bs[0].type !== "TRIGGER") return { at: 0, msg: `A flow has to start with a TRIGGER — this one starts with ${bs[0].type === "ACTION" ? "an ACTION" : "a CONDITION"}. Nothing would ever set it off.` };
+  const second = bs.findIndex((b, i) => i > 0 && b.type === "TRIGGER");
+  if (second > 0) return { at: second, msg: "Only one TRIGGER per flow — remove the extra one." };
+  if (!bs.some((b) => b.type === "ACTION")) return { at: bs.length - 1, msg: "No ACTION yet — this flow would detect things but never do anything." };
+  if (bs[bs.length - 1].type === "CONDITION") return { at: bs.length - 1, msg: "Ends on a CONDITION — add an ACTION for what happens when it's true." };
+  return null;
+}
+
+function BuildFlowLab() {
+  const [blocks, setBlocks] = useState<Block[]>([]);
+  type Drag = { type: BlockType; fromId?: number; x: number; y: number };
+  const [drag, setDragState] = useState<Drag | null>(null);
+  // the ref is the source of truth for handlers (events can outrun renders)
+  const dragRef = useRef<Drag | null>(null);
+  const setDrag = (d: Drag | null) => { dragRef.current = d; setDragState(d); };
+  const [insertAt, setInsertAt] = useState<number | null>(null);
+  const [run, setRun] = useState<{ step: number; results: string[] } | null>(null);
+  const [error, setError] = useState<{ at: number; msg: string } | null>(null);
+  const canvas = useRef<HTMLDivElement>(null);
+  const root = useRef<HTMLDivElement>(null);
+  const nextId = useRef(1);
+  const timers = useRef<number[]>([]);
+  const startPt = useRef({ x: 0, y: 0, moved: false });
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  const reset = () => { timers.current.forEach(clearTimeout); timers.current = []; setRun(null); setError(null); };
+  const calcIndex = (clientX: number, clientY: number, excludeId?: number) => {
+    const c = canvas.current;
+    if (!c) return null;
+    const r = c.getBoundingClientRect();
+    if (clientX < r.left - 10 || clientX > r.right + 10 || clientY < r.top - 16 || clientY > r.bottom + 16) return null;
+    const els = [...c.querySelectorAll<HTMLElement>("[data-block]")].filter((e) => Number(e.dataset.block) !== excludeId);
+    let idx = els.length;
+    for (let i = 0; i < els.length; i++) {
+      const b = els[i].getBoundingClientRect();
+      if (clientX < b.left + b.width / 2) { idx = i; break; }
+    }
+    return idx;
+  };
+  const place = (type: BlockType, idx: number | null, fromId?: number) => {
+    setBlocks((bs) => {
+      let list = bs;
+      let blk: Block = { id: nextId.current, type };
+      if (fromId !== undefined) {
+        blk = bs.find((b) => b.id === fromId)!;
+        list = bs.filter((b) => b.id !== fromId);
+        if (idx === null) return list; // dragged off the canvas → removed
+      } else {
+        if (idx === null || bs.length >= MAX_BLOCKS) return bs;
+        nextId.current++;
+      }
+      const out = [...list];
+      out.splice(Math.min(idx, out.length), 0, blk);
+      return out;
+    });
+    reset();
+  };
+
+  const onDown = (e: RPointerEvent, type: BlockType, fromId?: number) => {
+    if (run && run.step < (blocks.length)) return; // don't edit mid-run
+    startPt.current = { x: e.clientX, y: e.clientY, moved: false };
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    setDrag({ type, fromId, x: e.clientX, y: e.clientY });
+  };
+  const onMove = (e: RPointerEvent) => {
+    const cur = dragRef.current;
+    if (!cur) return;
+    if (Math.hypot(e.clientX - startPt.current.x, e.clientY - startPt.current.y) > 4) startPt.current.moved = true;
+    setDrag({ ...cur, x: e.clientX, y: e.clientY });
+    setInsertAt(startPt.current.moved ? calcIndex(e.clientX, e.clientY, cur.fromId) : null);
+  };
+  const onUp = (e: RPointerEvent) => {
+    const d = dragRef.current;
+    if (!d) return;
+    setDrag(null);
+    setInsertAt(null);
+    if (!startPt.current.moved) {
+      // tap: palette → append; canvas block → leave as is
+      if (d.fromId === undefined) place(d.type, Infinity);
+      return;
+    }
+    place(d.type, calcIndex(e.clientX, e.clientY, d.fromId), d.fromId);
+  };
+
+  const runFlow = () => {
+    reset();
+    const err = validate(blocks);
+    if (err) { setError(err); return; }
+    const counters: Record<BlockType, number> = { TRIGGER: 0, CONDITION: 0, ACTION: 0 };
+    const results = blocks.map((b) => RESULTS[b.type][counters[b.type]++ % RESULTS[b.type].length]);
+    setRun({ step: -1, results });
+    const gap = reduced() ? 60 : 620;
+    blocks.forEach((_, i) => timers.current.push(window.setTimeout(() => setRun((r) => r && { ...r, step: i }), 200 + i * gap)));
+    timers.current.push(window.setTimeout(() => setRun((r) => r && { ...r, step: blocks.length }), 200 + blocks.length * gap));
+  };
+
+  const rootBox = root.current?.getBoundingClientRect();
+  const done = run && run.step >= blocks.length;
+  return (
+    <div ref={root} className="relative flex flex-1 flex-col gap-[10px] select-none" onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => { setDrag(null); setInsertAt(null); }} style={{ touchAction: drag ? "none" : undefined }}>
+      {/* palette */}
+      <div className="flex items-center gap-[6px]">
+        <span className={`${mono} mr-[2px] text-[8px]`} style={{ color: faint }}>BLOCKS</span>
+        {(["TRIGGER", "CONDITION", "ACTION"] as BlockType[]).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onPointerDown={(e) => onDown(e, t)}
+            onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), place(t, blocks.length))}
+            className={`${mono} lab-glow-hover cursor-grab rounded-[4px] border px-[7px] py-[4px] text-[8.5px] active:cursor-grabbing`}
+            style={{ borderColor: "rgba(200,241,79,.35)", color: "#f4f2ed", background: "#141416", touchAction: "none", opacity: blocks.length >= MAX_BLOCKS ? 0.4 : 1 }}
+            aria-label={`Add ${t} block`}
+          >
+            <span style={{ color: LIME }}>{BLOCK_ICON[t]}</span> {t}
+          </button>
+        ))}
+      </div>
+
+      {/* canvas */}
+      <div
+        ref={canvas}
+        className="relative flex min-h-[112px] flex-1 items-center gap-[14px] overflow-x-auto rounded-[5px] border border-dashed px-[10px] py-[10px]"
+        style={{ borderColor: insertAt !== null ? "rgba(200,241,79,.55)" : "rgba(244,242,237,.12)", background: "rgba(17,17,19,.6)", transition: "border-color .2s" }}
+      >
+        {blocks.length === 0 && insertAt === null && (
+          <span className={`${mono} pointer-events-none absolute inset-0 grid place-items-center text-center text-[9px]`} style={{ color: faint }}>
+            Drag blocks here (or tap them) · drag a block off to remove it
+          </span>
+        )}
+        {blocks.map((b, i) => {
+          const lit = run ? run.step >= i : false;
+          const current = run?.step === i;
+          const bad = error?.at === i;
+          const hidden = drag?.fromId === b.id && startPt.current.moved;
           return (
-            <div key={st} className="relative z-[2] flex flex-col items-center gap-[6px]">
-              <span
-                className="flex h-[30px] w-[30px] items-center justify-center rounded-full border text-[10px] font-mono transition-all duration-300"
+            <div key={b.id} className="relative flex items-center">
+              {insertAt === i && <span className="absolute -left-[9px] top-1/2 h-[46px] w-[2px] -translate-y-1/2 rounded-full" style={{ background: LIME, boxShadow: `0 0 8px ${LIME}` }} />}
+              {i > 0 && (
+                <span className="absolute -left-[14px] top-1/2 h-px w-[14px]" style={{ background: lit ? "rgba(245,252,225,.95)" : "rgba(244,242,237,.2)", boxShadow: lit ? "0 0 6px rgba(200,241,79,.8)" : "none", transition: "background .25s" }}>
+                  {current && !reduced() && <span className="lab-hop absolute top-1/2 h-[8px] w-[8px] -translate-y-1/2 rounded-full" style={{ background: pointLight(1) }} />}
+                </span>
+              )}
+              <div
+                data-block={b.id}
+                onPointerDown={(e) => onDown(e, b.type, b.id)}
+                className="lab-block-in relative flex w-[78px] flex-none cursor-grab flex-col gap-[4px] rounded-[5px] border p-[6px]"
                 style={{
-                  borderColor: isCurrent ? "var(--accent)" : "rgba(244,242,237,0.2)",
-                  background: isCurrent ? "var(--accent-deep)" : "#141416",
-                  color: isCurrent ? "#0c0c0d" : "#f4f2ed",
-                  boxShadow: isCurrent ? "0 0 16px var(--accent)" : "none",
-                  transform: isCurrent ? "scale(1.12)" : "scale(1)",
+                  touchAction: "none",
+                  opacity: hidden ? 0.25 : 1,
+                  borderColor: bad ? FAULT : lit ? LIME : "rgba(244,242,237,.2)",
+                  background: bad ? "rgba(255,122,102,.08)" : lit ? "rgba(200,241,79,.09)" : "#141416",
+                  boxShadow: current ? "0 0 18px rgba(200,241,79,.35)" : "none",
+                  transform: current ? "scale(1.06)" : "scale(1)",
+                  transition: `transform .5s ${LAB_SPRING}, border-color .25s, background .25s, box-shadow .3s`,
                 }}
               >
-                0{i + 1}
-              </span>
-              <span className="mono text-[8.5px]" style={{ color: isCurrent ? "var(--accent)" : "rgba(244,242,237,0.4)" }}>
-                {st}
-              </span>
+                {current && <span key={`f${run?.step}`} className="lab-flash pointer-events-none absolute inset-0 rounded-[5px]" />}
+                <span className={`${mono} text-[7.5px]`} style={{ color: bad ? FAULT : LIME }}>
+                  {BLOCK_ICON[b.type]} {b.type}
+                </span>
+                <span className={`${mono} min-h-[22px] text-[8px] leading-[1.35]`} style={{ color: lit ? "#f4f2ed" : faint }}>
+                  {lit && run ? run.results[i] : "—"}
+                </span>
+              </div>
             </div>
           );
         })}
+        {insertAt !== null && insertAt >= blocks.length && <span className="h-[46px] w-[2px] flex-none rounded-full" style={{ background: LIME, boxShadow: `0 0 8px ${LIME}` }} />}
       </div>
 
-      {/* Status line — PROMPT 36: never truncated. It wraps to a second
-          line instead, keeping the sketch's proportions intact. */}
-      <div className="rounded-[4px] border p-[8px]" style={{ borderColor: "rgba(244,242,237,0.08)", background: "#141416" }}>
-        <p className="mono text-[9px] leading-[1.55]" style={{ color: "rgba(244,242,237,0.6)" }}>
-          {statusText}
+      <div className="flex items-center justify-between gap-[8px]">
+        <p className={`${mono} min-h-[28px] text-[9px] leading-[1.5]`} style={{ color: error ? FAULT : done ? LIME : "rgba(244,242,237,.6)" }} aria-live="polite">
+          {error ? `✕ ${error.msg}` : done ? `✓ Flow ran — ${blocks.length} step${blocks.length > 1 ? "s" : ""}, no one touched it.` : run ? "Running…" : `${blocks.length}/${MAX_BLOCKS} blocks · any order you like — RUN checks it.`}
         </p>
-      </div>
-    </div>
-  );
-}
-
-/* ============================================================
-   SKETCH 2: ATTENTION FIELD (PROMPT 30: Multi-dot Radial Falloff)
-   ============================================================ */
-function AttentionFieldLab() {
-  const boxRef = useRef<HTMLDivElement>(null);
-  const dotsRef = useRef<(HTMLSpanElement | null)[]>([]);
-  const targetRef = useRef<{ x: number; y: number } | null>(null);
-  const rafRef = useRef(0);
-
-  const COLS = 12;
-  const ROWS = 6;
-
-  useEffect(() => {
-    const el = boxRef.current;
-    if (!el || prefersReducedMotion()) return;
-    const offsets = dotsRef.current.map(() => ({ x: 0, y: 0, intensity: 0 }));
-
-    const frame = () => {
-      const b = el.getBoundingClientRect();
-      let moving = false;
-
-      dotsRef.current.forEach((d, i) => {
-        if (!d) return;
-        const cx = ((i % COLS) + 0.5) * (b.width / COLS);
-        const cy = (Math.floor(i / COLS) + 0.5) * (b.height / ROWS);
-
-        let tx = 0;
-        let ty = 0;
-        let targetIntensity = 0;
-
-        if (targetRef.current) {
-          const dx = cx - targetRef.current.x;
-          const dy = cy - targetRef.current.y;
-          const dist = Math.hypot(dx, dy) || 1;
-          const radius = 95; // Radius of magnetic falloff
-
-          if (dist < radius) {
-            // PROMPT 30: Soft radial falloff for nearest dots
-            const norm = 1 - dist / radius;
-            targetIntensity = Math.pow(norm, 1.6);
-            tx = (dx / dist) * targetIntensity * 22;
-            ty = (dy / dist) * targetIntensity * 22;
-          }
-        }
-
-        const o = offsets[i];
-        o.x += (tx - o.x) * 0.18;
-        o.y += (ty - o.y) * 0.18;
-        o.intensity += (targetIntensity - o.intensity) * 0.22;
-
-        if (Math.abs(o.x - tx) > 0.1 || Math.abs(o.y - ty) > 0.1 || Math.abs(o.intensity - targetIntensity) > 0.02) {
-          moving = true;
-        }
-
-        // Apply physical transform and dynamic illumination with radial falloff
-        const scale = 1 + o.intensity * 1.6;
-        d.style.transform = `translate3d(${o.x.toFixed(2)}px, ${o.y.toFixed(2)}px, 0) scale(${scale.toFixed(2)})`;
-
-        // Color & luminous glow interpolate smoothly with falloff intensity
-        if (o.intensity > 0.05) {
-          d.style.background = `color-mix(in srgb, var(--accent) ${(o.intensity * 100).toFixed(0)}%, rgba(244,242,237,0.25))`;
-          d.style.boxShadow = `0 0 ${(o.intensity * 10).toFixed(1)}px rgba(200, 241, 79, ${(o.intensity * 0.8).toFixed(2)})`;
-        } else {
-          d.style.background = "rgba(244,242,237,0.35)";
-          d.style.boxShadow = "none";
-        }
-      });
-
-      rafRef.current = moving || targetRef.current ? requestAnimationFrame(frame) : 0;
-    };
-
-    const kick = () => {
-      if (!rafRef.current) rafRef.current = requestAnimationFrame(frame);
-    };
-
-    const move = (e: PointerEvent) => {
-      const b = el.getBoundingClientRect();
-      targetRef.current = { x: e.clientX - b.left, y: e.clientY - b.top };
-      // PROMPT 36: the idle wave stands down while the visitor is driving
-      // the field (also covers touch, where :hover doesn't fire).
-      el.classList.add("attention-active");
-      kick();
-    };
-
-    const leave = () => {
-      targetRef.current = null;
-      el.classList.remove("attention-active");
-      kick();
-    };
-
-    el.addEventListener("pointermove", move);
-    el.addEventListener("pointerleave", leave);
-    return () => {
-      el.removeEventListener("pointermove", move);
-      el.removeEventListener("pointerleave", leave);
-      cancelAnimationFrame(rafRef.current);
-    };
-  }, []);
-
-  return (
-    <div
-      ref={boxRef}
-      className="attention-field relative grid h-[180px] w-full grid-cols-12 place-items-center rounded-[4px] cursor-crosshair select-none"
-      style={{ background: "#0c0c0d", touchAction: "none" }}
-      data-cursor="FIELD"
-    >
-      {Array.from({ length: COLS * ROWS }).map((_, i) => (
-        <span key={i} className="grid place-items-center">
-          <span
-            ref={(n) => {
-              dotsRef.current[i] = n;
-            }}
-            className="lab-dot block h-[5px] w-[5px] rounded-full"
-            style={{
-              background: "rgba(244,242,237,0.35)",
-              willChange: "transform, background, box-shadow",
-              // PROMPT 36 idle invitation: a slow diagonal breathing wave —
-              // per-dot delay runs from top-left to bottom-right.
-              animationDelay: `${((i % COLS) + Math.floor(i / COLS)) * 130}ms`,
-            }}
-          />
-        </span>
-      ))}
-    </div>
-  );
-}
-
-/* ============================================================
-   SKETCH 3: SPATIAL 3D NODE CLUSTER (PROMPT 30: Inertia Physics)
-   ============================================================ */
-function Spatial3DLab() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rotX = useRef(0.4);
-  const rotY = useRef(0.6);
-  const velX = useRef(0);
-  const velY = useRef(0);
-  const dragging = useRef(false);
-  const lastPtr = useRef<{ x: number; y: number; time: number }>({ x: 0, y: 0, time: 0 });
-  const rafRef = useRef(0);
-
-  // 3D Node Vertices & Edges
-  const nodes = [
-    [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
-    [-1, -1, 1],  [1, -1, 1],  [1, 1, 1],  [-1, 1, 1],
-    [0, 0, 0]
-  ];
-  const edges = [
-    [0,1], [1,2], [2,3], [3,0],
-    [4,5], [5,6], [6,7], [7,4],
-    [0,4], [1,5], [2,6], [3,7],
-    [8,0], [8,2], [8,5], [8,7]
-  ];
-
-  // Render & Physics Loop
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const render = () => {
-      // PROMPT 30: Apply momentum / inertia when not dragging
-      if (!dragging.current) {
-        rotX.current += velX.current;
-        rotY.current += velY.current;
-
-        // Friction deceleration
-        velX.current *= 0.94;
-        velY.current *= 0.94;
-
-        // Subtle ambient continuous drift once momentum settles
-        if (Math.hypot(velX.current, velY.current) < 0.0002) {
-          velX.current = 0;
-          velY.current = 0;
-          rotY.current += 0.002; // Gentle idle float
-        }
-      }
-
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
-
-      const cx = w / 2;
-      const cy = h / 2;
-      const scale = 54;
-
-      const cosX = Math.cos(rotX.current);
-      const sinX = Math.sin(rotX.current);
-      const cosY = Math.cos(rotY.current);
-      const sinY = Math.sin(rotY.current);
-
-      const projected = nodes.map(([x, y, z]) => {
-        // Rotate Y
-        const x1 = x * cosY - z * sinY;
-        const z1 = x * sinY + z * cosY;
-        // Rotate X
-        const y2 = y * cosX - z1 * sinX;
-        const z2 = y * sinX + z1 * cosX;
-
-        const pScale = 260 / (260 + z2 * 40);
-        return {
-          x: cx + x1 * scale * pScale,
-          y: cy + y2 * scale * pScale,
-          z: z2,
-        };
-      });
-
-      // Draw Edges with depth fading
-      ctx.lineWidth = 1.3;
-      edges.forEach(([i, j]) => {
-        const p1 = projected[i];
-        const p2 = projected[j];
-        const alpha = Math.min(0.85, Math.max(0.12, 0.2 + (p1.z + p2.z + 4) * 0.09));
-        ctx.strokeStyle = `rgba(200, 241, 79, ${alpha})`;
-        ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
-        ctx.stroke();
-      });
-
-      // PROMPT 36 idle invitation: the central core's glow breathes slowly
-      // (on top of the idle drift) — a faint "waiting" pulse at the heart
-      // of the cluster. Static under reduced motion.
-      const breathe = prefersReducedMotion() ? 0 : Math.sin(performance.now() * 0.0011);
-
-      // Draw Node Vertices & Central Core
-      projected.forEach((p, idx) => {
-        ctx.fillStyle = idx === 8 ? "#c8f14f" : "#f4f2ed";
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, idx === 8 ? 4.5 : 2.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        if (idx === 8) {
-          // Central Core Glow — breathing radius + luminance
-          const coreR = 8 + breathe * 1.7;
-          ctx.strokeStyle = `rgba(200, 241, 79, ${0.38 + breathe * 0.14})`;
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, coreR, 0, Math.PI * 2);
-          ctx.stroke();
-
-          // Soft outer aura
-          ctx.strokeStyle = `rgba(200, 241, 79, ${0.1 + breathe * 0.05})`;
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, coreR + 5, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-      });
-
-      rafRef.current = requestAnimationFrame(render);
-    };
-
-    rafRef.current = requestAnimationFrame(render);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, []);
-
-  const onPointerDown = (e: React.PointerEvent) => {
-    dragging.current = true;
-    velX.current = 0;
-    velY.current = 0;
-    lastPtr.current = { x: e.clientX, y: e.clientY, time: performance.now() };
-    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
-  };
-
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (!dragging.current) return;
-    const now = performance.now();
-    const dt = Math.max(1, now - lastPtr.current.time);
-    const dx = e.clientX - lastPtr.current.x;
-    const dy = e.clientY - lastPtr.current.y;
-
-    rotY.current += dx * 0.014;
-    rotX.current += dy * 0.014;
-
-    // Track instantaneous release velocity for momentum
-    velY.current = (dx / dt) * 0.16;
-    velX.current = (dy / dt) * 0.16;
-
-    lastPtr.current = { x: e.clientX, y: e.clientY, time: now };
-  };
-
-  const onPointerUp = () => {
-    dragging.current = false;
-  };
-
-  const handleTapStep = () => {
-    if (!hasFinePointer()) {
-      velY.current = 0.08;
-      velX.current = 0.04;
-    }
-  };
-
-  return (
-    <div
-      ref={containerRef}
-      id="lab-3d-fragment"
-      className="relative flex h-[180px] w-full flex-col items-center justify-center cursor-grab active:cursor-grabbing select-none"
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
-      onClick={handleTapStep}
-      data-cursor="ROTATE"
-    >
-      <canvas ref={canvasRef} width={240} height={170} />
-      <span className="mono absolute bottom-[6px] text-[8.5px]" style={{ color: "rgba(244,242,237,0.4)" }}>
-        {hasFinePointer() ? "Drag to rotate with physics momentum" : "Tap to spin with inertia"}
-      </span>
-    </div>
-  );
-}
-
-/* ============================================================
-   SKETCH 4: STATE MACHINE (PROMPT 30: Transition Line Drawing)
-   ============================================================ */
-function StateMachineLab() {
-  const [stateIndex, setStateIndex] = useState(0);
-  const [lastStateIndex, setLastStateIndex] = useState<number | null>(null);
-  const [transitioning, setTransitioning] = useState(false);
-  const [fallbackMode, setFallbackMode] = useState(false);
-
-  const states = ["IDLE", "EVALUATE", "EXECUTE", "VERIFY"];
-
-  // Node centers in SVG percentage coordinates
-  const nodeCoords = [
-    { x: 25, y: 25 }, // 0: IDLE (top-left)
-    { x: 75, y: 25 }, // 1: EVALUATE (top-right)
-    { x: 75, y: 75 }, // 2: EXECUTE (bottom-right)
-    { x: 25, y: 75 }, // 3: VERIFY (bottom-left)
-  ];
-
-  const goToState = (nextIdx: number) => {
-    if (nextIdx === stateIndex) return;
-    setLastStateIndex(stateIndex);
-    setStateIndex(nextIdx);
-    setTransitioning(true);
-
-    window.setTimeout(() => {
-      setTransitioning(false);
-    }, 450);
-  };
-
-  const nextState = () => {
-    goToState((stateIndex + 1) % states.length);
-  };
-
-  const fromCoord = lastStateIndex !== null ? nodeCoords[lastStateIndex] : null;
-  const toCoord = nodeCoords[stateIndex];
-
-  return (
-    <div className="flex flex-col justify-between h-full min-h-[190px]">
-      <div className="flex items-center justify-between">
-        <span className="mono text-[10px]" style={{ color: "rgba(244,242,237,0.5)" }}>
-          State: <strong style={{ color: "var(--accent)" }}>{states[stateIndex]}</strong>
-        </span>
-        <button
-          type="button"
-          onClick={() => setFallbackMode((f) => !f)}
-          className="mono text-[9px] px-[8px] py-[3px] rounded-full border transition-colors"
-          style={{
-            borderColor: fallbackMode ? "var(--accent)" : "rgba(244,242,237,0.2)",
-            color: fallbackMode ? "var(--accent)" : "rgba(244,242,237,0.5)",
-          }}
-        >
-          Fallback: {fallbackMode ? "ON" : "OFF"}
-        </button>
-      </div>
-
-      {/* State Node Grid with Dynamic Transition Line */}
-      <div className="relative grid grid-cols-2 gap-[10px] my-[10px]">
-        {/* SVG Transition Layer */}
-        <svg className="pointer-events-none absolute inset-0 h-full w-full z-[1]" aria-hidden>
-          {transitioning && fromCoord && toCoord && (
-            <line
-              className="cs-edge"
-              x1={`${fromCoord.x}%`}
-              y1={`${fromCoord.y}%`}
-              x2={`${toCoord.x}%`}
-              y2={`${toCoord.y}%`}
-              pathLength={1}
-              stroke="var(--accent)"
-              strokeWidth="2.5"
-              strokeDasharray="1"
-              strokeLinecap="round"
-              filter="drop-shadow(0 0 6px var(--accent))"
-            />
-          )}
-        </svg>
-
-        {states.map((st, idx) => {
-          const active = stateIndex === idx;
-          const isFrom = lastStateIndex === idx && transitioning;
-          // PROMPT 36 idle invitation: the node "Step" would enter next
-          // breathes a soft halo — anticipation, not a second active state.
-          const isNext = !transitioning && !active && (stateIndex + 1) % states.length === idx;
-
-          return (
-            <button
-              key={st}
-              type="button"
-              onClick={() => goToState(idx)}
-              className={`relative z-[2] flex flex-col items-start p-[10px] rounded-[6px] border text-left transition-all duration-300 ${isNext ? "lab-idle-next" : ""}`}
-              style={{
-                borderColor: active
-                  ? "var(--accent)"
-                  : isFrom
-                  ? "rgba(200, 241, 79, 0.4)"
-                  : "rgba(244,242,237,0.12)",
-                background: active
-                  ? "rgba(200, 241, 79, 0.12)"
-                  : isFrom
-                  ? "rgba(200, 241, 79, 0.05)"
-                  : "#141416",
-                boxShadow: active ? "0 0 14px rgba(200, 241, 79, 0.18)" : "none",
-                transform: active ? "scale(1.02)" : "scale(1)",
-              }}
-            >
-              <div className="flex items-center justify-between w-full mb-[2px]">
-                <span className="mono text-[8.5px]" style={{ color: active ? "var(--accent)" : "rgba(244,242,237,0.4)" }}>
-                  NODE 0{idx + 1}
-                </span>
-                {active && <span className="block h-[5px] w-[5px] rounded-full bg-[var(--accent)] animate-ping" />}
-              </div>
-              <span className="mono text-[11px] font-medium" style={{ color: active ? "#f4f2ed" : "rgba(244,242,237,0.6)" }}>
-                {st}
-              </span>
+        <div className="flex flex-none gap-[6px]">
+          {blocks.length > 0 && (
+            <button type="button" onClick={() => { setBlocks([]); reset(); }} className={`${mono} lab-glow-hover rounded-full border px-[8px] py-[4px] text-[8.5px]`} style={{ borderColor: "rgba(244,242,237,.2)", color: dim }}>
+              clear
             </button>
-          );
-        })}
+          )}
+          <button type="button" onClick={runFlow} disabled={!!run && !done} className="btn btn-ghost px-[12px] py-[6px] text-[9.5px] disabled:opacity-40">
+            RUN ▶
+          </button>
+        </div>
       </div>
 
-      <button
-        type="button"
-        onClick={nextState}
-        className="btn btn-ghost py-[6px] text-[10px] w-full justify-center"
-      >
-        Step State Machine →
-      </button>
-    </div>
-  );
-}
-
-/* ============================================================
-   SKETCH 5: KINETIC VARIABLE SCRUBBER (PROMPT 30: Real-Time Live Reaction)
-   ============================================================ */
-function KineticScrubberLab() {
-  const [weight, setWeight] = useState(500);
-  const [speed, setSpeed] = useState(1.4);
-
-  // Live interpolated tracking, stretch, and kinetic pulse
-  const letterSpacing = `${((weight - 400) / 1600).toFixed(3)}em`;
-  const animationDuration = `${(2.2 / Math.max(0.5, speed)).toFixed(2)}s`;
-
-  return (
-    <div className="flex flex-col justify-between h-full min-h-[190px]">
-      {/* Live Reacting Typography Stage */}
-      <div
-        className="relative overflow-hidden flex flex-col items-center justify-center h-[96px] rounded-[6px] border px-[12px]"
-        style={{ borderColor: "rgba(244,242,237,0.12)", background: "#0c0c0d" }}
-      >
-        {/* Kinetic scanning indicator reacting to speed */}
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-[2px]"
-          style={{
-            background: "linear-gradient(90deg, transparent, var(--accent), transparent)",
-            animation: `drawLine 0.8s ease-in-out infinite alternate`,
-            animationDuration,
-          }}
-        />
-
-        {/* PROMPT 36 idle invitation: a slow glow bloom behind the type —
-            the sketch's "resting breath" while the scan line keeps moving. */}
-        <div
-          className="lab-bloom pointer-events-none absolute top-1/2 left-1/2 h-[76px] w-[220px] -translate-x-1/2 -translate-y-1/2 rounded-full"
-          style={{ background: "radial-gradient(50% 50% at 50% 50%, rgba(200,241,79,0.16), transparent 70%)" }}
-          aria-hidden
-        />
-
-        <p
-          className="uppercase select-none text-center font-display"
-          style={{
-            fontWeight: weight,
-            fontSize: "clamp(20px, 2.4vw, 28px)",
-            letterSpacing,
-            color: "var(--accent)",
-            textShadow: `0 0 ${(weight / 80).toFixed(1)}px rgba(200, 241, 79, 0.4)`,
-            transform: `scaleY(${(0.95 + weight / 2000).toFixed(3)})`,
-            transition: "none", // Instant 60fps frame reactivity
-          }}
+      {/* drag ghost */}
+      {drag && startPt.current.moved && rootBox && (
+        <span
+          className={`${mono} pointer-events-none absolute z-[20] rounded-[4px] border px-[7px] py-[4px] text-[8.5px]`}
+          style={{ left: drag.x - rootBox.left, top: drag.y - rootBox.top, translate: "-50% -60%", borderColor: LIME, background: "#141416", color: "#f4f2ed", boxShadow: "0 0 18px rgba(200,241,79,.35)" }}
         >
-          ARCHE // LAB
-        </p>
-
-        <span className="mono text-[8px] text-[rgba(244,242,237,0.4)] mt-[4px]">
-          wght: {weight} · spd: {speed.toFixed(1)}x · flux: {(weight * speed).toFixed(0)}
+          <span style={{ color: LIME }}>{BLOCK_ICON[drag.type]}</span> {drag.type}
         </span>
-      </div>
-
-      {/* Real-time Scrubbing Sliders */}
-      <div className="mt-[10px] flex flex-col gap-[8px]">
-        <div className="flex items-center justify-between gap-[10px]">
-          <span className="mono text-[9.5px]" style={{ color: "rgba(244,242,237,0.6)" }}>
-            Weight: <strong className="text-[var(--accent)]">{weight}</strong>
-          </span>
-          <input
-            type="range"
-            min={100}
-            max={900}
-            step={5}
-            value={weight}
-            onChange={(e) => setWeight(Number(e.target.value))}
-            className="w-[124px] accent-[var(--accent)] cursor-pointer"
-          />
-        </div>
-
-        <div className="flex items-center justify-between gap-[10px]">
-          <span className="mono text-[9.5px]" style={{ color: "rgba(244,242,237,0.6)" }}>
-            Velocity: <strong className="text-[var(--accent)]">{speed.toFixed(1)}x</strong>
-          </span>
-          <input
-            type="range"
-            min={0.5}
-            max={4.0}
-            step={0.1}
-            value={speed}
-            onChange={(e) => setSpeed(Number(e.target.value))}
-            className="w-[124px] accent-[var(--accent)] cursor-pointer"
-          />
-        </div>
-      </div>
+      )}
     </div>
   );
 }

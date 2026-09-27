@@ -927,12 +927,10 @@ textarea.field {
 @keyframes labDotWave {
   0%,
   100% {
-    opacity: 0.45;
-    transform: scale(1);
+    opacity: 0.55;
   }
   50% {
     opacity: 1;
-    transform: scale(1.3);
   }
 }
 .attention-field:hover .lab-dot,
@@ -2144,4 +2142,115 @@ img {
     transform: translate(-50%, -50%) scale(2.4);
     opacity: 0;
   }
+}
+
+/* Prompt 39 — signal dot on the Approach agent route (input → agent → output) */
+@keyframes approach-route { 0% { transform: translateX(0); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateX(156px); opacity: 0; } }
+.approach-route-dot { animation: approach-route 1.8s .9s cubic-bezier(.45,0,.55,1) infinite both; }
+@media (prefers-reduced-motion: reduce) { .approach-route-dot { animation: none; opacity: 0; } }
+
+/* ---------- Prompt 40 — System View per-intent build-ins ---------- */
+@keyframes svPop { from { opacity: 0; transform: scale(0.82); } to { opacity: 1; transform: none; } }
+@keyframes svRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes svDraw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes svGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes svSignalIn { 0% { left: 13%; opacity: 0; } 15% { opacity: 1; } 60% { left: 50%; opacity: 1; } 75%, 100% { left: 50%; opacity: 0; } }
+.sv-stage { animation: svRise 0.3s var(--e-out) both; }
+.sv-pop { animation: svPop 0.5s var(--e-out) both; transform-box: fill-box; transform-origin: center; }
+.sv-rise { animation: svRise 0.5s var(--e-out) both; }
+.sv-draw { stroke-dasharray: 1; animation: svDraw 0.6s var(--e-out) both; }
+.sv-grow { animation: svGrow 1.3s var(--e-out) both; }
+.sv-signal-in { animation: svSignalIn 2.4s 0.6s var(--e-inout) infinite both; }
+@media (prefers-reduced-motion: reduce) {
+  .sv-stage, .sv-pop, .sv-rise, .sv-draw, .sv-grow { animation: none; }
+  .sv-signal-in { display: none; }
+}
+
+/* Prompt 41 — Labs: router completion burst + queue arrival */
+@keyframes labDoneBurst { from { transform: scale(1); opacity: 0.9; } to { transform: scale(2.2); opacity: 0; } }
+.lab-done-burst { animation: labDoneBurst 0.6s var(--e-out) forwards; }
+@keyframes labQIn { from { transform: translateX(-6px); opacity: 0; } to { transform: none; opacity: 0.8; } }
+.lab-q-in { animation: labQIn 0.25s var(--e-out) both; }
+@media (prefers-reduced-motion: reduce) { .lab-done-burst, .lab-q-in { animation: none; } }
+
+/* ================================================================
+   PROMPT 42 — Labs material language: light + weight
+   ================================================================ */
+/* idle point-light (dim white-hot centre); JS brightens it with attention */
+.lab-dot {
+  background: radial-gradient(circle, rgba(244,242,237,0.55) 0 16%, rgba(244,242,237,0.12) 40%, transparent 68%);
+}
+/* atmosphere — an extremely slow few-px drift, felt more than seen */
+.lab-atmos {
+  background:
+    radial-gradient(60% 50% at 30% 20%, rgba(200,241,79,0.035), transparent 70%),
+    radial-gradient(50% 60% at 80% 90%, rgba(244,242,237,0.025), transparent 70%);
+  animation: labAtmos 38s ease-in-out infinite alternate;
+}
+@keyframes labAtmos { from { transform: translate3d(-3px, -2px, 0); } to { transform: translate3d(3px, 2px, 0); } }
+.lab-drift { animation: labDrift 26s ease-in-out infinite alternate; }
+@keyframes labDrift { from { transform: translate3d(-2px, -1.5px, 0); } to { transform: translate3d(2px, 1.5px, 0); } }
+/* card + interactive hover = the glow blooms (not just a border swap) */
+.lab-card-v2 {
+  transition: border-color .35s, box-shadow .45s var(--e-out);
+}
+.lab-card-v2:hover {
+  border-color: rgba(200,241,79,0.35);
+  box-shadow: 0 0 0 1px rgba(200,241,79,0.06), 0 0 38px -10px rgba(200,241,79,0.28);
+}
+.lab-card-v2 .btn:hover,
+.lab-glow-hover:hover {
+  box-shadow: 0 0 16px rgba(200,241,79,0.26), inset 0 0 10px rgba(200,241,79,0.06);
+}
+/* arrival flash — a pulse reaching its destination */
+@keyframes labFlash {
+  0% { opacity: 0.95; transform: scale(0.85); box-shadow: 0 0 0 0 rgba(200,241,79,.55), inset 0 0 12px rgba(245,252,225,.5); }
+  100% { opacity: 0; transform: scale(1.25); box-shadow: 0 0 22px 6px rgba(200,241,79,0), inset 0 0 0 rgba(245,252,225,0); }
+}
+.lab-flash { border: 1px solid rgba(232,250,180,.8); animation: labFlash .55s var(--e-out) forwards; }
+/* 05 — scan head sweep (duration = the live velocity value) */
+@keyframes labScan { from { left: -38%; } to { left: 100%; } }
+.lab-scan { animation: labScan 2s cubic-bezier(.45,0,.55,1) infinite alternate; }
+/* 05 — sliders: glowing core track, point-light thumb that blooms on hover */
+.lab-range { -webkit-appearance: none; appearance: none; background: transparent; height: 16px; }
+.lab-range::-webkit-slider-runnable-track { height: 1px; background: linear-gradient(90deg, rgba(232,250,180,.7), rgba(244,242,237,.2)); box-shadow: 0 0 6px rgba(200,241,79,.35); }
+.lab-range::-moz-range-track { height: 1px; background: linear-gradient(90deg, rgba(232,250,180,.7), rgba(244,242,237,.2)); box-shadow: 0 0 6px rgba(200,241,79,.35); }
+.lab-range::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -6.5px; border: 0; border-radius: 999px; background: radial-gradient(circle, #fafcf0 0 22%, #c8f14f 42%, rgba(200,241,79,.2) 64%, transparent 72%); transition: transform .45s cubic-bezier(0.34,1.32,0.64,1), filter .3s; }
+.lab-range::-moz-range-thumb { width: 14px; height: 14px; border: 0; border-radius: 999px; background: radial-gradient(circle, #fafcf0 0 22%, #c8f14f 42%, rgba(200,241,79,.2) 64%, transparent 72%); transition: transform .45s cubic-bezier(0.34,1.32,0.64,1); }
+.lab-range:hover::-webkit-slider-thumb, .lab-range:focus-visible::-webkit-slider-thumb { transform: scale(1.35); filter: drop-shadow(0 0 5px rgba(200,241,79,.7)); }
+.lab-range:hover::-moz-range-thumb, .lab-range:focus-visible::-moz-range-thumb { transform: scale(1.35); }
+.lab-range:active::-webkit-slider-thumb { transform: scale(1.15); }
+@media (prefers-reduced-motion: reduce) {
+  .lab-atmos, .lab-drift, .lab-flash, .lab-scan { animation: none; }
+  .lab-flash { opacity: 0; }
+}
+
+/* ================================================================
+   PROMPT 43 — new Labs sketches
+   ================================================================ */
+/* 01 load balancer — request pulse down a feeder into a busy worker */
+@keyframes labFeed { from { top: -4px; opacity: 0; } 20% { opacity: 1; } to { top: 14px; opacity: 0; } }
+.lab-feed { animation: labFeed 0.8s cubic-bezier(.5,0,.8,.6) infinite; }
+/* 02 failover — the live route redraws along its new path */
+@keyframes labRoute { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.lab-route { stroke-dasharray: 1; animation: labRoute .7s cubic-bezier(.16,1,.3,1) both; }
+@keyframes labDegraded { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+.lab-degraded { animation: labDegraded 1.1s ease-in-out infinite; }
+.lab-svg-node:hover circle:nth-of-type(2), .lab-svg-node:focus-visible circle:nth-of-type(2) { filter: drop-shadow(0 0 3px rgba(200,241,79,.8)); }
+/* 03 parser — extracted fields spring in */
+@keyframes labTagIn { 0% { opacity: 0; transform: translateY(6px) scale(.85); } 70% { opacity: 1; transform: translateY(-1px) scale(1.04); } 100% { transform: none; } }
+.lab-tag-in { animation: labTagIn .45s cubic-bezier(.2,.9,.3,1) both; }
+.lab-input:focus { border-color: rgba(200,241,79,.55) !important; box-shadow: 0 0 16px -4px rgba(200,241,79,.35); }
+.lab-input::placeholder { color: rgba(244,242,237,.3); }
+/* 04 race — PROCESS pops at the stuck checkpoint */
+@keyframes labProc { from { opacity: 0; transform: translateY(-4px) scale(.7); } 70% { transform: translateY(1px) scale(1.06); } to { opacity: 1; transform: none; } }
+.lab-proc { animation: labProc .32s cubic-bezier(.2,.9,.3,1) both; box-shadow: 0 0 14px rgba(244,242,237,.35); }
+.lab-proc:hover { box-shadow: 0 0 18px rgba(200,241,79,.6); }
+/* 05 build a flow */
+@keyframes labBlockIn { from { opacity: 0; transform: scale(.8); } 70% { transform: scale(1.04); } to { opacity: 1; transform: scale(1); } }
+.lab-block-in { animation: labBlockIn .4s cubic-bezier(.2,.9,.3,1) backwards; }
+@keyframes labHop { from { left: -4px; } to { left: calc(100% - 4px); } }
+.lab-hop { animation: labHop .35s cubic-bezier(.45,0,.2,1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .lab-feed, .lab-route, .lab-degraded, .lab-tag-in, .lab-proc, .lab-block-in, .lab-hop { animation: none; }
 }
