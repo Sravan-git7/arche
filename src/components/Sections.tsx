@@ -339,10 +339,10 @@ interface ApproachVisualProps {
 
 export function ApproachVisual({ active, onSelect }: ApproachVisualProps) {
   const titles = [
-    { num: "01", name: "Systems thinking", sub: "DISCONNECTED NODES → INTEGRATED GRAPH" },
-    { num: "02", name: "AI where it earns", sub: "MANUAL BOTTLENECK FADES → DIRECT AGENT ROUTE" },
-    { num: "03", name: "Design + engineering", sub: "TWO LAYERS MERGING INTO ALIGNMENT" },
-    { num: "04", name: "Built to keep running", sub: "CONTINUOUS RESILIENT PULSE & UPTIME" },
+    { num: "01", name: "Systems thinking", sub: "DISCONNECTED NODES → INTEGRATED GRAPH", status: "4 NODES · 1 HUB · LINKED" },
+    { num: "02", name: "AI where it earns", sub: "MANUAL DETOUR → DIRECT AGENT ROUTE", status: "AGENT ROUTE · VERIFIED" },
+    { num: "03", name: "Design + engineering", sub: "DESIGN LAYER → ALIGNED WITH CODE", status: "0 HANDOFFS" },
+    { num: "04", name: "Built to keep running", sub: "SHIPPED SYSTEM → CONTINUOUS UPTIME", status: "HEALTH: NOMINAL" },
   ];
 
   return (
@@ -392,409 +392,26 @@ export function ApproachVisual({ active, onSelect }: ApproachVisualProps) {
         </div>
       </div>
 
-      {/* Main Interactive Diagram Canvas Area */}
-      <div className="relative flex-1 flex items-center justify-center p-[16px] overflow-hidden min-h-[240px]">
-        
-        {/* ============================================================
-            STATE 0: SYSTEMS THINKING (Disconnected nodes drawing connections)
-            ============================================================ */}
-        <div
-          className={`absolute inset-0 flex flex-col items-center justify-center p-[14px] transition-all duration-500 ${
-            active === 0 ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"
-          }`}
-        >
-          <div className="relative h-full w-full max-w-[320px] max-h-[220px]">
-            {/* SVG Connecting Network (animates in when active === 0) */}
-            <svg className="absolute inset-0 h-full w-full pointer-events-none" viewBox="0 0 100 100" fill="none">
-              {/* Outer Perimeter Mesh */}
-              <line
-                x1="22" y1="24" x2="78" y2="24"
-                stroke="var(--accent)"
-                strokeWidth="1.2"
-                strokeDasharray="100"
-                style={{
-                  strokeDashoffset: active === 0 ? 0 : 100,
-                  transition: "stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s",
-                  filter: "drop-shadow(0 0 4px var(--accent))",
-                  opacity: 0.75,
-                }}
-              />
-              <line
-                x1="78" y1="24" x2="78" y2="76"
-                stroke="var(--accent)"
-                strokeWidth="1.2"
-                strokeDasharray="100"
-                style={{
-                  strokeDashoffset: active === 0 ? 0 : 100,
-                  transition: "stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.25s",
-                  filter: "drop-shadow(0 0 4px var(--accent))",
-                  opacity: 0.75,
-                }}
-              />
-              <line
-                x1="78" y1="76" x2="22" y2="76"
-                stroke="var(--accent)"
-                strokeWidth="1.2"
-                strokeDasharray="100"
-                style={{
-                  strokeDashoffset: active === 0 ? 0 : 100,
-                  transition: "stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s",
-                  filter: "drop-shadow(0 0 4px var(--accent))",
-                  opacity: 0.75,
-                }}
-              />
-              <line
-                x1="22" y1="76" x2="22" y2="24"
-                stroke="var(--accent)"
-                strokeWidth="1.2"
-                strokeDasharray="100"
-                style={{
-                  strokeDashoffset: active === 0 ? 0 : 100,
-                  transition: "stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.55s",
-                  filter: "drop-shadow(0 0 4px var(--accent))",
-                  opacity: 0.75,
-                }}
-              />
-
-              {/* Diagonal & Center Hub Spokes */}
-              <line
-                x1="22" y1="24" x2="50" y2="50"
-                stroke="var(--accent-deep)"
-                strokeWidth="1"
-                strokeDasharray="100"
-                style={{
-                  strokeDashoffset: active === 0 ? 0 : 100,
-                  transition: "stroke-dashoffset 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.3s",
-                }}
-              />
-              <line
-                x1="78" y1="24" x2="50" y2="50"
-                stroke="var(--accent-deep)"
-                strokeWidth="1"
-                strokeDasharray="100"
-                style={{
-                  strokeDashoffset: active === 0 ? 0 : 100,
-                  transition: "stroke-dashoffset 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.45s",
-                }}
-              />
-              <line
-                x1="78" y1="76" x2="50" y2="50"
-                stroke="var(--accent-deep)"
-                strokeWidth="1"
-                strokeDasharray="100"
-                style={{
-                  strokeDashoffset: active === 0 ? 0 : 100,
-                  transition: "stroke-dashoffset 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.6s",
-                }}
-              />
-              <line
-                x1="22" y1="76" x2="50" y2="50"
-                stroke="var(--accent-deep)"
-                strokeWidth="1"
-                strokeDasharray="100"
-                style={{
-                  strokeDashoffset: active === 0 ? 0 : 100,
-                  transition: "stroke-dashoffset 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.75s",
-                }}
-              />
-            </svg>
-
-            {/* 4 Outer System Nodes */}
-            <div
-              className="absolute flex items-center gap-[4px] rounded-[4px] border px-[6px] py-[3px] transition-all duration-500"
+      {/* Main canvas — one persistent morphing diagram (shared elements across all 4 states) */}
+      <div className="relative flex-1 flex flex-col items-center justify-center gap-[10px] px-[16px] py-[14px] min-h-[240px]">
+        <ApproachMorph active={active} />
+        <div className="relative h-[14px] w-full">
+          {titles.map((t, i) => (
+            <span
+              key={t.num}
+              className="mono absolute inset-0 text-center text-[8.5px] tracking-wider transition-all duration-500"
               style={{
-                left: "22%",
-                top: "24%",
-                translate: "-50% -50%",
-                background: "#141416",
-                borderColor: active === 0 ? "var(--accent)" : "rgba(244,242,237,0.2)",
-                boxShadow: active === 0 ? "0 0 10px rgba(200,241,79,0.3)" : "none",
+                color: "rgba(244,242,237,0.6)",
+                opacity: active === i ? 1 : 0,
+                transform: active === i ? "translateY(0)" : "translateY(6px)",
+                transitionDelay: active === i ? "0.35s" : "0s",
               }}
+              aria-hidden={active !== i}
             >
-              <span className="h-[5px] w-[5px] rounded-full bg-[var(--accent)]" />
-              <span className="mono text-[8px] font-semibold text-[#f4f2ed]">TOOLS</span>
-            </div>
-
-            <div
-              className="absolute flex items-center gap-[4px] rounded-[4px] border px-[6px] py-[3px] transition-all duration-500"
-              style={{
-                left: "78%",
-                top: "24%",
-                translate: "-50% -50%",
-                background: "#141416",
-                borderColor: active === 0 ? "var(--accent)" : "rgba(244,242,237,0.2)",
-                boxShadow: active === 0 ? "0 0 10px rgba(200,241,79,0.3)" : "none",
-              }}
-            >
-              <span className="h-[5px] w-[5px] rounded-full bg-[var(--accent)]" />
-              <span className="mono text-[8px] font-semibold text-[#f4f2ed]">CONTENT</span>
-            </div>
-
-            <div
-              className="absolute flex items-center gap-[4px] rounded-[4px] border px-[6px] py-[3px] transition-all duration-500"
-              style={{
-                left: "78%",
-                top: "76%",
-                translate: "-50% -50%",
-                background: "#141416",
-                borderColor: active === 0 ? "var(--accent)" : "rgba(244,242,237,0.2)",
-                boxShadow: active === 0 ? "0 0 10px rgba(200,241,79,0.3)" : "none",
-              }}
-            >
-              <span className="h-[5px] w-[5px] rounded-full bg-[var(--accent)]" />
-              <span className="mono text-[8px] font-semibold text-[#f4f2ed]">PEOPLE</span>
-            </div>
-
-            <div
-              className="absolute flex items-center gap-[4px] rounded-[4px] border px-[6px] py-[3px] transition-all duration-500"
-              style={{
-                left: "22%",
-                top: "76%",
-                translate: "-50% -50%",
-                background: "#141416",
-                borderColor: active === 0 ? "var(--accent)" : "rgba(244,242,237,0.2)",
-                boxShadow: active === 0 ? "0 0 10px rgba(200,241,79,0.3)" : "none",
-              }}
-            >
-              <span className="h-[5px] w-[5px] rounded-full bg-[var(--accent)]" />
-              <span className="mono text-[8px] font-semibold text-[#f4f2ed]">WORKFLOWS</span>
-            </div>
-
-            {/* Central System Hub */}
-            <div
-              className="absolute flex flex-col items-center justify-center rounded-full border p-[8px] transition-all duration-700"
-              style={{
-                left: "50%",
-                top: "50%",
-                translate: "-50% -50%",
-                background: "rgba(200,241,79,0.08)",
-                borderColor: "var(--accent)",
-                boxShadow: "0 0 18px rgba(200,241,79,0.4)",
-              }}
-            >
-              <div className="h-[28px] w-[28px] rounded-full border border-dashed border-[var(--accent)] flex items-center justify-center animate-spin" style={{ animationDuration: "12s" }}>
-                <span className="h-[8px] w-[8px] rounded-full bg-[var(--accent)]" />
-              </div>
-            </div>
-          </div>
+              {t.status}
+            </span>
+          ))}
         </div>
-
-        {/* ============================================================
-            STATE 1: AI WHERE IT EARNS (Manual Task Fades Out → Direct Agent Route)
-            ============================================================ */}
-        <div
-          className={`absolute inset-0 flex flex-col items-center justify-center p-[14px] transition-all duration-500 ${
-            active === 1 ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"
-          }`}
-        >
-          <div className="relative h-full w-full max-w-[320px] max-h-[220px] flex items-center justify-between">
-            {/* Ingest Node */}
-            <div className="flex flex-col items-center gap-[4px] z-[2]">
-              <span className="flex h-[32px] w-[32px] items-center justify-center rounded-full border text-[9px] mono" style={{ borderColor: "rgba(244,242,237,0.3)", background: "#141416", color: "#f4f2ed" }}>
-                INPUT
-              </span>
-              <span className="mono text-[7.5px]" style={{ color: "rgba(244,242,237,0.5)" }}>TASK STREAM</span>
-            </div>
-
-            {/* Split Routing Paths */}
-            <div className="relative flex-1 h-full mx-[10px] flex flex-col justify-between py-[12px]">
-              {/* UPPER: MANUAL BOTTLENECK (Visibly Fades Out / Disappears) */}
-              <div
-                className="relative flex items-center justify-between rounded-[4px] border border-dashed p-[8px] transition-all duration-700"
-                style={{
-                  borderColor: "rgba(244,242,237,0.2)",
-                  background: "rgba(244,242,237,0.02)",
-                  opacity: active === 1 ? 0.08 : 0.85,
-                  transform: active === 1 ? "scale(0.85) translateY(-8px)" : "scale(1) translateY(0)",
-                  filter: active === 1 ? "grayscale(100%) blur(1px)" : "none",
-                }}
-              >
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-[6px]">
-                    <span className="mono text-[9px] font-semibold text-[#f4f2ed] line-through">MANUAL TASK</span>
-                    <span className="mono text-[7px] px-[4px] py-[1px] rounded bg-red-950/60 text-red-400 border border-red-800/50">
-                      BOTTLENECK
-                    </span>
-                  </div>
-                  <span className="mono text-[7.5px]" style={{ color: "rgba(244,242,237,0.4)" }}>
-                    14 hrs/wk · Hand-offs & copy-paste
-                  </span>
-                </div>
-              </div>
-
-              {/* LOWER: AI AUTOMATION CONDUIT (Active Glowing Pipeline) */}
-              <div
-                className="relative flex items-center justify-between rounded-[6px] border p-[10px] transition-all duration-700 overflow-hidden"
-                style={{
-                  borderColor: active === 1 ? "var(--accent)" : "rgba(244,242,237,0.15)",
-                  background: active === 1 ? "rgba(200,241,79,0.1)" : "#141416",
-                  boxShadow: active === 1 ? "0 0 16px rgba(200,241,79,0.25)" : "none",
-                  transform: active === 1 ? "scale(1.02)" : "scale(1)",
-                }}
-              >
-                {/* Moving luminous beam inside AI conduit */}
-                {active === 1 && (
-                  <div className="approach-beam-flow pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-[rgba(200,241,79,0.2)] to-transparent" />
-                )}
-                <div className="flex flex-col z-[1]">
-                  <div className="flex items-center gap-[6px]">
-                    <span className="h-[6px] w-[6px] rounded-full bg-[var(--accent)] animate-ping" />
-                    <span className="mono text-[9.5px] font-bold text-[#f4f2ed]">AI REASONING AGENT</span>
-                    <span className="mono text-[7px] px-[4px] py-[1px] rounded bg-[var(--accent)] text-[#0c0c0d] font-bold">
-                      EARNED
-                    </span>
-                  </div>
-                  <span className="mono text-[8px]" style={{ color: "var(--accent)" }}>
-                    Instant execution · Zero manual latency
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Output Node */}
-            <div className="flex flex-col items-center gap-[4px] z-[2]">
-              <span
-                className="flex h-[32px] w-[32px] items-center justify-center rounded-full border text-[9px] mono font-bold transition-all duration-500"
-                style={{
-                  borderColor: active === 1 ? "var(--accent)" : "rgba(244,242,237,0.2)",
-                  background: active === 1 ? "var(--accent)" : "#141416",
-                  color: active === 1 ? "#0c0c0d" : "#f4f2ed",
-                  boxShadow: active === 1 ? "0 0 14px var(--accent)" : "none",
-                }}
-              >
-                DONE
-              </span>
-              <span className="mono text-[7.5px]" style={{ color: active === 1 ? "var(--accent)" : "rgba(244,242,237,0.5)" }}>
-                VERIFIED
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* ============================================================
-            STATE 2: DESIGN + ENGINEERING (Two layers merging into alignment)
-            ============================================================ */}
-        <div
-          className={`absolute inset-0 flex flex-col items-center justify-center p-[14px] transition-all duration-500 ${
-            active === 2 ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"
-          }`}
-        >
-          <div className="relative h-[180px] w-full max-w-[280px]">
-            {/* LAYER 1: DESIGN SPECIFICATION (Slides from top-left into 0,0) */}
-            <div
-              className="absolute inset-0 rounded-[6px] border p-[12px] flex flex-col justify-between transition-all duration-700"
-              style={{
-                borderColor: active === 2 ? "var(--accent)" : "rgba(200,241,79,0.4)",
-                background: active === 2 ? "rgba(20,20,24,0.75)" : "rgba(20,20,24,0.4)",
-                transform: active === 2 ? "translate(0px, 0px)" : "translate(-22px, -16px)",
-                boxShadow: active === 2 ? "0 0 20px rgba(200,241,79,0.2)" : "none",
-                zIndex: 2,
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <span className="mono text-[8.5px] font-bold text-[var(--accent)] flex items-center gap-[4px]">
-                  <span className="h-[5px] w-[5px] rounded-full bg-[var(--accent)]" />
-                  DESIGN // INTERFACE & MOTION
-                </span>
-                <span className="mono text-[7.5px] text-[rgba(244,242,237,0.5)]">TOKENS / SPRINGS</span>
-              </div>
-              <div className="h-[2px] w-3/4 rounded-full bg-[rgba(200,241,79,0.4)] my-[4px]" />
-              <div className="flex items-center justify-between mono text-[7px]" style={{ color: "rgba(244,242,237,0.6)" }}>
-                <span>GRID: 8PT FLUID</span>
-                <span>CURVE: EASE-OUT</span>
-              </div>
-            </div>
-
-            {/* LAYER 2: ENGINEERING RUNTIME (Slides from bottom-right into 0,0) */}
-            <div
-              className="absolute inset-0 rounded-[6px] border p-[12px] flex flex-col justify-between transition-all duration-700"
-              style={{
-                borderColor: active === 2 ? "var(--accent-deep)" : "rgba(127,174,0,0.5)",
-                background: active === 2 ? "rgba(20,20,24,0.75)" : "rgba(20,20,24,0.4)",
-                transform: active === 2 ? "translate(0px, 0px)" : "translate(22px, 16px)",
-                zIndex: 1,
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <span className="mono text-[8.5px] font-bold text-[var(--accent-deep)] flex items-center gap-[4px]">
-                  <span className="h-[5px] w-[5px] rounded-full bg-[var(--accent-deep)]" />
-                  ENGINEERING // RUNTIME & STATE
-                </span>
-                <span className="mono text-[7.5px] text-[rgba(244,242,237,0.5)]">&lt;/&gt; REACT / TS</span>
-              </div>
-              <div className="h-[2px] w-1/2 rounded-full bg-[rgba(127,174,0,0.4)] my-[4px]" />
-              <div className="flex items-center justify-between mono text-[7px]" style={{ color: "rgba(244,242,237,0.6)" }}>
-                <span>STATE: REACTIVE</span>
-                <span>HANDOFFS: 0</span>
-              </div>
-            </div>
-
-            {/* Corner Alignment Reticles Lock In when active === 2 */}
-            {active === 2 && (
-              <div className="pointer-events-none absolute inset-[-4px] flex flex-col justify-between z-[10] transition-opacity duration-500">
-                <div className="flex justify-between">
-                  <span className="mono text-[10px] text-[var(--accent)] font-bold">+</span>
-                  <span className="mono text-[10px] text-[var(--accent)] font-bold">+</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="mono text-[10px] text-[var(--accent)] font-bold">+</span>
-                  <span className="mono text-[10px] text-[var(--accent)] font-bold">+</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ============================================================
-            STATE 3: BUILT TO KEEP RUNNING (Slow Continuous Pulse)
-            ============================================================ */}
-        <div
-          className={`absolute inset-0 flex flex-col items-center justify-center p-[14px] transition-all duration-500 ${
-            active === 3 ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"
-          }`}
-        >
-          <div className="relative h-full w-full max-w-[300px] flex flex-col items-center justify-center">
-            {/* Concentric Breathing & Orbiting Pulse Core */}
-            <div className="relative flex items-center justify-center h-[120px] w-[120px]">
-              {/* Outer Pulsing Breathing Ring */}
-              <div
-                className="absolute inset-0 rounded-full border border-[var(--accent-deep)] approach-pulse-ring"
-                style={{
-                  background: "radial-gradient(circle, rgba(200,241,79,0.08) 0%, transparent 70%)",
-                }}
-              />
-
-              {/* Orbiting Satellite Node */}
-              <div className="absolute inset-[6px] rounded-full border border-dashed border-[rgba(244,242,237,0.2)] animate-spin" style={{ animationDuration: "6s" }}>
-                <span className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[7px] w-[7px] rounded-full bg-[var(--accent)] shadow-[0_0_8px_var(--accent)]" />
-              </div>
-
-              {/* Central Resilient Core */}
-              <div className="pv-breath relative flex flex-col items-center justify-center h-[54px] w-[54px] rounded-full border border-[var(--accent)] bg-[#141416] shadow-[0_0_18px_rgba(200,241,79,0.35)]">
-                <span className="mono text-[8px] font-bold text-[var(--accent)]">RUNNING</span>
-                <span className="mono text-[6.5px] text-[rgba(244,242,237,0.6)]">99.99%</span>
-              </div>
-            </div>
-
-            {/* Live Uptime Waveform */}
-            <div className="w-full mt-[12px]">
-              <svg className="h-[24px] w-full" viewBox="0 0 200 24" fill="none">
-                <path
-                  d="M 0 12 Q 25 3, 50 12 T 100 12 T 150 12 T 200 12"
-                  stroke="var(--accent)"
-                  strokeWidth="1.5"
-                  className="approach-wave-loop"
-                  style={{ filter: "drop-shadow(0 0 4px var(--accent))" }}
-                />
-              </svg>
-              <div className="flex items-center justify-between mt-[2px] px-[6px]">
-                <span className="mono text-[7.5px]" style={{ color: "rgba(244,242,237,0.5)" }}>HEALTH: NOMINAL</span>
-                <span className="mono text-[7.5px]" style={{ color: "var(--accent)" }}>SELF-HEALING // 0 DRIFT</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
       </div>
 
       {/* Bottom Telemetry Readout Bar */}
@@ -810,6 +427,165 @@ export function ApproachVisual({ active, onSelect }: ApproachVisualProps) {
         </span>
       </div>
     </div>
+  );
+}
+
+/**
+ * PROMPT 39 — the Approach diagram is ONE set of shared elements (4 nodes,
+ * 1 hub, 8 edges) whose geometry is tweened between states, so each
+ * principle opens from the previous principle's closing shape:
+ *  0 graph (square + spokes) → 1 nodes collapse into an input→agent→output
+ *  pipeline, one node lifts into a fading manual detour → 2 the pipeline
+ *  spreads into an engineering frame and a design layer slides into
+ *  alignment on it → 3 the frame's corners drop onto an orbit around the
+ *  running core. Text is limited to one glyph in the hub — nothing can overlap.
+ */
+type MNode = { x: number; y: number; r: number; o: number };
+const M_EDGES: [number, number][] = [
+  [0, 1], [1, 2], [2, 3], [3, 0], // perimeter
+  [0, 4], [1, 4], [2, 4], [3, 4], // spokes (4 = hub)
+];
+const M_STATES: { nodes: MNode[]; edges: number[]; dashed?: number[]; hubLabel: string }[] = [
+  {
+    nodes: [
+      { x: 45, y: 22, r: 5, o: 1 }, { x: 155, y: 22, r: 5, o: 1 },
+      { x: 155, y: 118, r: 5, o: 1 }, { x: 45, y: 118, r: 5, o: 1 },
+      { x: 100, y: 70, r: 11, o: 1 },
+    ],
+    edges: [1, 1, 1, 1, 0.55, 0.55, 0.55, 0.55],
+    hubLabel: "",
+  },
+  {
+    nodes: [
+      { x: 100, y: 24, r: 4, o: 0.3 }, { x: 178, y: 78, r: 7, o: 1 },
+      { x: 178, y: 78, r: 7, o: 0 }, { x: 22, y: 78, r: 7, o: 1 },
+      { x: 100, y: 78, r: 17, o: 1 },
+    ],
+    edges: [0.22, 0, 0, 0.22, 0, 1, 0, 1],
+    dashed: [0, 3],
+    hubLabel: "AI",
+  },
+  {
+    nodes: [
+      { x: 52, y: 26, r: 3.5, o: 1 }, { x: 148, y: 26, r: 3.5, o: 1 },
+      { x: 148, y: 114, r: 3.5, o: 1 }, { x: 52, y: 114, r: 3.5, o: 1 },
+      { x: 100, y: 70, r: 4, o: 1 },
+    ],
+    edges: [0.9, 0.9, 0.9, 0.9, 0, 0, 0, 0],
+    hubLabel: "",
+  },
+  {
+    nodes: [
+      { x: 100 - 34, y: 70 - 34, r: 4, o: 1 }, { x: 100 + 34, y: 70 - 34, r: 4, o: 1 },
+      { x: 100 + 34, y: 70 + 34, r: 4, o: 1 }, { x: 100 - 34, y: 70 + 34, r: 4, o: 1 },
+      { x: 100, y: 70, r: 22, o: 1 },
+    ],
+    edges: [0, 0, 0, 0, 0.3, 0.3, 0.3, 0.3],
+    hubLabel: "99.99%",
+  },
+];
+
+function ApproachMorph({ active }: { active: number }) {
+  const svg = useRef<SVGSVGElement>(null);
+  const pos = useRef<MNode[]>(M_STATES[0].nodes.map((n) => ({ ...n })));
+  const edgeState = useRef(M_STATES[0].edges.map((o) => ({ o, d: 0 })));
+  const first = useRef(true);
+
+  useEffect(() => {
+    const root = svg.current;
+    if (!root) return;
+    const st = M_STATES[active];
+    const nodes = root.querySelectorAll<SVGCircleElement>("[data-mn]");
+    const edges = root.querySelectorAll<SVGLineElement>("[data-me]");
+    const render = () => {
+      pos.current.forEach((n, i) => {
+        const c = nodes[i];
+        c.setAttribute("cx", String(n.x));
+        c.setAttribute("cy", String(n.y));
+        c.setAttribute("r", String(n.r));
+        c.style.opacity = String(n.o);
+      });
+      M_EDGES.forEach(([a, b], i) => {
+        const l = edges[i];
+        const A = pos.current[a], B = pos.current[b];
+        l.setAttribute("x1", String(A.x)); l.setAttribute("y1", String(A.y));
+        l.setAttribute("x2", String(B.x)); l.setAttribute("y2", String(B.y));
+        l.style.opacity = String(edgeState.current[i].o);
+        l.style.strokeDashoffset = String(edgeState.current[i].d);
+      });
+    };
+    const reduced = prefersReducedMotion();
+    const dur = reduced ? 0 : 0.9;
+    const tl = gsap.timeline({ onUpdate: render, onComplete: render });
+    st.nodes.forEach((n, i) => tl.to(pos.current[i], { ...n, duration: dur, ease: "expo.inOut" }, 0));
+    st.edges.forEach((o, i) => {
+      const e = edgeState.current[i];
+      const appearing = o > 0 && e.o === 0;
+      edges[i].style.strokeDasharray = st.dashed?.includes(i) ? "0.04 0.03" : "1";
+      if (appearing || (first.current && active === 0 && !reduced)) {
+        // disconnected → connected: the edge draws itself in
+        e.d = 1;
+        tl.to(e, { o, d: 0, duration: dur * 0.8, ease: "power3.out" }, dur * 0.45 + (i % 4) * 0.08);
+      } else {
+        tl.to(e, { o, d: 0, duration: dur * 0.6, ease: "power2.inOut" }, o === 0 ? 0 : dur * 0.3);
+      }
+    });
+    first.current = false;
+    render();
+    return () => { tl.kill(); };
+  }, [active]);
+
+  const on = (i: number) => active === i;
+  return (
+    <svg ref={svg} viewBox="0 0 200 140" className="h-auto w-full max-w-[300px] overflow-visible" fill="none" aria-hidden>
+      {/* state 3 — orbit ring + orbiting signal */}
+      <g style={{ opacity: on(3) ? 1 : 0, transition: `opacity .6s ${on(3) ? ".5s" : "0s"}` }}>
+        <circle cx="100" cy="70" r="48" stroke="var(--accent-deep)" strokeWidth="1" className="approach-pulse-ring" style={{ transformOrigin: "100px 70px" }} />
+        <g className="animate-spin" style={{ transformOrigin: "100px 70px", animationDuration: "7s" }}>
+          <circle cx="100" cy="22" r="3" fill="var(--accent)" style={{ filter: "drop-shadow(0 0 4px var(--accent))" }} />
+        </g>
+      </g>
+      {/* state 2 — design layer slides onto the engineering frame */}
+      <rect
+        x="52" y="26" width="96" height="88" rx="3"
+        stroke="var(--accent)" strokeWidth="1.2" strokeDasharray="4 3"
+        style={{
+          opacity: on(2) ? 1 : 0,
+          transform: on(2) ? "translate(0,0)" : "translate(16px,-12px)",
+          transition: `transform .9s cubic-bezier(.16,1,.3,1) ${on(2) ? ".75s" : "0s"}, opacity .4s ${on(2) ? ".6s" : "0s"}`,
+        }}
+      />
+      {/* state 1 — signal travelling the agent route */}
+      {on(1) && (
+        <circle r="2.6" cx="22" cy="78" fill="#f4f2ed" className="approach-route-dot" />
+      )}
+      {M_EDGES.map((_, i) => (
+        <line key={i} data-me pathLength={1} stroke={i < 4 ? "var(--accent)" : "var(--accent-deep)"} strokeWidth={i < 4 ? 1.2 : 1} strokeLinecap="round" />
+      ))}
+      {M_STATES[0].nodes.map((_, i) => (
+        <circle
+          key={i}
+          data-mn
+          fill={i === 4 ? "#141416" : "var(--accent)"}
+          stroke={i === 4 ? "var(--accent)" : "none"}
+          strokeWidth={i === 4 ? 1.2 : 0}
+          style={{ filter: "drop-shadow(0 0 4px rgba(200,241,79,.5))" }}
+        />
+      ))}
+      {/* hub glyph — the only in-diagram text, one at a time */}
+      {M_STATES.map((st, i) =>
+        st.hubLabel ? (
+          <text
+            key={i}
+            x="100" y={i === 1 ? 78 : 70} textAnchor="middle" dominantBaseline="central"
+            className="mono" fontSize={i === 3 ? 8.5 : 9} fontWeight={700} fill="var(--accent)"
+            style={{ opacity: on(i) ? 1 : 0, transition: `opacity .4s ${on(i) ? ".7s" : "0s"}` }}
+          >
+            {st.hubLabel}
+          </text>
+        ) : null
+      )}
+    </svg>
   );
 }
 

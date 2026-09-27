@@ -51,7 +51,7 @@ export function Labs() {
         {/* 5 Playable Sketches Grid */}
         <div className="grid gap-[20px] sm:grid-cols-2 lg:grid-cols-3">
           {/* Sketch 1: Signal Router */}
-          <LabCard tag="SKETCH 01" title="Signal Router" subtitle="Click to dispatch packet">
+          <LabCard tag="SKETCH 01" title="Signal Router" subtitle="Click fast — load the router">
             <SignalRouterLab />
           </LabCard>
 
@@ -61,7 +61,7 @@ export function Labs() {
           </LabCard>
 
           {/* Sketch 3: Spatial 3D Cluster */}
-          <LabCard tag="SKETCH 03" title="Spatial Node Cluster" subtitle="Drag to rotate with inertia">
+          <LabCard tag="SKETCH 03" title="Spatial Node Cluster" subtitle="Drag to spin · click a node">
             <Spatial3DLab />
           </LabCard>
 
@@ -126,132 +126,178 @@ function LabCard({
 /* ============================================================
    SKETCH 1: SIGNAL ROUTER (PROMPT 30: Traveling packet + tail)
    ============================================================ */
+/* PROMPT 41 — the router is now a small load toy: every click queues a
+   packet; up to MAX_FLIGHT run concurrently in their own lane + tint, the
+   rest wait in a visible queue (backpressure), overflow is dropped. Each
+   stage node shows how many packets it is holding right now. */
 type ActivePacket = {
   id: number;
-  startTime: number;
+  lane: number;
+  hue: number;
+  startTime: number; // -1 while queued
   duration: number;
 };
+const MAX_FLIGHT = 5;
+const MAX_QUEUE = 8;
+const LANES = [-10, -5, 0, 5, 10];
+const TINTS = ["#c8f14f", "#9be15d", "#e6f57a", "#6fd3a0", "#f4d35e"];
 
 function SignalRouterLab() {
-  const [packets, setPackets] = useState<ActivePacket[]>([]);
-  const [activeStage, setActiveStage] = useState(0);
-  const [statusText, setStatusText] = useState("Status: Idle — Click 'Dispatch Packet' to simulate payload.");
+  const packetsRef = useRef<ActivePacket[]>([]);
+  const [, setFrame] = useState(0);
+  const [stats, setStats] = useState({ done: 0, dropped: 0, peak: 0 });
+  const [statusText, setStatusText] = useState("Idle — click Dispatch. Click fast to load the router.");
+  const [bursts, setBursts] = useState<{ id: number; hue: number }[]>([]);
   const nextId = useRef(1);
   const rafRef = useRef(0);
-
+  const running = useRef(false);
   const stages = ["INGEST", "PARSE", "ROUTE", "DONE"];
+
+  const inFlight = () => packetsRef.current.filter((p) => p.startTime >= 0);
+  const queued = () => packetsRef.current.filter((p) => p.startTime < 0);
+
+  const loop = (now: number) => {
+    const list = packetsRef.current;
+    const finished = list.filter((p) => p.startTime >= 0 && now - p.startTime > p.duration);
+    if (finished.length) {
+      setStats((st) => ({ ...st, done: st.done + finished.length }));
+      setBursts((b) => [...b.slice(-6), ...finished.map((f) => ({ id: f.id, hue: f.hue }))]);
+    }
+    let next = list.filter((p) => !finished.includes(p));
+    // release queued packets into free lanes
+    const busyLanes = new Set(next.filter((p) => p.startTime >= 0).map((p) => p.lane));
+    next = next.map((p) => {
+      if (p.startTime >= 0 || busyLanes.size >= MAX_FLIGHT) return p;
+      const lane = LANES.findIndex((_, i) => !busyLanes.has(i));
+      busyLanes.add(lane);
+      return { ...p, lane, startTime: now };
+    });
+    packetsRef.current = next;
+    if (finished.length && next.length) {
+      const q = next.filter((p) => p.startTime < 0).length;
+      const f = next.length - q;
+      setStatusText(`#${finished.map((p) => p.id).join(", #")} → DONE · ${f} in flight${q ? `, ${q} still queued` : ""}.`);
+    }
+    setFrame((f) => f + 1);
+    if (next.length) rafRef.current = requestAnimationFrame(loop);
+    else {
+      running.current = false;
+      setStatusText("All payloads processed: ROUTE → DONE [ACK 200]");
+    }
+  };
 
   const dispatch = () => {
     const id = nextId.current++;
-    const now = performance.now();
-    setStatusText(`Payload #${id} dispatched into INGEST pipeline...`);
-
-    setPackets((prev) => [...prev.slice(-3), { id, startTime: now, duration: 1600 }]);
+    const q = queued().length;
+    const f = inFlight().length;
+    if (f >= MAX_FLIGHT && q >= MAX_QUEUE) {
+      setStats((st) => ({ ...st, dropped: st.dropped + 1 }));
+      setStatusText(`Payload #${id} dropped — queue full (${MAX_QUEUE}). Backpressure engaged.`);
+      return;
+    }
+    // durations vary slightly so packets overtake/spread like real work
+    const pkt: ActivePacket = { id, lane: -1, hue: id % TINTS.length, startTime: -1, duration: 1500 + ((id * 373) % 700) };
+    packetsRef.current = [...packetsRef.current, pkt];
+    const load = f + q + 1;
+    setStats((st) => ({ ...st, peak: Math.max(st.peak, load) }));
+    setStatusText(
+      f >= MAX_FLIGHT
+        ? `Payload #${id} queued — ${q + 1} waiting, ${MAX_FLIGHT} lanes busy.`
+        : `Payload #${id} → INGEST · ${f + 1}/${MAX_FLIGHT} lanes in use.`
+    );
+    if (!running.current) {
+      running.current = true;
+      rafRef.current = requestAnimationFrame(loop);
+    }
   };
 
-  useEffect(() => {
-    const loop = (now: number) => {
-      setPackets((current) => {
-        if (current.length === 0) return current;
+  useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
 
-        const updated = current.filter((p) => now - p.startTime <= p.duration);
-        if (updated.length > 0) {
-          const latest = updated[updated.length - 1];
-          const progress = Math.min(1, (now - latest.startTime) / latest.duration);
-          const stageIdx = Math.min(3, Math.floor(progress * 4));
-          setActiveStage(stageIdx);
-        } else {
-          setStatusText("All payloads processed: ROUTE → DONE [ACK 200]");
-        }
-        return updated;
-      });
-
-      rafRef.current = requestAnimationFrame(loop);
-    };
-
-    rafRef.current = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, []);
+  const now = performance.now();
+  const flying = inFlight();
+  const waiting = queued();
+  const stageCounts = [0, 0, 0, 0];
+  flying.forEach((p) => {
+    const pr = Math.min(0.999, (now - p.startTime) / p.duration);
+    stageCounts[Math.floor(pr * 4)]++;
+  });
 
   return (
     <div className="flex flex-col justify-between h-full min-h-[190px]">
-      <div className="flex items-center justify-between">
-        <span className="mono text-[10px]" style={{ color: "rgba(244,242,237,0.5)" }}>
-          Active Stage: <strong style={{ color: "var(--accent)" }}>{stages[activeStage]}</strong>
+      <div className="flex items-center justify-between gap-[8px]">
+        <span className="mono text-[9.5px] leading-[1.5]" style={{ color: "rgba(244,242,237,0.5)" }}>
+          In flight <strong style={{ color: "var(--accent)" }}>{flying.length}</strong> · Queue{" "}
+          <strong style={{ color: waiting.length ? "#f4d35e" : "rgba(244,242,237,0.7)" }}>{waiting.length}</strong> · Done{" "}
+          <strong style={{ color: "#f4f2ed" }}>{stats.done}</strong>
+          {stats.dropped > 0 && (
+            <>
+              {" "}· Dropped <strong style={{ color: "#ff8a7a" }}>{stats.dropped}</strong>
+            </>
+          )}
         </span>
-        <button
-          type="button"
-          onClick={dispatch}
-          className="btn btn-ghost py-[6px] px-[12px] text-[9.5px]"
-          data-cursor="TRIGGER"
-        >
-          Dispatch Packet +
+        <button type="button" onClick={dispatch} className="btn btn-ghost flex-none py-[6px] px-[12px] text-[9.5px]" data-cursor="TRIGGER">
+          Dispatch +
         </button>
       </div>
 
-      {/* Track & Traveling Packet */}
-      <div className="relative my-[20px] flex items-center justify-between px-[10px]">
-        {/* Background Track Line */}
+      <div className="relative my-[18px] flex items-center justify-between px-[10px]">
         <div className="absolute inset-x-[24px] top-1/2 h-[2px] -translate-y-1/2" style={{ background: "rgba(244,242,237,0.12)" }} />
+        {/* faint lane guides appear once the router is under load */}
+        {LANES.map((off, i) => (
+          <div key={i} className="absolute inset-x-[24px] top-1/2 h-px transition-opacity duration-500" style={{ transform: `translateY(${off}px)`, background: "rgba(200,241,79,0.12)", opacity: flying.length > 1 ? 1 : 0 }} />
+        ))}
 
-        {/* PROMPT 36 idle invitation: a faint ghost packet drifts the track
-            whenever no payload is in flight — a pre-echo of the real
-            dispatch, dim enough to read as "waiting", not "running". */}
-        {packets.length === 0 && (
+        {packetsRef.current.length === 0 && (
           <span className="lab-ghost-packet pointer-events-none absolute top-1/2 h-[5px] w-[5px] -translate-y-1/2 rounded-full" style={{ background: "var(--accent)" }} aria-hidden />
         )}
 
-        {/* Traveling Animated Packets with Trailing Glow Tails */}
-        {packets.map((pkt) => {
-          const now = performance.now();
-          const progress = Math.min(1, Math.max(0, (now - pkt.startTime) / pkt.duration));
-          const leftPct = progress * 100;
+        {/* queue — waiting packets stack up before INGEST */}
+        <div className="pointer-events-none absolute left-[2px] top-1/2 z-[11] flex -translate-y-1/2 flex-col-reverse gap-[2px]" style={{ transform: "translate(-4px,-50%)" }}>
+          {waiting.map((p) => (
+            <span key={p.id} className="lab-q-in block h-[4px] w-[4px] rounded-full" style={{ background: TINTS[p.hue], opacity: 0.8 }} />
+          ))}
+        </div>
 
+        {flying.map((pkt) => {
+          const progress = Math.min(1, Math.max(0, (now - pkt.startTime) / pkt.duration));
+          const tint = TINTS[pkt.hue];
           return (
             <div
               key={pkt.id}
-              className="pointer-events-none absolute top-1/2 z-[10] -translate-y-1/2"
-              style={{
-                left: `calc(24px + (${leftPct}% * 0.82))`,
-                transition: "none",
-              }}
+              className="pointer-events-none absolute top-1/2 z-[10]"
+              style={{ left: `calc(24px + (${progress * 100}% * 0.82))`, transform: `translateY(calc(-50% + ${LANES[pkt.lane]}px))` }}
             >
-              {/* Trailing Tail Effect */}
-              <div
-                className="absolute right-[4px] top-1/2 h-[4px] w-[34px] -translate-y-1/2 rounded-full"
-                style={{
-                  background: "linear-gradient(90deg, transparent, rgba(200,241,79,0.3) 50%, var(--accent) 100%)",
-                  filter: "drop-shadow(0 0 6px var(--accent))",
-                }}
-              />
-              {/* Leading Packet Node */}
-              <div
-                className="relative h-[11px] w-[11px] rounded-full"
-                style={{
-                  background: "var(--accent)",
-                  boxShadow: "0 0 12px var(--accent), 0 0 20px rgba(200,241,79,0.8)",
-                }}
-              />
+              <div className="absolute right-[4px] top-1/2 h-[3px] w-[28px] -translate-y-1/2 rounded-full" style={{ background: `linear-gradient(90deg, transparent, ${tint})`, opacity: 0.7 }} />
+              <div className="relative h-[8px] w-[8px] rounded-full" style={{ background: tint, boxShadow: `0 0 10px ${tint}` }} />
             </div>
           );
         })}
 
-        {/* Four Stage Nodes */}
         {stages.map((st, i) => {
-          const isCurrent = activeStage === i && packets.length > 0;
+          const n = stageCounts[i];
+          const isCurrent = n > 0;
           return (
             <div key={st} className="relative z-[2] flex flex-col items-center gap-[6px]">
               <span
-                className="flex h-[30px] w-[30px] items-center justify-center rounded-full border text-[10px] font-mono transition-all duration-300"
+                className="relative flex h-[30px] w-[30px] items-center justify-center rounded-full border text-[10px] font-mono transition-all duration-200"
                 style={{
                   borderColor: isCurrent ? "var(--accent)" : "rgba(244,242,237,0.2)",
                   background: isCurrent ? "var(--accent-deep)" : "#141416",
                   color: isCurrent ? "#0c0c0d" : "#f4f2ed",
-                  boxShadow: isCurrent ? "0 0 16px var(--accent)" : "none",
-                  transform: isCurrent ? "scale(1.12)" : "scale(1)",
+                  boxShadow: isCurrent ? `0 0 ${8 + n * 5}px var(--accent)` : "none",
+                  transform: `scale(${1 + Math.min(n, 4) * 0.05})`,
                 }}
               >
                 0{i + 1}
+                {n > 1 && (
+                  <span className="mono absolute -right-[6px] -top-[6px] grid h-[13px] min-w-[13px] place-items-center rounded-full px-[3px] text-[7.5px] font-bold" style={{ background: "#f4f2ed", color: "#0c0c0d" }}>
+                    {n}
+                  </span>
+                )}
+                {i === 3 &&
+                  bursts.map((b) => (
+                    <span key={b.id} className="lab-done-burst pointer-events-none absolute inset-0 rounded-full border" style={{ borderColor: TINTS[b.hue] }} onAnimationEnd={() => setBursts((x) => x.filter((y) => y.id !== b.id))} />
+                  ))}
               </span>
               <span className="mono text-[8.5px]" style={{ color: isCurrent ? "var(--accent)" : "rgba(244,242,237,0.4)" }}>
                 {st}
@@ -261,11 +307,10 @@ function SignalRouterLab() {
         })}
       </div>
 
-      {/* Status line — PROMPT 36: never truncated. It wraps to a second
-          line instead, keeping the sketch's proportions intact. */}
       <div className="rounded-[4px] border p-[8px]" style={{ borderColor: "rgba(244,242,237,0.08)", background: "#141416" }}>
-        <p className="mono text-[9px] leading-[1.55]" style={{ color: "rgba(244,242,237,0.6)" }}>
+        <p className="mono text-[9px] leading-[1.55]" style={{ color: "rgba(244,242,237,0.6)" }} aria-live="polite">
           {statusText}
+          {stats.peak > 1 && <span style={{ color: "rgba(244,242,237,0.35)" }}> · peak load {stats.peak}</span>}
         </p>
       </div>
     </div>
@@ -412,6 +457,14 @@ function Spatial3DLab() {
   const dragging = useRef(false);
   const lastPtr = useRef<{ x: number; y: number; time: number }>({ x: 0, y: 0, time: 0 });
   const rafRef = useRef(0);
+  // PROMPT 41 — click a node to isolate its connections
+  const [selected, setSelected] = useState<number | null>(null);
+  const selectedRef = useRef<number | null>(null);
+  selectedRef.current = selected;
+  const hoverRef = useRef<number | null>(null);
+  const projRef = useRef<{ x: number; y: number; z: number }[]>([]);
+  const downAt = useRef({ x: 0, y: 0 });
+  const focusT = useRef(0); // 0 → 1 eases the dimming in/out
 
   // 3D Node Vertices & Edges
   const nodes = [
@@ -480,13 +533,32 @@ function Spatial3DLab() {
         };
       });
 
-      // Draw Edges with depth fading
-      ctx.lineWidth = 1.3;
+      projRef.current = projected;
+      const sel = selectedRef.current;
+      focusT.current += ((sel !== null ? 1 : 0) - focusT.current) * 0.14;
+      const ft = focusT.current;
+      const linked = new Set<number>();
+      if (sel !== null) edges.forEach(([i, j]) => { if (i === sel) linked.add(j); if (j === sel) linked.add(i); });
+      const pulse = (performance.now() % 1400) / 1400;
+
+      // Draw Edges with depth fading — selected node's edges stay lit, rest dim
       edges.forEach(([i, j]) => {
         const p1 = projected[i];
         const p2 = projected[j];
-        const alpha = Math.min(0.85, Math.max(0.12, 0.2 + (p1.z + p2.z + 4) * 0.09));
+        const base = Math.min(0.85, Math.max(0.12, 0.2 + (p1.z + p2.z + 4) * 0.09));
+        const mine = sel !== null && (i === sel || j === sel);
+        const alpha = mine ? base + (1 - base) * ft : base * (1 - ft * 0.88);
+        ctx.lineWidth = mine ? 1.3 + ft * 1.2 : 1.3;
         ctx.strokeStyle = `rgba(200, 241, 79, ${alpha})`;
+        if (mine && !prefersReducedMotion()) {
+          // a signal runs outward from the selected node along each of its links
+          const from = i === sel ? p1 : p2, to = i === sel ? p2 : p1;
+          const t = pulse;
+          ctx.fillStyle = `rgba(244,242,237,${ft * (1 - t)})`;
+          ctx.beginPath();
+          ctx.arc(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
         ctx.beginPath();
         ctx.moveTo(p1.x, p1.y);
         ctx.lineTo(p2.x, p2.y);
@@ -500,10 +572,20 @@ function Spatial3DLab() {
 
       // Draw Node Vertices & Central Core
       projected.forEach((p, idx) => {
-        ctx.fillStyle = idx === 8 ? "#c8f14f" : "#f4f2ed";
+        const on = sel === null || idx === sel || linked.has(idx);
+        ctx.globalAlpha = on ? 1 : 1 - ft * 0.75;
+        ctx.fillStyle = idx === 8 || idx === sel ? "#c8f14f" : "#f4f2ed";
         ctx.beginPath();
-        ctx.arc(p.x, p.y, idx === 8 ? 4.5 : 2.5, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, (idx === 8 ? 4.5 : 2.5) + (idx === sel ? 1.5 * ft : 0) + (idx === hoverRef.current ? 1 : 0), 0, Math.PI * 2);
         ctx.fill();
+        ctx.globalAlpha = 1;
+        if (idx === sel) {
+          ctx.strokeStyle = `rgba(200,241,79,${0.8 * ft})`;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 7 + ft * 3, 0, Math.PI * 2);
+          ctx.stroke();
+        }
 
         if (idx === 8) {
           // Central Core Glow — breathing radius + luminance
@@ -530,7 +612,24 @@ function Spatial3DLab() {
     return () => cancelAnimationFrame(rafRef.current);
   }, []);
 
+  const hitTest = (e: { clientX: number; clientY: number }) => {
+    const c = canvasRef.current;
+    if (!c) return null;
+    const r = c.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width) * c.width;
+    const y = ((e.clientY - r.top) / r.height) * c.height;
+    let best: number | null = null;
+    let bd = hasFinePointer() ? 11 : 18;
+    // prefer nodes nearer the viewer when they overlap
+    projRef.current.forEach((p, i) => {
+      const d = Math.hypot(p.x - x, p.y - y) - p.z * 0.5;
+      if (d < bd) { bd = d; best = i; }
+    });
+    return best;
+  };
+
   const onPointerDown = (e: React.PointerEvent) => {
+    downAt.current = { x: e.clientX, y: e.clientY };
     dragging.current = true;
     velX.current = 0;
     velY.current = 0;
@@ -539,7 +638,12 @@ function Spatial3DLab() {
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
-    if (!dragging.current) return;
+    if (!dragging.current) {
+      const h = hitTest(e);
+      hoverRef.current = h;
+      (e.currentTarget as HTMLElement).style.cursor = h !== null ? "pointer" : "";
+      return;
+    }
     const now = performance.now();
     const dt = Math.max(1, now - lastPtr.current.time);
     const dx = e.clientX - lastPtr.current.x;
@@ -555,16 +659,27 @@ function Spatial3DLab() {
     lastPtr.current = { x: e.clientX, y: e.clientY, time: now };
   };
 
-  const onPointerUp = () => {
+  const onPointerUp = (e: React.PointerEvent) => {
     dragging.current = false;
-  };
-
-  const handleTapStep = () => {
-    if (!hasFinePointer()) {
+    const moved = Math.hypot(e.clientX - downAt.current.x, e.clientY - downAt.current.y);
+    if (moved > 5) return; // it was a drag
+    const hit = hitTest(e);
+    if (hit !== null) {
+      setSelected((cur) => (cur === hit ? null : hit));
+      velX.current = 0;
+      velY.current = 0;
+    } else if (selectedRef.current !== null) {
+      setSelected(null);
+    } else if (!hasFinePointer()) {
       velY.current = 0.08;
       velX.current = 0.04;
     }
   };
+  const onPointerCancel = () => {
+    dragging.current = false;
+  };
+  const linkCount = selected === null ? 0 : edges.filter(([i, j]) => i === selected || j === selected).length;
+  const nodeName = (i: number) => (i === 8 ? "CORE" : `NODE ${String(i + 1).padStart(2, "0")}`);
 
   return (
     <div
@@ -574,13 +689,22 @@ function Spatial3DLab() {
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
-      onClick={handleTapStep}
+      onPointerCancel={onPointerCancel}
+      onPointerLeave={() => (hoverRef.current = null)}
       data-cursor="ROTATE"
     >
       <canvas ref={canvasRef} width={240} height={170} />
+      {selected !== null && (
+        <span key={selected} className="swap-fade mono absolute left-[4px] top-[2px] rounded-full border px-[7px] py-[2px] text-[8.5px]" style={{ borderColor: "var(--accent-deep)", color: "var(--accent)", background: "#0c0c0d" }}>
+          {nodeName(selected)} · {linkCount} LINKS
+        </span>
+      )}
       <span className="mono absolute bottom-[6px] text-[8.5px]" style={{ color: "rgba(244,242,237,0.4)" }}>
-        {hasFinePointer() ? "Drag to rotate with physics momentum" : "Tap to spin with inertia"}
+        {selected !== null
+          ? "Click another node · click empty space to clear"
+          : hasFinePointer()
+            ? "Drag to rotate · click a node to trace its links"
+            : "Tap a node to trace its links · tap space to spin"}
       </span>
     </div>
   );

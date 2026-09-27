@@ -2145,3 +2145,32 @@ img {
     opacity: 0;
   }
 }
+
+/* Prompt 39 — signal dot on the Approach agent route (input → agent → output) */
+@keyframes approach-route { 0% { transform: translateX(0); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateX(156px); opacity: 0; } }
+.approach-route-dot { animation: approach-route 1.8s .9s cubic-bezier(.45,0,.55,1) infinite both; }
+@media (prefers-reduced-motion: reduce) { .approach-route-dot { animation: none; opacity: 0; } }
+
+/* ---------- Prompt 40 — System View per-intent build-ins ---------- */
+@keyframes svPop { from { opacity: 0; transform: scale(0.82); } to { opacity: 1; transform: none; } }
+@keyframes svRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes svDraw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes svGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes svSignalIn { 0% { left: 13%; opacity: 0; } 15% { opacity: 1; } 60% { left: 50%; opacity: 1; } 75%, 100% { left: 50%; opacity: 0; } }
+.sv-stage { animation: svRise 0.3s var(--e-out) both; }
+.sv-pop { animation: svPop 0.5s var(--e-out) both; transform-box: fill-box; transform-origin: center; }
+.sv-rise { animation: svRise 0.5s var(--e-out) both; }
+.sv-draw { stroke-dasharray: 1; animation: svDraw 0.6s var(--e-out) both; }
+.sv-grow { animation: svGrow 1.3s var(--e-out) both; }
+.sv-signal-in { animation: svSignalIn 2.4s 0.6s var(--e-inout) infinite both; }
+@media (prefers-reduced-motion: reduce) {
+  .sv-stage, .sv-pop, .sv-rise, .sv-draw, .sv-grow { animation: none; }
+  .sv-signal-in { display: none; }
+}
+
+/* Prompt 41 — Labs: router completion burst + queue arrival */
+@keyframes labDoneBurst { from { transform: scale(1); opacity: 0.9; } to { transform: scale(2.2); opacity: 0; } }
+.lab-done-burst { animation: labDoneBurst 0.6s var(--e-out) forwards; }
+@keyframes labQIn { from { transform: translateX(-6px); opacity: 0; } to { transform: none; opacity: 0.8; } }
+.lab-q-in { animation: labQIn 0.25s var(--e-out) both; }
+@media (prefers-reduced-motion: reduce) { .lab-done-burst, .lab-q-in { animation: none; } }
