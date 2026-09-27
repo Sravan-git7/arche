@@ -5,22 +5,22 @@
  * the visitor's OWN localStorage and showed "REQUEST RECEIVED" 250ms
  * later — nothing ever reached the studio. Every lead was silently lost.
  *
- * This is now the single place a submission is sent. Wiring (one-time,
- * ~5 minutes, done by the site owner):
+ * The delivery service selected for Arche is Web3Forms. It is designed for
+ * browser-side submission: its public Access Key identifies the inbox to
+ * receive the enquiry; it is not a secret server credential. Wiring is a
+ * one-time owner task:
  *
- *   1. Sign up at https://formspree.io — the free tier is enough.
- *   2. Create a form; you'll get an endpoint like
- *      https://formspree.io/f/abcdwxyz
- *   3. Paste it into FORM_ENDPOINT below (or provide VITE_FORM_ENDPOINT
- *      in a .env file / build env for a deployment-specific override).
- *   4. Rebuild. "REQUEST RECEIVED" now only appears after a real 2xx
- *      response from the endpoint; any failed send shows an honest
- *      error with a pre-filled mailto fallback, so a lead can never be
- *      silently lost again.
+ *   1. Create / verify a free form at https://web3forms.com.
+ *   2. Copy its Access Key (a UUID), tied to hello@arche.studio.
+ *   3. Set VITE_WEB3FORMS_ACCESS_KEY in the deploy/build environment
+ *      (preferred), or paste it into WEB3FORMS_ACCESS_KEY below.
+ *   4. Rebuild. "REQUEST RECEIVED" then appears only after Web3Forms
+ *      returns BOTH an HTTP success response AND { success: true }.
  *
- * Until an endpoint is configured the flow is honest about it too: the
- * submit screen offers the pre-filled "email us directly" fallback
- * instead of pretending anything was received.
+ * Until an access key is configured, the flow is honest about it: it offers
+ * a pre-filled direct-email fallback rather than pretending anything was
+ * received. See https://docs.web3forms.com/getting-started/api-reference
+ * for the documented browser JSON endpoint and response contract.
  */
 export type InquiryPayload = {
   name: string;
@@ -36,32 +36,51 @@ export type SendResult =
   | { ok: true }
   | { ok: false; reason: "unconfigured" | "network" | "rejected"; status?: number };
 
-/** ← PASTE THE FORMSPREE ENDPOINT HERE (e.g. "https://formspree.io/f/abcdwxyz") */
-const FORM_ENDPOINT = "";
+/**
+ * ← OPTIONAL: paste the Web3Forms access key here. Prefer the environment
+ * variable below so production configuration stays outside the codebase.
+ */
+const WEB3FORMS_ACCESS_KEY = "";
+const WEB3FORMS_SUBMIT_URL = "https://api.web3forms.com/submit";
 
-export function inquiryEndpoint(): string {
-  const env = (import.meta as unknown as { env?: Record<string, string> }).env;
-  return (FORM_ENDPOINT || env?.VITE_FORM_ENDPOINT || "").trim();
+type ViteEnv = { env?: Record<string, string | undefined> };
+
+/** The public Web3Forms key, supplied by the site owner at build time. */
+export function web3FormsAccessKey(): string {
+  const env = (import.meta as unknown as ViteEnv).env;
+  return (WEB3FORMS_ACCESS_KEY || env?.VITE_WEB3FORMS_ACCESS_KEY || "").trim();
 }
 
 /**
- * POST the collected inquiry to the configured endpoint (Formspree's
- * client-side JSON API). Resolves with a real verdict — the caller must
- * treat anything other than { ok: true } as a failed delivery.
+ * An override is intentionally supported for automated verification only.
+ * Production defaults to Web3Forms' documented HTTPS endpoint.
+ */
+function web3FormsSubmitUrl(): string {
+  const env = (import.meta as unknown as ViteEnv).env;
+  return (env?.VITE_WEB3FORMS_SUBMIT_URL || WEB3FORMS_SUBMIT_URL).trim();
+}
+
+/**
+ * POST the complete inquiry to Web3Forms' client-side JSON API. A 2xx on
+ * its own is deliberately insufficient: Web3Forms' documented payload must
+ * also say `success: true`, otherwise Contact renders the honest failure
+ * path and never calls the enquiry received state.
  */
 export async function submitInquiry(p: InquiryPayload): Promise<SendResult> {
-  const endpoint = inquiryEndpoint();
-  if (!endpoint) return { ok: false, reason: "unconfigured" };
+  const accessKey = web3FormsAccessKey();
+  if (!accessKey) return { ok: false, reason: "unconfigured" };
 
   const body: Record<string, string> = {
-    _subject: `New inquiry — ${p.building}`,
-    _replyto: p.email,
-    name: p.name,
+    access_key: accessKey,
+    subject: `New Arche inquiry — ${p.building}`,
+    // Web3Forms uses email/replyto to make replies go directly to the lead.
     email: p.email,
+    replyto: p.email,
+    name: p.name,
     building: p.building,
     what_needs_to_change: p.whatNeedsToChange,
     timeline: p.timeline,
-    source: "guided contact flow",
+    source: "Arche guided contact flow",
   };
   if (p.company?.trim()) body.company = p.company.trim();
   if (p.askArcheSignal) body.ask_arche_signal = p.askArcheSignal;
@@ -69,13 +88,21 @@ export async function submitInquiry(p: InquiryPayload): Promise<SendResult> {
   const ctrl = new AbortController();
   const timer = window.setTimeout(() => ctrl.abort(), 12000);
   try {
-    const res = await fetch(endpoint, {
+    const res = await fetch(web3FormsSubmitUrl(), {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(body),
       signal: ctrl.signal,
     });
-    if (res.ok) return { ok: true };
+
+    // A malformed/empty 2xx response must not produce a false confirmation.
+    let result: { success?: boolean } | undefined;
+    try {
+      result = (await res.json()) as { success?: boolean };
+    } catch {
+      /* treated as rejected below */
+    }
+    if (res.ok && result?.success === true) return { ok: true };
     return { ok: false, reason: "rejected", status: res.status };
   } catch {
     return { ok: false, reason: "network" };
