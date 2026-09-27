@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { gsap, ScrollTrigger, prefersReducedMotion } from "../lib/gsap";
 import { getLenis } from "../lib/useLenis";
 import { KineticWord } from "./Kinetic";
+import { StageGlyph } from "./StageGlyph";
 import { CARD, CONVERGE_AT, LAST, STAGES, focusIndex, linkProgress, project } from "../lib/rail3d";
 
 /**
@@ -12,6 +13,19 @@ import { CARD, CONVERGE_AT, LAST, STAGES, focusIndex, linkProgress, project } fr
  *  - Spacing & padding around all HUD slots, labels, and tooltips increased by 2–3x.
  *  - Continuous subtle camera drift / sway active even when scroll is static.
  *  - Stronger node cluster activation pulse with pronounced brightness and luminous soft bloom.
+ *
+ * PROMPT 35 updates — the clusters stop being placeholder cards:
+ *  - Each stage carries its own line-and-node identity (StageGlyph):
+ *    input = converging signals into a socket, intelligence = hub & spoke,
+ *    system = the dense interlocking kernel, action = dispatched fan-out,
+ *    output = sealed check with verification nodes. The old bar-line
+ *    "skeleton" filler inside the planes is gone.
+ *  - Depth of field: the focused stage renders sharp and full-ink; distance
+ *    continuously desaturates and softens each plane, so the rail reads as
+ *    a camera travelling, not a wall of cards.
+ *  - Hovering the focused stage now answers on the shape itself — brightness
+ *    lift, sharpen, glyph glow, and a faster pulse ring — alongside the
+ *    existing role tooltip.
  */
 
 export function Architecture3D() {
@@ -35,6 +49,9 @@ export function Architecture3D() {
   // Live camera drift / sway reference
   const driftRef = useRef({ x: 0, y: 0 });
   const scrollProgRef = useRef(0);
+  // Hover state mirrored into a ref so the per-frame depth-of-field can
+  // brighten/sharpen the shape under the cursor without a React round-trip.
+  const hoverRef = useRef(false);
 
   /* The rail only exists where it can be pinned: desktop, motion allowed. */
   useEffect(() => {
@@ -63,6 +80,9 @@ export function Architecture3D() {
     const frame = (p: number, drift = driftRef.current) => {
       scrollProgRef.current = p;
       const pts = STAGES.map((_, i) => project(i, p, box, drift));
+      const idx = focusIndex(p);
+      // How far the camera is from each stage, in stages (0 = in focus).
+      const camAt = p * LAST;
 
       pts.forEach((pt, i) => {
         const el = cards.current[i];
@@ -73,6 +93,17 @@ export function Architecture3D() {
         el.style.opacity = pt.opacity.toFixed(3);
         el.style.visibility = pt.visible ? "visible" : "hidden";
         el.style.zIndex = String(pt.z);
+
+        // Depth of field (PROMPT 35): the focused plane stays sharp and
+        // full-ink; every step of distance desaturates and softens the
+        // others. Hovering the focused stage lifts brightness, adds a touch
+        // of saturation, and pulls the focus back in — the shape answers.
+        const dist = Math.abs(i - camAt);
+        const hv = i === idx && hoverRef.current && p < CONVERGE_AT ? 1 : 0;
+        const sat = Math.max(0.4, 1 - dist * 0.52) + hv * 0.12;
+        const blur = Math.max(0, Math.min(1.2, dist * 1.05) - hv * 0.55);
+        const bright = 1 - Math.min(0.09, dist * 0.075) + hv * 0.15;
+        el.style.filter = `saturate(${sat.toFixed(3)}) brightness(${bright.toFixed(3)}) blur(${blur.toFixed(2)}px)`;
       });
 
       // Connectors draw in as the camera closes each gap
@@ -96,7 +127,6 @@ export function Architecture3D() {
 
       if (railFill.current) railFill.current.style.transform = `scaleY(${p.toFixed(4)})`;
 
-      const idx = focusIndex(p);
       if (idx !== lastActive) {
         lastActive = idx;
         setActive(idx);
@@ -105,7 +135,10 @@ export function Architecture3D() {
       if (conv !== lastConv) {
         lastConv = conv;
         setConverged(conv);
-        if (conv) setHover(false);
+        if (conv) {
+          setHover(false);
+          hoverRef.current = false;
+        }
       }
     };
 
@@ -301,26 +334,33 @@ export function Architecture3D() {
                   }}
                   className={`absolute top-0 left-0 rounded-[8px] border transition-colors duration-400 ${
                     on ? "cluster-active-bloom" : ""
-                  }`}
+                  } ${on && hover ? "cluster-hover" : ""}`}
                   style={{
                     width: CARD.w,
                     height: CARD.h,
                     marginLeft: -CARD.w / 2,
                     marginTop: -CARD.h / 2,
-                    borderColor: on ? "var(--accent-deep)" : "rgba(12,12,13,0.16)",
+                    borderColor: on ? "var(--accent-deep)" : "rgba(12,12,13,0.14)",
                     background: on
                       ? "linear-gradient(135deg, rgba(255,255,255,1) 0%, rgba(246,252,228,0.96) 50%, rgba(200,241,79,0.18) 100%)"
-                      : "linear-gradient(135deg, rgba(255,255,255,0.65), rgba(235,232,225,0.22)), repeating-linear-gradient(90deg, rgba(12,12,13,0.04) 0 1px, transparent 1px 40px)",
+                      : "linear-gradient(135deg, rgba(255,255,255,0.55), rgba(238,235,228,0.14))",
                     boxShadow: on
                       ? "0 0 35px rgba(200, 241, 79, 0.55), 0 0 80px rgba(127, 174, 0, 0.28), 0 30px 60px -20px rgba(12,12,13,0.55)"
                       : "0 26px 50px -42px rgba(12,12,13,0.45)",
                     pointerEvents: on && !converged ? "auto" : "none",
                     cursor: on && !converged ? "help" : "default",
-                    willChange: "transform, opacity",
+                    willChange: "transform, opacity, filter",
                     transformStyle: "preserve-3d",
                   }}
-                  onMouseEnter={() => on && setHover(true)}
-                  onMouseLeave={() => setHover(false)}
+                  onMouseEnter={() => {
+                    if (!on) return;
+                    setHover(true);
+                    hoverRef.current = true;
+                  }}
+                  onMouseLeave={() => {
+                    setHover(false);
+                    hoverRef.current = false;
+                  }}
                   aria-hidden
                 >
                   {/* Subtle Expanding Pulse Ring on active cluster */}
@@ -331,26 +371,30 @@ export function Architecture3D() {
                     />
                   )}
 
-                  <span className="absolute inset-x-[16px] top-[16px] flex items-center justify-between">
-                    <span
-                      className="block h-[9px] w-[9px] rounded-full transition-colors duration-300"
-                      style={{
-                        background: on ? "var(--accent-deep)" : "var(--faint)",
-                        boxShadow: on ? "0 0 10px var(--accent)" : "none",
-                      }}
-                    />
-                    <span className="block h-[5px] w-[48px] rounded-full" style={{ background: "var(--line)" }} />
+                  {/* Stage identity: a distinct line-and-node glyph per
+                      stage (PROMPT 35) — the placeholder bar-lines are
+                      gone. Ink is driven by focus state via currentColor. */}
+                  <span
+                    className="stage-glyph pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                    style={{
+                      width: 118,
+                      color: on ? "var(--accent-deep)" : "var(--faint)",
+                      transition: "color .4s var(--e-out), filter .25s var(--e-out)",
+                    }}
+                  >
+                    <StageGlyph id={s.id} animate={on} className="block h-auto w-full" />
                   </span>
 
-                  <span className="absolute inset-x-[16px] bottom-[18px] flex flex-col gap-[8px]">
-                    <span
-                      className="block h-[6px] rounded-full transition-colors duration-300"
-                      style={{
-                        width: "78%",
-                        background: on ? "color-mix(in srgb, var(--accent-deep) 65%, var(--line))" : "var(--line)",
-                      }}
-                    />
-                    <span className="block h-[6px] w-[50%] rounded-full" style={{ background: "var(--line)" }} />
+                  <span
+                    className="mono pointer-events-none absolute top-[12px] left-[15px]"
+                    style={{
+                      fontSize: 9,
+                      letterSpacing: ".16em",
+                      color: on ? "var(--accent-deep)" : "var(--faint)",
+                      transition: "color .4s var(--e-out)",
+                    }}
+                  >
+                    {s.num}
                   </span>
 
                   {on && (
@@ -581,6 +625,9 @@ export function Architecture3D() {
                     {st.subtitle}
                   </span>
                 </div>
+                <span className="stage-glyph block w-[112px]" style={{ color: "var(--accent-deep)" }}>
+                  <StageGlyph id={st.id} className="block h-auto w-full" />
+                </span>
                 <p className="body-s text-[var(--fg)]">{st.label}</p>
               </div>
             ))}

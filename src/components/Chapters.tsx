@@ -5,29 +5,46 @@ import { Link } from "../lib/router";
 import { gsap, ScrollTrigger, prefersReducedMotion } from "../lib/gsap";
 import { emitThread } from "../lib/threadBus";
 import { hasFinePointer } from "../lib/interact";
+import { getLenis } from "../lib/useLenis";
 import { DONE_BEAT_MS, IDLE_ADVANCE_MS, holdFor, onPreviewDone, previewPlayed } from "../lib/autoplay";
 
 /**
- * SERVICES — shared shell, normal scroll (not pinned).
+ * SERVICES — shared shell.
  *
  *  left   number · title · tagline · arc chips · Explore link   (unchanged)
  *  right  a live stage frame; each tab brings its own product
  *  bottom tab rail with connecting line — the arrival point of the
  *         shared thread from the Problem section
  *
- * Tabs commit on click (or the number badge, which advances).
- * On desktop, resting on a tab for >400ms previews it in the stage
- * without committing. Mobile: swipeable strip, tap commits.
- * The whole module opens once from the centre as it first enters.
+ * PROMPT 33 — desktop: a lightly pinned, scroll-driven sequence (the site's
+ * third, alongside Problem→Connected System and the System Model). The
+ * module pins for one scroll "unit" per service — roughly four viewport
+ * heights in total — and scroll progress maps 1:1 to the fixed order
+ * Video Editing → Web Development → AI Chatbots → AI Automation. Crossing a
+ * 25% threshold commits that tab (the existing scale/fade depth-swap) and
+ * re-triggers its autoplay from the top; the tab bar + progress line stay
+ * visible and follow the scroll position. Clicking a tab jumps the scroll
+ * to that service's range, so manual and scroll control stay in sync.
+ * Release happens below AI Automation's range (and back upward, in
+ * reverse) into the next / previous homepage section.
  *
- * PROMPT 24 — autoplay-first. A visitor who only scrolls still sees all
- * four services demonstrate themselves: each tab runs its own first-view
- * preview (owned by the stage), and if nothing in this section has been
- * touched ~6s after it enters the viewport the tabs advance on their own,
- * once around, then hold. Any interaction — tab click, click inside a demo,
- * a hover-preview — ends the tour immediately and for the rest of the visit.
+ * Mobile (<900px) and reduced motion: no pin — the existing swipeable-tabs
+ * pattern with its idle tour is kept as-is.
+ *
+ * PROMPT 24 — autoplay-first (non-pinned path). Each tab runs its own
+ * first-view preview (owned by the stage), and if nothing in this section
+ * has been touched ~6s after it enters the viewport the tabs advance on
+ * their own, once around, then hold. Any interaction ends the tour.
  */
 const HOVER_MS = 400;
+
+const N = services.length;
+
+/** Pin length: one "unit" (~one viewport) per service — 4x a normal section. */
+const pinDistance = () => Math.round(window.innerHeight * N);
+
+/** Which service owns a given pin progress (fixed order, 25% units). */
+const indexAt = (p: number) => Math.max(0, Math.min(N - 1, Math.floor(p * N + 1e-6)));
 
 export function Chapters() {
   const root = useRef<HTMLElement>(null);
@@ -43,13 +60,31 @@ export function Chapters() {
   const [touring, setTouring] = useState(false);
   const [visited, setVisited] = useState<Set<string>>(() => new Set([services[0].slug]));
 
-  /* ---- idle tour state (Prompt 24) ---- */
+  /* ---- pinned scroll state (Prompt 33) — desktop only ---- */
+  const [pinned, setPinned] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 900px)").matches && !prefersReducedMotion()
+  );
+  const [pinOn, setPinOn] = useState(false); // inside the pinned range right now
+  const pinSt = useRef<ScrollTrigger | null>(null);
+  const jumpUntil = useRef(0); // until-then, scroll→tab sync is suspended (a tab jump is in flight)
+
+  const indexRef = useRef(0);
+  indexRef.current = index;
+  const pinnedRef = useRef(pinned);
+  pinnedRef.current = pinned;
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 900px)");
+    const sync = () => setPinned(mq.matches && !prefersReducedMotion());
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  /* ---- idle tour state (Prompt 24, non-pinned path) ---- */
   const touched = useRef(false); // visitor took control — permanently
   const autoTimer = useRef(0);
   const autoOff = useRef<(() => void) | null>(null);
   const autoSteps = useRef(0); // tabs the tour has advanced through
-  const indexRef = useRef(0);
-  indexRef.current = index;
   const advanceRef = useRef<() => void>(() => {});
 
   const intro = siteContent.servicesIntro;
@@ -72,23 +107,54 @@ export function Chapters() {
     setTouring(false);
   };
 
-  advanceRef.current = () => {
-    clearAutoTimer();
-    autoSteps.current += 1;
-    select((indexRef.current + 1) % services.length);
-  };
-
-  const select = (i: number) => {
+  /** Tab commit shared by every entry point (scroll, click, badge, nav). */
+  const selectFromScroll = (i: number) => {
     window.clearTimeout(hoverTimer.current);
     setPreview(null);
     setIndex(i);
     setVisited((v) => (v.has(services[i].slug) ? v : new Set(v).add(services[i].slug)));
   };
 
+  /**
+   * Visitor-initiated commit. When pinned, the scroll follows: jump to the
+   * middle of the target service's range (maximum margin from both 25%
+   * boundaries), and suspend scroll→tab sync while the glide runs so the
+   * two never fight. After the lock, the next scroll update re-syncs from
+   * the actual position, so a user wheel that interrupts the glide still
+   * converges.
+   */
+  const selectFromUser = (i: number) => {
+    selectFromScroll(i);
+    if (!pinnedRef.current) return;
+    const st = pinSt.current;
+    if (!st) return;
+    const y = st.start + ((i + 0.5) / N) * (st.end - st.start);
+    jumpUntil.current = performance.now() + 1500;
+    const lenis = getLenis();
+    if (lenis) lenis.scrollTo(y, { duration: 1.1 });
+    else window.scrollTo({ top: y, behavior: "smooth" });
+  };
+  const selectFromUserRef = useRef(selectFromUser);
+  selectFromUserRef.current = selectFromUser;
+
+  advanceRef.current = () => {
+    clearAutoTimer();
+    autoSteps.current += 1;
+    selectFromScroll((indexRef.current + 1) % services.length);
+  };
+
+  const pinOnRef = useRef(false);
+  pinOnRef.current = pinOn;
+
   const hoverStart = (i: number) => {
-    if (!hasFinePointer() || i === index) return;
+    // While pinned, the scroll owns the stage: a pointer parked on the
+    // rail mid-wheel must never steal a service's autoplay (that was the
+    // "demo fails to play on a portion of views" class of bug).
+    if (!hasFinePointer() || i === index || pinOn) return;
     window.clearTimeout(hoverTimer.current);
     hoverTimer.current = window.setTimeout(() => {
+      if (pinOnRef.current) return; // pin engaged while this was armed
+      if (indexRef.current === i) return; // that tab got committed meanwhile
       // Resting on another tab is engagement: the tour hands over.
       takeControl();
       setPreview(i);
@@ -112,8 +178,11 @@ export function Chapters() {
    * the section is on screen and untouched, and only until all four tabs have
    * been shown once — then it holds on the last one and never moves again.
    * A demo reporting "preview done" shortens the wait to a natural beat.
+   * Pinned (desktop, Prompt 33): the tour is off entirely — the scroll IS
+   * the tour, and timer-driven advances would fight the scroll position.
    */
   useEffect(() => {
+    if (pinned) return;
     if (!inView || touched.current || prefersReducedMotion()) return;
     if (autoSteps.current >= services.length - 1) {
       setTouring(false);
@@ -139,22 +208,24 @@ export function Chapters() {
       setTouring(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inView, index]);
+  }, [inView, index, pinned]);
 
   /*
    * PROMPT 20 — nav hover-preview handoff. A nav thumbnail click either
    * fires the select-service event (same-page jump) or stashes the slug
    * in sessionStorage (cross-route). Either way the tab commits here and
-   * the section scrolls into view.
+   * the section scrolls into view — which, when pinned, means the scroll
+   * jump into that service's range (selectFromUser owns both halves, so
+   * they can never desync).
    */
   useEffect(() => {
     const apply = (slug: string, andScroll: boolean) => {
-      const i = services.findIndex((s) => s.slug === slug);
+      const i = services.findIndex((sv) => sv.slug === slug);
       if (i < 0) return;
       // Choosing a service from the nav is explicit intent: no idle tour.
       takeControl();
-      select(i);
-      if (andScroll) {
+      selectFromUserRef.current(i);
+      if (andScroll && !pinnedRef.current) {
         window.setTimeout(() => {
           document.getElementById("services-home")?.scrollIntoView({
             behavior: prefersReducedMotion() ? "auto" : "smooth",
@@ -185,6 +256,81 @@ export function Chapters() {
     io.observe(el);
     return () => io.disconnect();
   }, []);
+
+  /*
+   * PROMPT 33 — the pinned, scroll-driven sequence (desktop, motion OK).
+   *
+   * One scroll "unit" per service — pinDistance() ≈ 4 viewport heights,
+   * i.e. 4x a normal section's height. Progress maps to the fixed order
+   * Video → Web → Chatbots → Automation; each 25% crossing commits that
+   * tab (existing depth-swap transition) and the newly-shown demo mounts
+   * fresh with active=true, so its autoplay restarts from the top.
+   * Scrolling up applies the same mapping in reverse, and the pin simply
+   * releases at both ends into normal flow.
+   */
+  useLayoutEffect(() => {
+    if (!pinned) {
+      pinSt.current = null;
+      setPinOn(false);
+      return;
+    }
+    const sec = root.current;
+    if (!sec) return;
+
+    // Keep the whole pinned module — tab rail included — inside the
+    // viewport on short screens by shrinking only the stage.
+    const fitStage = () => {
+      const h = Math.min(440, Math.max(300, Math.round(window.innerHeight - 350)));
+      sec.style.setProperty("--svc-stage-h", `${h}px`);
+    };
+    fitStage();
+
+    const ctx = gsap.context(() => {
+      pinSt.current = ScrollTrigger.create({
+        id: "services-pin",
+        trigger: sec,
+        start: "top top",
+        end: () => `+=${pinDistance()}`,
+        pin: true,
+        anticipatePin: 1,
+        invalidateOnRefresh: true,
+        onRefresh: () => fitStage(),
+        onToggle: (self) => setPinOn(self.isActive),
+        onUpdate: (self) => {
+          // A tab-click jump is in flight: the scroll is programmatic, so
+          // don't re-derive the tab from it (no fight with Lenis, no
+          // flicker through intermediate ranges). When the lock lapses the
+          // next update re-syncs from wherever the scroll actually is.
+          if (performance.now() < jumpUntil.current) return;
+          const i = indexAt(self.progress);
+          if (i !== indexRef.current) selectFromScroll(i);
+        },
+      });
+      // Landing mid-pin (reload with restored scroll): sync immediately.
+      setPinOn(pinSt.current.isActive);
+      const i0 = indexAt(pinSt.current.progress);
+      if (i0 !== indexRef.current) selectFromScroll(i0);
+    }, sec);
+
+    let raf = 0;
+    const onResize = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        fitStage();
+        ScrollTrigger.refresh();
+      });
+    };
+    window.addEventListener("resize", onResize);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onResize);
+      ctx.revert();
+      pinSt.current = null;
+      setPinOn(false);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pinned]);
 
   // one-time clip-path reveal, opening from the centre
   useLayoutEffect(() => {
@@ -233,7 +379,11 @@ export function Chapters() {
     <section
       id="services-home"
       ref={root}
-      className="relative w-full py-[clamp(56px,8vh,96px)]"
+      className={
+        pinned
+          ? "relative w-full pt-[86px] pb-[clamp(24px,4vh,48px)]"
+          : "relative w-full py-[clamp(56px,8vh,96px)]"
+      }
       onPointerDown={takeControl}
       onKeyDown={takeControl}
     >
@@ -254,7 +404,7 @@ export function Chapters() {
               <button
                 type="button"
                 className="self-start"
-                onClick={() => select((index + 1) % services.length)}
+                onClick={() => selectFromUser((index + 1) % N)}
                 aria-label={`Service ${s.n} of ${services.length} — show next service`}
                 data-cursor="NEXT"
               >
@@ -313,7 +463,7 @@ export function Chapters() {
             <ServiceStage
               slug={s.slug}
               previewSlug={preview !== null ? services[preview].slug : null}
-              active={inView}
+              active={inView || pinOn}
               visited={visited}
             />
           </div>
@@ -342,7 +492,7 @@ export function Chapters() {
                 data-active={i === index ? "1" : "0"}
                 data-preview={preview === i ? "1" : "0"}
                 aria-selected={i === index}
-                onClick={() => select(i)}
+                onClick={() => selectFromUser(i)}
                 onMouseEnter={() => hoverStart(i)}
                 onFocus={() => hoverEnd()}
                 className="svc-tab flex h-[34px] flex-none snap-center items-center justify-center min-[900px]:min-w-[clamp(126px,12.5vw,176px)]"
@@ -366,7 +516,13 @@ export function Chapters() {
             />
           </span>
           <span className="mono hidden flex-none min-[900px]:block" aria-live="polite">
-            {preview !== null ? "Previewing" : touring ? "Auto-tour · click to take over" : "Select a service"}
+            {preview !== null
+              ? "Previewing"
+              : pinOn
+                ? `Scroll · ${s.n} / ${String(N).padStart(2, "0")}`
+                : touring
+                  ? "Auto-tour · click to take over"
+                  : "Select a service"}
           </span>
         </div>
       </div>

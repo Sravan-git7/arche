@@ -4,6 +4,7 @@ import { projectsByService } from "../data/projects";
 import { ProjectRow } from "../components/WorkIndex";
 import { SCENES } from "../components/Scenes";
 import { ServicePricing, serviceToBuildOption } from "../components/ServicePricing";
+import { AutomationCompare } from "../components/AutomationCompare";
 import { Link, usePage, navigate } from "../lib/router";
 import { useReveal, useParallax } from "../lib/reveal";
 
@@ -15,6 +16,12 @@ import { useReveal, useParallax } from "../lib/reveal";
  *   3. "What's typically included" deliverables list
  *   4. Dedicated transparent pricing & starting scopes
  *   5. Pre-filled CTA linking directly into Contact
+ *
+ * AI AUTOMATION additionally hosts the relocated "Drag across" comparison
+ * (AutomationCompare) between the instrument demo and "What this solves" —
+ * the drag-hand-off concept left the homepage scroll for this deep-dive
+ * (PROMPT 34), reworked with live routing feedback (event token, dissolving
+ * hand-off chips, systems-updated counter, measurement readout).
  */
 export function ServiceDetail({ slug }: { slug: string }) {
   const s = services.find((x) => x.slug === slug);
@@ -204,6 +211,16 @@ export function ServiceDetail({ slug }: { slug: string }) {
           </div>
         </div>
       </section>
+
+      {/* ------------------------------------------------------------ */}
+      {/* 2b. THE DIFFERENCE, MEASURED — ai-automation only.         */}
+      {/*     The relocated "drag across" comparison (PROMPT 34):     */}
+      {/*     it left the homepage scroll for this deep-dive, where   */}
+      {/*     it sits right after the instrument as a second, deeper  */}
+      {/*     way to see the same claim — live metrics while routing  */}
+      {/*     one event, not a repeated run of the demo above.        */}
+      {/* ------------------------------------------------------------ */}
+      {s.slug === "ai-automation" && <AutomationCompare />}
 
       {/* ------------------------------------------------------------ */}
       {/* 3. WHAT THIS SOLVES (THE FRICTION & PROBLEMS)               */}

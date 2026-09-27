@@ -6,7 +6,6 @@ import { FAQ } from "../components/FAQ";
 import { ConnectedSystem } from "../components/ConnectedSystem";
 import { ArcheAssistant } from "../components/ArcheAssistant";
 import { ProblemSystem } from "../components/ProblemSystem";
-import { BeforeAfter } from "../components/BeforeAfter";
 import { Architecture3D } from "../components/Architecture3D";
 import { Labs } from "../components/Labs";
 import { ProgressRail } from "../components/ProgressRail";
@@ -22,7 +21,7 @@ import { resetPreviews } from "../lib/autoplay";
  *
  *  Hero          spatial scene, pointer depth, focus-pull headline   (L4)
  *  Problem       pinned: idle tools → fan-out → one diagram          (L3)
- *  Services      tabbed live stages, hover preview, depth swap       (L3)
+ *  Services      pinned: scroll one unit per service, autoplay each      (L3)
  *  System        3D architecture, entry paths, build-it-yourself     (L4)
  *  Work          pointer-reactive frames, expand-to-route            (L2)
  *  Labs          playground of working prototypes                    (L2)
@@ -54,7 +53,6 @@ export function Home() {
         <Chapters />
       </div>
       <div data-chapter="System">
-        <BeforeAfter />
         <Architecture3D />
         <ConnectedSystem />
       </div>

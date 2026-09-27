@@ -190,7 +190,7 @@ export function AgentDemo({
     !last ? "Ready" : last.phase === "thinking" ? QUESTIONS.find((q) => q.id === last.id)!.status : running ? "Responding" : "Ready";
 
   return (
-    <div className="agent-demo relative flex min-h-[366px] flex-col gap-[10px] px-[14px] pt-[39px] pb-[13px] min-[900px]:h-[440px]" aria-label="AI agent mini demo">
+    <div className="agent-demo relative flex min-h-[366px] flex-col gap-[10px] px-[14px] pt-[39px] pb-[13px] min-[900px]:h-[var(--svc-stage-h,440px)]" aria-label="AI agent mini demo">
       <div className="flex flex-none items-center justify-between gap-[8px]">
         <div className="flex items-center gap-[8px]">
           <span

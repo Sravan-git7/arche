@@ -11,6 +11,20 @@ import { hasFinePointer } from "../lib/interact";
  *  3. Spatial 3D Cluster: Drag-to-rotate with physics momentum / inertia deceleration on release.
  *  4. State Machine: Visual transition line drawing from old active node to the new one on state step.
  *  5. Kinetic Scrubber: Real-time variable typography and speed-reactive kinetic wave.
+ *
+ * PROMPT 36 updates — the idle "invitation" pass:
+ *  - Sketch 01's status line may no longer truncate: it wraps instead,
+ *    so no status text ever hides behind an ellipsis.
+ *  - Every sketch now carries one distinct, very subtle looping
+ *    micro-motion while untouched, so the grid reads as alive and
+ *    waiting to be touched — not as static screenshots. Each borrows a
+ *    faint pre-echo of its own triggered response:
+ *      01 a ghost packet drifting the track when no payload is in flight
+ *      02 a slow diagonal breathing wave across the dot matrix
+ *      03 the central core's glow breathing (on top of the idle drift)
+ *      04 a soft anticipation halo on the node "Step" would enter next
+ *      05 a slow glow bloom behind the live type (the scan line already lives)
+ *    All are disabled under prefers-reduced-motion.
  */
 
 export function Labs() {
@@ -180,6 +194,13 @@ function SignalRouterLab() {
         {/* Background Track Line */}
         <div className="absolute inset-x-[24px] top-1/2 h-[2px] -translate-y-1/2" style={{ background: "rgba(244,242,237,0.12)" }} />
 
+        {/* PROMPT 36 idle invitation: a faint ghost packet drifts the track
+            whenever no payload is in flight — a pre-echo of the real
+            dispatch, dim enough to read as "waiting", not "running". */}
+        {packets.length === 0 && (
+          <span className="lab-ghost-packet pointer-events-none absolute top-1/2 h-[5px] w-[5px] -translate-y-1/2 rounded-full" style={{ background: "var(--accent)" }} aria-hidden />
+        )}
+
         {/* Traveling Animated Packets with Trailing Glow Tails */}
         {packets.map((pkt) => {
           const now = performance.now();
@@ -240,8 +261,10 @@ function SignalRouterLab() {
         })}
       </div>
 
+      {/* Status line — PROMPT 36: never truncated. It wraps to a second
+          line instead, keeping the sketch's proportions intact. */}
       <div className="rounded-[4px] border p-[8px]" style={{ borderColor: "rgba(244,242,237,0.08)", background: "#141416" }}>
-        <p className="mono text-[9px] truncate" style={{ color: "rgba(244,242,237,0.6)" }}>
+        <p className="mono text-[9px] leading-[1.55]" style={{ color: "rgba(244,242,237,0.6)" }}>
           {statusText}
         </p>
       </div>
@@ -312,7 +335,7 @@ function AttentionFieldLab() {
           d.style.background = `color-mix(in srgb, var(--accent) ${(o.intensity * 100).toFixed(0)}%, rgba(244,242,237,0.25))`;
           d.style.boxShadow = `0 0 ${(o.intensity * 10).toFixed(1)}px rgba(200, 241, 79, ${(o.intensity * 0.8).toFixed(2)})`;
         } else {
-          d.style.background = "rgba(244,242,237,0.2)";
+          d.style.background = "rgba(244,242,237,0.35)";
           d.style.boxShadow = "none";
         }
       });
@@ -327,11 +350,15 @@ function AttentionFieldLab() {
     const move = (e: PointerEvent) => {
       const b = el.getBoundingClientRect();
       targetRef.current = { x: e.clientX - b.left, y: e.clientY - b.top };
+      // PROMPT 36: the idle wave stands down while the visitor is driving
+      // the field (also covers touch, where :hover doesn't fire).
+      el.classList.add("attention-active");
       kick();
     };
 
     const leave = () => {
       targetRef.current = null;
+      el.classList.remove("attention-active");
       kick();
     };
 
@@ -347,7 +374,7 @@ function AttentionFieldLab() {
   return (
     <div
       ref={boxRef}
-      className="relative grid h-[180px] w-full grid-cols-12 place-items-center rounded-[4px] cursor-crosshair select-none"
+      className="attention-field relative grid h-[180px] w-full grid-cols-12 place-items-center rounded-[4px] cursor-crosshair select-none"
       style={{ background: "#0c0c0d", touchAction: "none" }}
       data-cursor="FIELD"
     >
@@ -357,10 +384,13 @@ function AttentionFieldLab() {
             ref={(n) => {
               dotsRef.current[i] = n;
             }}
-            className="block h-[5px] w-[5px] rounded-full"
+            className="lab-dot block h-[5px] w-[5px] rounded-full"
             style={{
-              background: "rgba(244,242,237,0.2)",
+              background: "rgba(244,242,237,0.35)",
               willChange: "transform, background, box-shadow",
+              // PROMPT 36 idle invitation: a slow diagonal breathing wave —
+              // per-dot delay runs from top-left to bottom-right.
+              animationDelay: `${((i % COLS) + Math.floor(i / COLS)) * 130}ms`,
             }}
           />
         </span>
@@ -463,6 +493,11 @@ function Spatial3DLab() {
         ctx.stroke();
       });
 
+      // PROMPT 36 idle invitation: the central core's glow breathes slowly
+      // (on top of the idle drift) — a faint "waiting" pulse at the heart
+      // of the cluster. Static under reduced motion.
+      const breathe = prefersReducedMotion() ? 0 : Math.sin(performance.now() * 0.0011);
+
       // Draw Node Vertices & Central Core
       projected.forEach((p, idx) => {
         ctx.fillStyle = idx === 8 ? "#c8f14f" : "#f4f2ed";
@@ -471,11 +506,19 @@ function Spatial3DLab() {
         ctx.fill();
 
         if (idx === 8) {
-          // Central Core Glow
-          ctx.strokeStyle = "rgba(200, 241, 79, 0.4)";
+          // Central Core Glow — breathing radius + luminance
+          const coreR = 8 + breathe * 1.7;
+          ctx.strokeStyle = `rgba(200, 241, 79, ${0.38 + breathe * 0.14})`;
           ctx.lineWidth = 1.5;
           ctx.beginPath();
-          ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, coreR, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Soft outer aura
+          ctx.strokeStyle = `rgba(200, 241, 79, ${0.1 + breathe * 0.05})`;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, coreR + 5, 0, Math.PI * 2);
           ctx.stroke();
         }
       });
@@ -623,13 +666,16 @@ function StateMachineLab() {
         {states.map((st, idx) => {
           const active = stateIndex === idx;
           const isFrom = lastStateIndex === idx && transitioning;
+          // PROMPT 36 idle invitation: the node "Step" would enter next
+          // breathes a soft halo — anticipation, not a second active state.
+          const isNext = !transitioning && !active && (stateIndex + 1) % states.length === idx;
 
           return (
             <button
               key={st}
               type="button"
               onClick={() => goToState(idx)}
-              className="relative z-[2] flex flex-col items-start p-[10px] rounded-[6px] border text-left transition-all duration-300"
+              className={`relative z-[2] flex flex-col items-start p-[10px] rounded-[6px] border text-left transition-all duration-300 ${isNext ? "lab-idle-next" : ""}`}
               style={{
                 borderColor: active
                   ? "var(--accent)"
@@ -696,6 +742,14 @@ function KineticScrubberLab() {
             animation: `drawLine 0.8s ease-in-out infinite alternate`,
             animationDuration,
           }}
+        />
+
+        {/* PROMPT 36 idle invitation: a slow glow bloom behind the type —
+            the sketch's "resting breath" while the scan line keeps moving. */}
+        <div
+          className="lab-bloom pointer-events-none absolute top-1/2 left-1/2 h-[76px] w-[220px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+          style={{ background: "radial-gradient(50% 50% at 50% 50%, rgba(200,241,79,0.16), transparent 70%)" }}
+          aria-hidden
         />
 
         <p

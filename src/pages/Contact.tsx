@@ -4,6 +4,7 @@ import { usePage } from "../lib/router";
 import { useReveal } from "../lib/reveal";
 import { gsap, prefersReducedMotion } from "../lib/gsap";
 import { readLastTrigger, type VisualTrigger } from "../data/intents";
+import { mailtoFallback, submitInquiry, type InquiryPayload } from "../lib/inquiries";
 
 /**
  * PROMPT 17 — Contact: guided, spatial inquiry flow.
@@ -17,6 +18,15 @@ import { readLastTrigger, type VisualTrigger } from "../data/intents";
  * Ask Arche visual trigger (Prompt 16 handoff, sessionStorage) — travels
  * from the form into a compact static rendering of the system node
  * structure and lights the matching node: REQUEST RECEIVED.
+ *
+ * PROMPT 37 — the submit is now real. The four collected fields are
+ * POSTed to the configured delivery endpoint (see src/lib/inquiries.ts).
+ * "REQUEST RECEIVED" is only reachable after a genuine 2xx response;
+ * the "sending" phase shows the form with a live "Sending…" state, and
+ * any failure (bad endpoint, network error, service down, not yet
+ * configured) lands on an honest failure screen with a pre-filled
+ * mailto fallback and a Try-again that keeps every answer — no fake
+ * confirmations, no silently lost leads.
  */
 
 type BuildOption = "Website" | "AI Agent" | "Automation" | "Video" | "Other";
@@ -48,6 +58,16 @@ const TRIGGER_NODE: Record<VisualTrigger, string> = {
 
 type TagKey = "build" | "change" | "timeline";
 
+/** Ask Arche seed → plain-language signal label (confirmation + payload). */
+const SIGNAL_LABEL: Record<VisualTrigger, string> = {
+  "service:web": "website",
+  "service:agent": "agent",
+  "service:automation": "automation",
+  "service:video": "video",
+  system: "system",
+  contact: "system",
+};
+
 export function ContactPage() {
   usePage("Start a Project — Arche");
   useReveal();
@@ -60,7 +80,8 @@ export function ContactPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
-  const [phase, setPhase] = useState<"form" | "sending" | "received">("form");
+  const [phase, setPhase] = useState<"form" | "sending" | "received" | "failed">("form");
+  const [failReason, setFailReason] = useState<"unconfigured" | "network" | "rejected">("network");
   const [tagged, setTagged] = useState<Record<TagKey, boolean>>({ build: false, change: false, timeline: false });
   const [dismissed, setDismissed] = useState<Record<TagKey, boolean>>({ build: false, change: false, timeline: false });
   const [seed, setSeed] = useState<VisualTrigger | null>(null);
@@ -103,9 +124,10 @@ export function ContactPage() {
     }
   }, []);
 
-  // step slide-in from the right
+  // step slide-in from the right (only for real step changes, not the
+  // form→sending re-render — the form must not lurch on submit)
   useEffect(() => {
-    if (!stepRef.current || prefersReducedMotion()) return;
+    if (phase !== "form" || !stepRef.current || prefersReducedMotion()) return;
     gsap.fromTo(
       stepRef.current,
       { x: 46, opacity: 0 },
@@ -179,7 +201,9 @@ export function ContactPage() {
   const submitChange = (el: HTMLElement | null) => {
     setDismissed((d) => ({ ...d, change: false }));
     flyTag("change", el, change.trim() ? `Change: ${change.trim().slice(0, 22)}…` : "Change: noted");
-    setStep(3);
+    // P37: the timeline step must actually be reachable — before this fix
+    // the flow jumped 1 → 3 and every inquiry shipped timeline: "—".
+    setStep(2);
   };
 
   const goBack = (target: number) => {
@@ -191,8 +215,23 @@ export function ContactPage() {
 
   const canSubmit = name.trim().length > 1 && /\S+@\S+\.\S+/.test(email);
 
-  const submit = () => {
+  /** Everything the flow collected, shaped for delivery (PROMPT 37). */
+  const payload = (): InquiryPayload => ({
+    name: name.trim(),
+    email: email.trim(),
+    company: company.trim() || undefined,
+    building: build ?? "Other",
+    whatNeedsToChange: change.trim() || "—",
+    timeline: timeline ?? "—",
+    askArcheSignal: seed ? SIGNAL_LABEL[seed] : undefined,
+  });
+
+  const submit = async () => {
     if (!canSubmit || phase !== "form") return;
+    setPhase("sending");
+
+    // Local archive (kept from before — a per-visitor record, NOT the
+    // real pipeline; the real delivery is below).
     try {
       const log = JSON.parse(localStorage.getItem("arche:inquiries") || "[]");
       log.push({ build, change, timeline, name, email, company, seed, at: new Date().toISOString() });
@@ -200,11 +239,19 @@ export function ContactPage() {
     } catch {
       /* fine */
     }
-    // capture the button's position before the form unmounts — the signal
-    // dot flies from here into the node diagram
-    sendRectRef.current = sendBtnRef.current?.getBoundingClientRect() ?? null;
-    setPhase("sending");
-    window.setTimeout(() => setPhase("received"), prefersReducedMotion() ? 0 : 250);
+
+    // The honest gate: only a genuine 2xx from the delivery endpoint
+    // may lead to "REQUEST RECEIVED".
+    const result = await submitInquiry(payload());
+    if (result.ok) {
+      // capture the button's position before the form unmounts — the
+      // signal dot flies from here into the node diagram
+      sendRectRef.current = sendBtnRef.current?.getBoundingClientRect() ?? null;
+      setPhase("received");
+    } else {
+      setFailReason(result.reason);
+      setPhase("failed");
+    }
   };
 
   // signal dot flight: form → node diagram (Prompt 16 seed picks the node)
@@ -279,9 +326,8 @@ export function ContactPage() {
         </p>
 
         {/* progress */}
-        {phase === "form" && (
-          <div className="mt-[clamp(30px,4vw,52px)] flex items-center gap-[14px]" data-r="meta">
-            <span className="mono">
+        {(phase === "form" || phase === "sending") && (
+          <div className="mt-[clamp(30px,4vw,52px)] flex items-center gap-[14px]" data-r="meta">            <span className="mono">
               0{Math.min(step + 1, 4)} / 04
             </span>
             <span className="relative h-px flex-1 overflow-hidden" style={{ background: "var(--line)" }}>
@@ -294,7 +340,7 @@ export function ContactPage() {
         )}
 
         {/* accumulated tags */}
-        {phase === "form" && tagData.length > 0 && (
+        {(phase === "form" || phase === "sending") && tagData.length > 0 && (
           <div className="mt-[16px] flex flex-wrap items-center gap-[8px]">
             {tagData.map((t) => (
               <span
@@ -324,7 +370,7 @@ export function ContactPage() {
         )}
 
         {/* ------------------------------ STEPS ------------------------------ */}
-        {phase === "form" ? (
+        {phase === "form" || phase === "sending" ? (
           <div ref={stepRef} className="mt-[clamp(26px,3.4vw,46px)]">
             {step === 0 && (
               <div>
@@ -454,8 +500,24 @@ export function ContactPage() {
                   </label>
                 </div>
                 <div className="mt-[20px] flex items-center gap-[16px]">
-                  <button ref={sendBtnRef} className="btn" disabled={!canSubmit} onClick={submit} data-cursor="START" data-magnetic>
-                    Send request <span className="arw">→</span>
+                  <button
+                    ref={sendBtnRef}
+                    className="btn"
+                    disabled={!canSubmit || phase === "sending"}
+                    onClick={submit}
+                    data-cursor={phase === "sending" ? undefined : "START"}
+                    data-magnetic
+                  >
+                    {phase === "sending" ? (
+                      <span className="flex items-center gap-[10px]">
+                        <span className="signal-dot" style={{ width: 7, height: 7 }} />
+                        Sending
+                      </span>
+                    ) : (
+                      <>
+                        Send request <span className="arw">→</span>
+                      </>
+                    )}
                   </button>
                   <span className="body-s" style={{ color: "var(--faint)" }}>
                     No newsletters, no drip — a human replies.
@@ -464,8 +526,46 @@ export function ContactPage() {
               </div>
             )}
           </div>
+        ) : phase === "failed" ? (
+          /* -------------------- HONEST FAILURE (PROMPT 37) --------------------
+             Never a fake "REQUEST RECEIVED". The visitor keeps every
+             answer (the form state is untouched) and gets one working
+             path out: a pre-filled email with the whole inquiry in the
+             body. */
+          <div className="mt-[clamp(30px,4vw,56px)] max-w-[560px]">
+            <p className="mono mono-a mb-[10px]" style={{ color: "var(--accent-deep)" }}>
+              {failReason === "unconfigured" ? "NOT CONNECTED YET" : "SOMETHING WENT WRONG"}
+            </p>
+            <h2 className="d3 mb-[12px]">The request didn't reach us.</h2>
+            <p className="body max-w-[48ch]">
+              {failReason === "unconfigured"
+                ? "This build's delivery pipeline isn't wired up yet, so we can't confirm your request went through."
+                : failReason === "network"
+                ? "The connection dropped before we could send it."
+                : "The delivery service refused the request."}{" "}
+              Nothing was lost — your answers are kept on this page.
+            </p>
+            <div className="mt-[18px] flex flex-col gap-[10px] rounded-[8px] border p-[16px_18px]" style={{ borderColor: "var(--accent-deep)", background: "var(--bg-2)" }}>
+              <span className="mono text-[10px]" style={{ color: "var(--muted)" }}>
+                FASTEST FIX — EMAIL US DIRECTLY (ALL FOUR ANSWERS ARE PRE-FILLED IN THE MESSAGE)
+              </span>
+              <a className="lnk mono-fg" href={mailtoFallback(c.email, payload())}>
+                {c.email}
+              </a>
+            </div>
+            <div className="mt-[18px] flex items-center gap-[16px]">
+              <button className="btn btn-ghost" onClick={() => setPhase("form")}>
+                Try again <span className="arw">→</span>
+              </button>
+              <span className="body-s" style={{ color: "var(--faint)" }}>
+                Your answers stay right where you left them.
+              </span>
+            </div>
+          </div>
         ) : (
-          /* ----------------------- REQUEST RECEIVED ----------------------- */
+          /* ----------------------- REQUEST RECEIVED -----------------------
+             Only reachable after a genuine 2xx from the delivery
+             endpoint — see src/lib/inquiries.ts. */
           <div className="mt-[clamp(30px,4vw,56px)] grid items-center gap-[clamp(26px,4vw,54px)] sm:grid-cols-2">
             <div>
               <p className="mono mono-a mb-[10px]" style={{ color: "var(--accent-deep)" }}>
@@ -481,7 +581,7 @@ export function ContactPage() {
                 <p className="mono mt-[14px]" style={{ color: "var(--faint)" }}>
                   Signal carried over from Ask Arche —{" "}
                   <span style={{ color: "var(--accent-deep)" }}>
-                    {seed === "service:web" ? "website" : seed === "service:agent" ? "agent" : seed === "service:automation" ? "automation" : seed === "service:video" ? "video" : "system"}
+                    {SIGNAL_LABEL[seed]}
                   </span>
                 </p>
               )}

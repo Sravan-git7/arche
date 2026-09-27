@@ -20,14 +20,35 @@ export function WebDevDemo({
   auto?: boolean;
 }) {
   const [phase, setPhase] = useState(0);
+  const [run, setRun] = useState(0);
   const timers = useRef<number[]>([]);
-  const started = useRef(false);
 
-  useEffect(() => () => timers.current.forEach((id) => window.clearTimeout(id)), []);
+  const clearTimers = () => {
+    timers.current.forEach((id) => window.clearTimeout(id));
+    timers.current = [];
+  };
 
+  useEffect(() => () => clearTimers(), []);
+
+  /*
+   * PROMPT 33 — reliability fix. The build sequence is a pure function of
+   * (active, preview): entering the tab always plays IDEA → LIVE from the
+   * top, leaving it always stops and resets. There is deliberately NO
+   * one-shot "started" flag — the previous version committed the flag
+   * synchronously before the timers could be cancelled, so any effect
+   * re-run or re-entry after the first attempt (StrictMode's double
+   * mount, the tab being committed before the section was visible, and —
+   * under the pinned scroll model — every re-entry of this service's
+   * range) found the flag already set and never initialised the timers.
+   * Re-deriving from (active, preview) makes the start idempotent, so the
+   * sequence restarts reliably every time this range/tab is (re)entered.
+   */
   useEffect(() => {
-    if (started.current || !active || preview) return;
-    started.current = true;
+    clearTimers();
+    setPhase(0);
+    if (!active || preview) return;
+
+    setRun((r) => r + 1); // each run gets a fresh Core (no stale LIVE state)
     markPreviewPlayed(SLUG);
 
     if (prefersReducedMotion()) {
@@ -47,7 +68,7 @@ export function WebDevDemo({
     );
   }, [active, preview]);
 
-  return <Core phase={phase} preview={preview} />;
+  return <Core key={run} phase={phase} preview={preview} />;
 }
 
 function Core({ phase, preview = false }: { phase: number; preview?: boolean }) {
