@@ -1,8 +1,7 @@
-/* The webfont <link>s live in index.html, not here: a remote @import inside
-   the sheet is discovered only after the CSS is fetched, and the whole sheet
-   then waits on fonts.googleapis.com before it can paint anything. Loading
-   them from the document head lets that request run in parallel with the
-   bundle, and the fallback stacks below paint immediately either way. */
+/* Typefaces are embedded in ./fonts.css (data URIs) — no remote stylesheet
+   can block first paint and the single-file deployment has no font assets
+   to lose. The fallback stacks below still paint immediately. */
+@import "./fonts.css";
 @import "tailwindcss";
 
 /* ============================================================
@@ -17,14 +16,17 @@
   --bg: #f4f2ed;
   --bg-2: #ebe8e1;
   --fg: #0c0c0d;
-  --muted: rgba(12, 12, 13, 0.56);
-  --faint: rgba(12, 12, 13, 0.34);
+  --muted: rgba(12, 12, 13, 0.68);
+  --faint: rgba(12, 12, 13, 0.6);
   --line: rgba(12, 12, 13, 0.14);
   --card: #ffffff;
 
   /* accent — precision indicator only */
   --accent: #c8f14f;
   --accent-deep: #7fae00;
+  /* Legible accent for TEXT on paper. The lime itself is a fill/indicator
+     only: #c8f14f on #f4f2ed is 1.2:1, far below readable contrast. */
+  --accent-ink: #476300;
 
   /* fixed inks for buttons regardless of scope */
   --solid: #0c0c0d;
@@ -37,6 +39,19 @@
   --e-inout: cubic-bezier(0.76, 0, 0.24, 1);
   --e-in: cubic-bezier(0.55, 0, 0.68, 0.4);
 
+  /* duration / stagger bands — mirrored from src/lib/motion.ts */
+  --dur-micro: 0.18s;
+  --dur-fast: 0.32s;
+  --dur-base: 0.55s;
+  --dur-slow: 0.85s;
+  --dur-reveal: 1.05s;
+  --dur-material: 1.3s;
+  --dur-cinematic: 1.6s;
+  --stagger-chars: 0.022s;
+  --stagger-words: 0.055s;
+  --stagger-items: 0.08s;
+  --stagger-scenes: 0.14s;
+
   --gut: 5.5vw;
 }
 
@@ -45,11 +60,12 @@
   --bg: #0c0c0d;
   --bg-2: #141416;
   --fg: #f4f2ed;
-  --muted: rgba(244, 242, 237, 0.56);
-  --faint: rgba(244, 242, 237, 0.32);
+  --muted: rgba(244, 242, 237, 0.72);
+  --faint: rgba(244, 242, 237, 0.62);
   --line: rgba(244, 242, 237, 0.14);
   --card: #141416;
   --accent-deep: #c8f14f;
+  --accent-ink: #c8f14f;
   background: var(--bg);
   color: var(--fg);
 }
@@ -111,6 +127,11 @@ body {
     --gut: 20px;
   }
 }
+@media (max-width: 360px) {
+  :root {
+    --gut: 14px;
+  }
+}
 
 /* ---------- typography ---------- */
 .d1 {
@@ -166,7 +187,7 @@ body {
   color: var(--fg);
 }
 .mono-a {
-  color: var(--accent-deep);
+  color: var(--accent-ink);
 }
 .numeral {
   font-family: var(--font-mono);
@@ -1173,7 +1194,7 @@ textarea.field {
   transition: color 0.2s ease;
 }
 [data-done="1"] .pf-tag {
-  color: var(--accent-deep);
+  color: var(--accent-ink);
 }
 /* mobile incoming segment: constant draw, slight deceleration on arrival */
 .pfm-seg {
@@ -1224,7 +1245,7 @@ textarea.field {
 }
 .svc-tab[data-active="1"] .svc-tab-pill {
   border-color: var(--accent-deep);
-  color: var(--accent-deep);
+  color: var(--accent-ink);
 }
 .svc-tab[data-active="1"] .svc-tab-dot {
   background: var(--accent-deep);
@@ -1360,7 +1381,7 @@ textarea.field {
   color: var(--fg);
 }
 .au-row[data-state="complete"] .au-num {
-  color: var(--accent-deep);
+  color: var(--accent-ink);
 }
 
 /* state mark: idle ring → busy pulse → lime check */
@@ -1500,7 +1521,7 @@ textarea.field {
   color: var(--fg);
 }
 .au-flip > span:nth-child(3) {
-  color: var(--accent-deep);
+  color: var(--accent-ink);
 }
 .au-card[data-state="idle"] .au-flip > span:nth-child(1),
 .au-card[data-state="active"] .au-flip > span:nth-child(2),
@@ -2192,6 +2213,9 @@ img {
 @keyframes labDrift { from { transform: translate3d(-2px, -1.5px, 0); } to { transform: translate3d(2px, 1.5px, 0); } }
 /* card + interactive hover = the glow blooms (not just a border swap) */
 .lab-card-v2 {
+  /* Grid/flex items default to min-width:auto: at 320px the lab's internal
+     HUD would otherwise push the whole card wider than the viewport. */
+  min-width: 0;
   transition: border-color .35s, box-shadow .45s var(--e-out);
 }
 .lab-card-v2:hover {
@@ -2253,4 +2277,280 @@ img {
 .lab-hop { animation: labHop .35s cubic-bezier(.45,0,.2,1) both; }
 @media (prefers-reduced-motion: reduce) {
   .lab-feed, .lab-route, .lab-degraded, .lab-tag-in, .lab-proc, .lab-block-in, .lab-hop { animation: none; }
+}
+
+/* ============================================================
+   GLOBAL POLISH — focus, skip link, chapter HUD
+   ============================================================ */
+
+/* One visible focus treatment for every interactive control. :where() has
+   zero specificity so component-level focus styles still win where they
+   are more considered (tabs, segmented controls, custom buttons). */
+:where(a, button, input, textarea, select, summary, [role="button"], [role="slider"], [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 3px;
+}
+/* .field deliberately removes the default outline for a border treatment;
+   keyboard users still need an unmistakable focus ring. */
+.field:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 2px;
+}
+.on-ink :where(a, button, input, textarea, select, [role="button"], [tabindex]:not([tabindex="-1"])):focus-visible,
+.on-ink .field:focus-visible {
+  outline-color: var(--accent);
+}
+
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 10001;
+  padding: 11px 18px;
+  border-radius: 4px;
+  background: var(--solid);
+  color: var(--solid-fg);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transform: translateY(-160%);
+  transition: transform 0.25s var(--e-out);
+}
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+#main:focus {
+  outline: none;
+}
+
+/* ---------- chapter HUD ---------- */
+.progress-rail {
+  position: fixed;
+  bottom: 20px;
+  left: 14px;
+  z-index: 60;
+  pointer-events: none;
+  color: var(--fg);
+}
+.progress-card {
+  display: none;
+}
+.progress-edge {
+  display: flex;
+  width: 18px;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.progress-edge > .signal-dot {
+  width: 5px;
+  height: 5px;
+  flex: none;
+}
+.progress-edge-track {
+  position: relative;
+  display: block;
+  width: 2px;
+  height: 54px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--line);
+}
+.progress-edge-track > span {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background: var(--accent-deep);
+  transform-origin: top center;
+}
+.progress-edge-label {
+  display: block;
+  max-height: 130px;
+  overflow: hidden;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.progress-edge-chapter {
+  width: 2px;
+  height: 28px;
+}
+.progress-edge-chapter > span {
+  transform-origin: left center;
+}
+@media (max-width: 1023px) {
+  .progress-rail {
+    display: none;
+  }
+}
+@media (min-width: 1700px) {
+  .progress-edge {
+    display: none;
+  }
+  .progress-card {
+    display: flex;
+    min-width: 130px;
+    flex-direction: column;
+    gap: 3px;
+    padding: 6px 9px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+}
+
+/* ============================================================
+   SYSTEM MODEL — legible topology (captions, packets, convergence)
+   ============================================================ */
+.rail-stage-caption {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  pointer-events: none;
+  white-space: nowrap;
+  will-change: transform, opacity;
+}
+.rail-stage-caption-num {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--accent-ink);
+}
+.rail-stage-caption-name {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  color: var(--fg);
+}
+
+.rail-converged {
+  display: flex;
+  width: min(100%, 690px);
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 26px 28px;
+  border: 1px solid;
+  border-radius: 10px;
+  text-align: center;
+}
+.rail-chain {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  justify-content: center;
+}
+.rail-chain-step {
+  display: flex;
+  align-items: flex-start;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.rail-chain-node {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  width: 74px;
+}
+.rail-chain-node .stage-glyph {
+  display: block;
+  width: 54px;
+  color: var(--accent-deep);
+}
+.rail-chain-name {
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  color: var(--fg);
+  white-space: nowrap;
+}
+.rail-chain-link {
+  position: relative;
+  display: block;
+  height: 1px;
+  flex: 1 1 auto;
+  min-width: 12px;
+  margin-top: 27px;
+  background: linear-gradient(90deg, var(--accent-deep), var(--line));
+}
+.rail-chain-packet {
+  position: absolute;
+  top: -2px;
+  left: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 8px 1px color-mix(in srgb, var(--accent) 70%, transparent);
+  animation: railPacket 1.36s linear infinite;
+}
+@keyframes railPacket {
+  0% { left: 0; opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { left: calc(100% - 5px); opacity: 0; }
+}
+@media (max-width: 1100px) {
+  .rail-chain-node { width: 56px; }
+  .rail-chain-node .stage-glyph { width: 42px; }
+  .rail-chain-name { font-size: 7.5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rail-chain-packet { animation: none; opacity: 1; left: 50%; }
+}
+
+/* ---------- Contact: validation ---------- */
+.field-error {
+  display: block;
+  margin-top: 7px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.5;
+  letter-spacing: 0.04em;
+  color: #8f2f1c;
+}
+.on-ink .field-error { color: #ff9c7d; }
+.field[aria-invalid="true"] {
+  border-color: #8f2f1c;
+}
+.field[aria-invalid="true"]:focus-visible {
+  outline-color: #8f2f1c;
+}
+
+/* ---------- Problem: tool inspector ---------- */
+.pf-inspect {
+  cursor: pointer;
+  transition: box-shadow 0.3s var(--e-out), border-color 0.3s var(--e-out);
+}
+.pf-inspect:hover,
+.pf-inspect:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-deep) 35%, transparent);
+}
+.pf-inspect[aria-pressed="true"] {
+  border-color: var(--accent-deep) !important;
+}
+.pf-inspector {
+  min-height: 86px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
 }

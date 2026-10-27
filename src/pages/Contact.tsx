@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { siteContent } from "../data/site";
 import { usePage } from "../lib/router";
 import { useReveal } from "../lib/reveal";
-import { gsap, prefersReducedMotion } from "../lib/gsap";
+import { gsap, prefersReducedMotion, constrainedDevice } from "../lib/gsap";
 import { readLastTrigger, type VisualTrigger } from "../data/intents";
 import { mailtoFallback, submitInquiry, type InquiryPayload } from "../lib/inquiries";
 
@@ -84,6 +84,7 @@ export function ContactPage() {
   const [failReason, setFailReason] = useState<"unconfigured" | "network" | "rejected">("network");
   const [tagged, setTagged] = useState<Record<TagKey, boolean>>({ build: false, change: false, timeline: false });
   const [dismissed, setDismissed] = useState<Record<TagKey, boolean>>({ build: false, change: false, timeline: false });
+  const [touched, setTouched] = useState({ name: false, email: false });
   const [seed, setSeed] = useState<VisualTrigger | null>(null);
 
   const stepRef = useRef<HTMLDivElement>(null);
@@ -372,6 +373,24 @@ export function ContactPage() {
         {/* ------------------------------ STEPS ------------------------------ */}
         {phase === "form" || phase === "sending" ? (
           <div ref={stepRef} className="mt-[clamp(26px,3.4vw,46px)]">
+            <div className="mb-[12px] flex min-h-[18px] items-center justify-between gap-[12px]">
+              <span className="sr-only" role="status" aria-live="polite">
+                Step {step + 1} of 4: {stepTitles[step]}
+              </span>
+              {step > 0 ? (
+                <button
+                  type="button"
+                  className="mono lnk"
+                  onClick={() => goBack(step - 1)}
+                  style={{ color: "var(--muted)" }}
+                >
+                  ← Back
+                </button>
+              ) : (
+                <span />
+              )}
+              <span className="mono" style={{ color: "var(--faint)" }}>0{step + 1} / 04</span>
+            </div>
             {step === 0 && (
               <div>
                 <StepTitle n="01" title={stepTitles[0]} />
@@ -396,7 +415,7 @@ export function ContactPage() {
                           {o.hint}
                         </span>
                       </span>
-                      <span className="mono" style={{ color: build === o.k ? "var(--accent-deep)" : "var(--faint)" }}>
+                      <span className="mono" style={{ color: build === o.k ? "var(--accent-ink)" : "var(--faint)" }}>
                         {build === o.k ? "Selected →" : "→"}
                       </span>
                     </button>
@@ -405,7 +424,7 @@ export function ContactPage() {
                 {build && (
                   <div className="mt-[16px] flex items-center justify-between p-[12px_16px] rounded-[6px] border" style={{ borderColor: "var(--accent-deep)", background: "var(--bg-2)" }}>
                     <span className="mono text-[11px]">
-                      Pre-selected: <strong style={{ color: "var(--accent-deep)" }}>{build}</strong>
+                      Pre-selected: <strong style={{ color: "var(--accent-ink)" }}>{build}</strong>
                     </span>
                     <button
                       type="button"
@@ -429,7 +448,7 @@ export function ContactPage() {
                   <span className="sr-only">What needs to change?</span>
                   <textarea
                     className="field min-h-[130px] resize-y"
-                    autoFocus
+                    autoFocus={!constrainedDevice()}
                     value={change}
                     onChange={(e) => setChange(e.target.value)}
                     placeholder="What's slow, broken, or missing? What should be true a few months from now?"
@@ -485,12 +504,39 @@ export function ContactPage() {
                 <StepTitle n="04" title={stepTitles[3]} />
                 <div className="mt-[18px] grid gap-[16px] sm:grid-cols-2">
                   <label className="flex flex-col">
-                    <span className="mono mb-[6px]">Name</span>
-                    <input className="field" value={name} onChange={(e) => setName(e.target.value)} placeholder="Who's building this?" />
+                    <span className="mono mb-[6px]">Name <span style={{ color: "var(--faint)" }}>(required)</span></span>
+                    <input
+                      className="field"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      onBlur={() => setTouched((t) => ({ ...t, name: true }))}
+                      placeholder="Who's building this?"
+                      autoComplete="name"
+                      aria-required="true"
+                      aria-invalid={touched.name && name.trim().length <= 1}
+                      aria-describedby={touched.name && name.trim().length <= 1 ? "err-name" : undefined}
+                    />
+                    {touched.name && name.trim().length <= 1 && (
+                      <span id="err-name" className="field-error" role="alert">Please add a name so we know who to reply to.</span>
+                    )}
                   </label>
                   <label className="flex flex-col">
-                    <span className="mono mb-[6px]">Email</span>
-                    <input className="field" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" />
+                    <span className="mono mb-[6px]">Email <span style={{ color: "var(--faint)" }}>(required)</span></span>
+                    <input
+                      className="field"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+                      placeholder="you@company.com"
+                      autoComplete="email"
+                      aria-required="true"
+                      aria-invalid={touched.email && !/\S+@\S+\.\S+/.test(email)}
+                      aria-describedby={touched.email && !/\S+@\S+\.\S+/.test(email) ? "err-email" : undefined}
+                    />
+                    {touched.email && !/\S+@\S+\.\S+/.test(email) && (
+                      <span id="err-email" className="field-error" role="alert">Enter an email address we can reply to.</span>
+                    )}
                   </label>
                   <label className="flex flex-col sm:col-span-2">
                     <span className="mono mb-[6px]">
@@ -520,7 +566,9 @@ export function ContactPage() {
                     )}
                   </button>
                   <span className="body-s" style={{ color: "var(--faint)" }}>
-                    No newsletters, no drip — a human replies.
+                    {canSubmit
+                      ? "No newsletters, no drip — a human replies."
+                      : "Add your name and a valid email to send."}
                   </span>
                 </div>
               </div>
@@ -533,7 +581,7 @@ export function ContactPage() {
              path out: a pre-filled email with the whole inquiry in the
              body. */
           <div className="mt-[clamp(30px,4vw,56px)] max-w-[560px]">
-            <p className="mono mono-a mb-[10px]" style={{ color: "var(--accent-deep)" }}>
+            <p className="mono mono-a mb-[10px]" style={{ color: "var(--accent-ink)" }}>
               {failReason === "unconfigured" ? "NOT CONNECTED YET" : "SOMETHING WENT WRONG"}
             </p>
             <h2 className="d3 mb-[12px]">The request didn't reach us.</h2>
@@ -568,7 +616,7 @@ export function ContactPage() {
              endpoint — see src/lib/inquiries.ts. */
           <div className="mt-[clamp(30px,4vw,56px)] grid items-center gap-[clamp(26px,4vw,54px)] sm:grid-cols-2">
             <div>
-              <p className="mono mono-a mb-[10px]" style={{ color: "var(--accent-deep)" }}>
+              <p className="mono mono-a mb-[10px]" style={{ color: "var(--accent-ink)" }}>
                 REQUEST RECEIVED
               </p>
               <h2 className="d3 mb-[12px]">It's in the system.</h2>
@@ -580,7 +628,7 @@ export function ContactPage() {
               {seed && (
                 <p className="mono mt-[14px]" style={{ color: "var(--faint)" }}>
                   Signal carried over from Ask Arche —{" "}
-                  <span style={{ color: "var(--accent-deep)" }}>
+                  <span style={{ color: "var(--accent-ink)" }}>
                     {SIGNAL_LABEL[seed]}
                   </span>
                 </p>
@@ -621,7 +669,7 @@ export function ContactPage() {
 function StepTitle({ n, title }: { n: string; title: string }) {
   return (
     <div className="flex items-baseline gap-[14px]">
-      <span className="mono" style={{ color: "var(--accent-deep)" }}>
+      <span className="mono" style={{ color: "var(--accent-ink)" }}>
         {n}
       </span>
       <h2 className="d3" style={{ fontSize: "clamp(20px,2.6vw,30px)" }}>

@@ -1,0 +1,17 @@
+# Build-machine artifacts. node_modules is checked into this repository for
+# the single-file build, so only host-specific *additions* and caches are
+# ignored — tracked files stay tracked.
+node_modules/.package-lock.json
+node_modules/.vite/
+node_modules/.cache/
+node_modules/@esbuild/linux-*/
+node_modules/@napi-rs/
+node_modules/@rollup/rollup-linux-*/
+node_modules/@tailwindcss/oxide-linux-*/
+node_modules/lightningcss-linux-*/
+node_modules/rollup/node_modules/
+
+# Local tooling / generated previews
+.DS_Store
+*.log
+arche-preview*

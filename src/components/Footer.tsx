@@ -17,7 +17,7 @@ export function Footer() {
 
           {f.cols.map((col) => (
             <div key={col.t} className="flex flex-col gap-[12px] md:col-span-2">
-              <p className="mono" style={{ color: "var(--accent-deep)" }}>
+              <p className="mono" style={{ color: "var(--accent-ink)" }}>
                 {col.t}
               </p>
               <ul className="m-0 flex list-none flex-col gap-[7px] p-0">
@@ -33,7 +33,7 @@ export function Footer() {
           ))}
 
           <div className="flex flex-col gap-[12px] md:col-span-3">
-            <p className="mono" style={{ color: "var(--accent-deep)" }}>
+            <p className="mono" style={{ color: "var(--accent-ink)" }}>
               Contact
             </p>
             <a href="mailto:hello@arche.studio" className="body-s lnk self-start">

@@ -13,11 +13,9 @@ const SLUG = "web-development";
 export function WebDevDemo({
   active = false,
   preview = false,
-  auto = false,
 }: {
   active?: boolean;
   preview?: boolean;
-  auto?: boolean;
 }) {
   const [phase, setPhase] = useState(0);
   const [run, setRun] = useState(0);
@@ -145,7 +143,7 @@ function Core({ phase, preview = false }: { phase: number; preview?: boolean }) 
               <p className="m-0 text-[clamp(15px,1.25vw,19px)] leading-[1.06] tracking-[-0.04em]" style={{ transform: phase >= 2 ? "none" : "translateY(8px)", transition: "transform .9s var(--e-out)" }}>
                 Quiet rooms for loud ideas.
               </p>
-              <span className="mono self-start pt-[2px]" style={{ color: "color-mix(in srgb, var(--accent-deep) 75%, var(--fg))" }}>
+              <span className="mono self-start pt-[2px]" style={{ color: "color-mix(in srgb, var(--accent-ink) 75%, var(--fg))" }}>
                 NORTH
               </span>
             </div>
@@ -275,7 +273,7 @@ function Core({ phase, preview = false }: { phase: number; preview?: boolean }) 
         <p
           className="mono m-0"
           style={{
-            color: booked ? "var(--accent-deep)" : live ? "var(--fg)" : phase === 2 ? "var(--fg)" : "var(--faint)",
+            color: booked ? "var(--accent-ink)" : live ? "var(--fg)" : phase === 2 ? "var(--fg)" : "var(--faint)",
             letterSpacing: booked ? ".16em" : ".14em",
           }}
         >
@@ -309,7 +307,7 @@ function Core({ phase, preview = false }: { phase: number; preview?: boolean }) 
               />
             </svg>
           </span>
-          <span className="mono" style={{ color: "var(--accent-deep)" }}>
+          <span className="mono" style={{ color: "var(--accent-ink)" }}>
             Live — look around
           </span>
           <span className="body-s truncate" style={{ color: "var(--muted)" }}>

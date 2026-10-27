@@ -114,7 +114,7 @@ export function Hero() {
               <span className="mono mono-fg">
                 {s.n} — {s.title}
               </span>
-              <span className="mono transition-transform duration-500 group-hover:translate-x-[4px]" style={{ color: "var(--accent-deep)" }}>
+              <span className="mono transition-transform duration-500 group-hover:translate-x-[4px]" style={{ color: "var(--accent-ink)" }}>
                 →
               </span>
             </Link>
@@ -222,7 +222,7 @@ export function Approach() {
     <section ref={sectionRef} className="on-ink w-full py-[clamp(76px,10vw,150px)]">
       <div className="wrap">
         <div className="mb-[clamp(36px,4vw,64px)] flex items-center gap-[16px]">
-          <span className="mono" style={{ color: "var(--accent-deep)" }}>
+          <span className="mono" style={{ color: "var(--accent-ink)" }}>
             Approach
           </span>
           <span className="h-px flex-1 origin-left" style={{ background: "var(--line)" }} data-r="line" />
@@ -235,11 +235,11 @@ export function Approach() {
         </p>
 
         <div className="mt-[clamp(48px,6vw,90px)] grid gap-[28px] md:grid-cols-12">
-          <div className="flex flex-col md:col-span-7">
+          <div className="flex min-w-0 flex-col md:col-span-7">
             {items.map((it, i) => (
               <button
                 key={it.k}
-                className="approach-principle grid gap-[12px] border-t py-[22px] text-left md:grid-cols-8 cursor-pointer transition-all duration-300 group"
+                className="approach-principle grid min-w-0 gap-[12px] border-t py-[22px] text-left md:grid-cols-8 cursor-pointer transition-all duration-300 group"
                 style={{
                   borderColor: active === i ? "var(--accent-deep)" : "var(--line)",
                   background: active === i ? "rgba(200, 241, 79, 0.03)" : "transparent",
@@ -276,7 +276,7 @@ export function Approach() {
               <ApproachVisual active={active} onSelect={setActive} />
             </div>
           </div>
-          <div className="hidden md:col-span-5 md:block">
+          <div className="hidden min-w-0 md:col-span-5 md:block">
             <div className="sticky top-[140px]">
               <ApproachVisual active={active} onSelect={setActive} />
             </div>
@@ -677,7 +677,7 @@ export function ProcessSys() {
                   {s.n}
                 </span>
                 <div className="flex flex-1 flex-col gap-[6px] md:flex-row md:items-baseline md:gap-[36px]">
-                  <h3 className="d4 flex-none md:w-[190px]" data-r="meta" style={s.k === "Connect" ? { color: "var(--accent-deep)" } : undefined}>
+                  <h3 className="d4 flex-none md:w-[190px]" data-r="meta" style={s.k === "Connect" ? { color: "var(--accent-ink)" } : undefined}>
                     {s.k}
                   </h3>
                   <div className="flex flex-col gap-[10px]">
@@ -688,10 +688,10 @@ export function ProcessSys() {
                       <div className="flex flex-wrap items-center gap-[8px]" data-r="meta">
                         {["Website", "Agent", "Automation", "Existing tools"].map((lab, i, arr) => (
                           <span key={lab} className="flex items-center gap-[8px]">
-                            <span className="mono" style={{ padding: "4px 10px", border: "1px solid var(--accent-deep)", borderRadius: 999, color: "var(--accent-deep)" }}>
+                            <span className="mono" style={{ padding: "4px 10px", border: "1px solid var(--accent-deep)", borderRadius: 999, color: "var(--accent-ink)" }}>
                               {lab}
                             </span>
-                            {i < arr.length - 1 && <span className="mono" style={{ color: "var(--accent-deep)" }}>→</span>}
+                            {i < arr.length - 1 && <span className="mono" style={{ color: "var(--accent-ink)" }}>→</span>}
                           </span>
                         ))}
                       </div>
@@ -916,7 +916,7 @@ function ProcessVisual({ active, compact = false }: { active: number; compact?: 
         style={{
           fontSize: compact ? 8 : 9,
           letterSpacing: ".12em",
-          color: alive ? "var(--accent-deep)" : "var(--faint)",
+          color: alive ? "var(--accent-ink)" : "var(--faint)",
           transition: "color .5s",
         }}
       >
@@ -1127,7 +1127,7 @@ export function FinalCTA() {
 
       <div className="wrap fc-text relative flex flex-col items-start gap-[clamp(28px,4vw,52px)]">
         <div className="flex w-full items-center gap-[16px]">
-          <span className="mono" style={{ color: "var(--accent-deep)" }}>
+          <span className="mono" style={{ color: "var(--accent-ink)" }}>
             Next
           </span>
           <span className="h-px flex-1 origin-left" style={{ background: "var(--line)" }} data-r="line" />

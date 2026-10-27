@@ -46,7 +46,7 @@ export function PricingPage() {
                   document.getElementById(s.slug)?.scrollIntoView({ behavior: "smooth" });
                 }}
               >
-                <span className="mono text-[10px] text-[var(--accent-deep)] mr-1">{s.n}</span>
+                <span className="mono text-[10px] text-[var(--accent-ink)] mr-1">{s.n}</span>
                 {s.serviceTitle} · from {s.startingAt}
               </a>
             ))}

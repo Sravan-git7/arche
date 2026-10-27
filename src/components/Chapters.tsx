@@ -399,7 +399,7 @@ export function Chapters() {
 
         {/* copy + stage */}
         <div className="order-2 grid items-center gap-[clamp(18px,2.8vw,48px)] py-[clamp(20px,3vh,32px)] min-[900px]:grid-cols-12">
-          <div ref={copy} className="flex flex-col gap-[14px] min-[900px]:col-span-5">
+          <div ref={copy} className="flex min-w-0 flex-col gap-[14px] min-[900px]:col-span-5">
             <div className="flex flex-col gap-[2px]">
               <button
                 type="button"
@@ -428,7 +428,7 @@ export function Chapters() {
                       padding: "5px 11px",
                       border: `1px solid ${k === s.arc.length - 1 ? "var(--accent-deep)" : "var(--line)"}`,
                       borderRadius: 999,
-                      color: k === s.arc.length - 1 ? "var(--accent-deep)" : "var(--muted)",
+                      color: k === s.arc.length - 1 ? "var(--accent-ink)" : "var(--muted)",
                     }}
                   >
                     {a}
@@ -459,7 +459,7 @@ export function Chapters() {
             </div>
           </div>
 
-          <div className="relative min-[900px]:col-span-7">
+          <div className="relative min-w-0 min-[900px]:col-span-7">
             <ServiceStage
               slug={s.slug}
               previewSlug={preview !== null ? services[preview].slug : null}

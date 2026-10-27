@@ -11,10 +11,9 @@ const RATIO: Record<Project["ratio"], string> = {
   square: "1 / 1",
 };
 
-export type HonestyTag = "CLIENT WORK" | "INTERNAL BUILD" | "CONCEPT" | "EXPERIMENT";
+export type HonestyTag = "INTERNAL BUILD" | "CONCEPT" | "EXPERIMENT";
 
 export function getHonestyTag(status: string): HonestyTag {
-  if (status === "Confidential Project" || status === "Client Work") return "CLIENT WORK";
   if (status === "Arche Lab" || status === "Internal Project" || status === "Internal Build") return "INTERNAL BUILD";
   if (status === "Concept") return "CONCEPT";
   return "EXPERIMENT";
@@ -25,7 +24,7 @@ export function getHonestyTag(status: string): HonestyTag {
  *
  * Visual Composition:
  *   Near full-bleed project frames stacked vertically. Each features a prominent project number,
- *   title, summary, and a required Honesty Tag (CLIENT WORK / INTERNAL BUILD / CONCEPT / EXPERIMENT).
+ *   title, summary, and a required Honesty Tag (INTERNAL BUILD / CONCEPT / EXPERIMENT).
  *
  * Animation Choreography:
  *   - Clip-path wipes on viewport entry (alternating: Left-to-Right, Top-to-Bottom, Center-Out, Bottom-to-Top).
@@ -162,8 +161,8 @@ export function ProjectRow({ p, i, isLast = false }: { p: Project; i: number; is
               className="mono rounded-full px-[12px] py-[6px] font-medium tracking-[0.14em]"
               style={{
                 background: "rgba(12, 12, 13, 0.84)",
-                color: tag === "CLIENT WORK" || tag === "EXPERIMENT" ? "#c8f14f" : "#f4f2ed",
-                border: `1px ${tag === "EXPERIMENT" ? "dashed" : "solid"} ${tag === "CLIENT WORK" ? "var(--accent-deep)" : "rgba(244, 242, 237, 0.22)"}`,
+                color: tag === "EXPERIMENT" ? "#c8f14f" : "#f4f2ed",
+                border: `1px ${tag === "EXPERIMENT" ? "dashed" : "solid"} rgba(244, 242, 237, 0.22)`,
                 backdropFilter: "blur(8px)",
                 fontSize: "10px",
               }}
@@ -224,7 +223,7 @@ export function ProjectRow({ p, i, isLast = false }: { p: Project; i: number; is
             <button
               type="button"
               onClick={toggleExpand}
-              className="mono mono-fg inline-flex items-center gap-[8px] transition-colors duration-500 group-hover:text-[var(--accent-deep)]"
+              className="mono mono-fg inline-flex items-center gap-[8px] transition-colors duration-500 group-hover:text-[var(--accent-ink)]"
             >
               {expanded ? "Collapse details" : "Expand case view"}
               <span className={`inline-block transition-transform duration-500 ${expanded ? "rotate-90" : "group-hover:translate-x-[5px]"}`}>
@@ -260,19 +259,19 @@ export function ProjectRow({ p, i, isLast = false }: { p: Project; i: number; is
 
           <div className="mt-[20px] grid gap-[24px] md:grid-cols-3">
             <div>
-              <p className="mono mb-[6px]" style={{ color: "var(--accent-deep)" }}>Architecture</p>
+              <p className="mono mb-[6px]" style={{ color: "var(--accent-ink)" }}>Architecture</p>
               <p className="body-s">
                 Designed to operate as a self-contained module within Arche's pipeline. Integrates directly into target business workflows.
               </p>
             </div>
             <div>
-              <p className="mono mb-[6px]" style={{ color: "var(--accent-deep)" }}>Honesty Verification</p>
+              <p className="mono mb-[6px]" style={{ color: "var(--accent-ink)" }}>Honesty Verification</p>
               <p className="body-s">
-                Classified as <strong className="text-[var(--fg)]">{tag}</strong>. No vanity metrics or fabricated client names — evidence validated through functional code.
+                Classified as <strong className="text-[var(--fg)]">{tag}</strong>. Self-initiated work: no client names, testimonials or invented results — only what was actually built.
               </p>
             </div>
             <div>
-              <p className="mono mb-[6px]" style={{ color: "var(--accent-deep)" }}>Execution Stack</p>
+              <p className="mono mb-[6px]" style={{ color: "var(--accent-ink)" }}>Execution Stack</p>
               <div className="flex flex-wrap gap-[6px] mt-[6px]">
                 {p.scope.map((s) => (
                   <span key={s} className="mono rounded-full border px-[8px] py-[3px]" style={{ borderColor: "var(--line)", background: "var(--card)" }}>

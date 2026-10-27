@@ -1,13 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { Wordmark } from "./Wordmark";
 import { siteContent, services } from "../data/site";
-import { Link, navigate, useRoute } from "../lib/router";
+import { Link, useRoute } from "../lib/router";
 import { gsap } from "../lib/gsap";
 
 export function Header() {
   const nav = useRef<HTMLElement>(null);
   const [open, setOpen] = useState(false);
   const [svcOpen, setSvcOpen] = useState(false);
+  // A pointer hover opens the preview drawer; a click *pins* it so the
+  // visitor can leave the trigger with the pointer. Hover-open + plain
+  // toggle used to fight each other — the click always closed the drawer
+  // that the hover had just opened.
+  const [svcPinned, setSvcPinned] = useState(false);
   const [solid, setSolid] = useState(false);
   const last = useRef(0);
   const route = useRoute();
@@ -26,7 +31,10 @@ export function Header() {
           ease: "expo.out",
           overwrite: true,
         });
-        if (hide) setSvcOpen(false);
+        if (hide) {
+          setSvcOpen(false);
+          setSvcPinned(false);
+        }
       }
       last.current = y;
     };
@@ -45,15 +53,35 @@ export function Header() {
   useEffect(() => {
     setOpen(false);
     setSvcOpen(false);
+    setSvcPinned(false);
   }, [route]);
 
-  /*
-   * PROMPT 26 — Nav hover preview → dedicated service pages.
-   * Clicking a thumbnail or service item goes directly to /services/:slug.
-   */
-  const gotoService = (slug: string) => {
-    setSvcOpen(false);
-    navigate(`/services/${slug}`);
+  // Escape dismisses the pinned drawer and the mobile overlay.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setSvcOpen(false);
+      setSvcPinned(false);
+      setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const hoverServices = () => {
+    if (!svcPinned) setSvcOpen(true);
+  };
+  const leaveServices = () => {
+    if (!svcPinned) setSvcOpen(false);
+  };
+  const clickServices = () => {
+    if (svcOpen && svcPinned) {
+      setSvcOpen(false);
+      setSvcPinned(false);
+    } else {
+      setSvcOpen(true);
+      setSvcPinned(true);
+    }
   };
 
   const { links, cta } = siteContent.nav;
@@ -71,7 +99,7 @@ export function Header() {
           borderBottom: `1px solid ${solid ? "var(--line)" : "transparent"}`,
           transition: "background .5s var(--e-out), border-color .5s var(--e-out)",
         }}
-        onMouseLeave={() => setSvcOpen(false)}
+        onMouseLeave={leaveServices}
       >
         <div className="wrap flex items-center justify-between py-[16px]">
           <Link to="/" className="relative z-[110]">
@@ -86,8 +114,11 @@ export function Header() {
                   key={l.label}
                   className="mono mono-fg relative flex items-center gap-[7px]"
                   aria-expanded={svcOpen}
-                  onMouseEnter={() => setSvcOpen(true)}
-                  onClick={() => setSvcOpen((v) => !v)}
+                  aria-haspopup="true"
+                  aria-controls="nav-services-drawer"
+                  onMouseEnter={hoverServices}
+                  onFocus={hoverServices}
+                  onClick={clickServices}
                 >
                   {l.label}
                   <span
@@ -106,7 +137,7 @@ export function Header() {
                 <Link key={l.label} to={l.to} className="mono mono-fg relative">
                   <span className="roll" style={{ height: 14 }}>
                     <span>{l.label}</span>
-                    <span aria-hidden style={{ color: "var(--accent-deep)" }}>
+                    <span aria-hidden style={{ color: "var(--accent-ink)" }}>
                       {l.label}
                     </span>
                   </span>
@@ -148,7 +179,9 @@ export function Header() {
         {/* services drawer (desktop) — live idle previews; a thumbnail
             click navigates directly to that dedicated service page */}
         <div
+          id="nav-services-drawer"
           className="hidden overflow-hidden md:block"
+          inert={!svcOpen}
           style={{
             maxHeight: svcOpen ? 340 : 0,
             transition: "max-height .6s var(--e-inout)",
@@ -173,7 +206,7 @@ export function Header() {
                 cursor="OPEN"
               >
                 <span className="mono">{s.n}</span>
-                <span className="d4 transition-colors duration-300 group-hover:text-[var(--accent-deep)]">
+                <span className="d4 transition-colors duration-300 group-hover:text-[var(--accent-ink)]">
                   {s.title}
                 </span>
                 <span className="body-s">{s.tagline}</span>
@@ -188,6 +221,7 @@ export function Header() {
       <div
         className="fixed inset-0 z-[99] md:hidden"
         aria-hidden={!open}
+        inert={!open}
         style={{
           background: "var(--bg)",
           pointerEvents: open ? "auto" : "none",
@@ -213,7 +247,7 @@ export function Header() {
               ))}
             <MobileItem open={open} i={2}>
               <div className="flex items-center justify-between border-b pb-[6px] pt-[20px]" style={{ borderColor: "var(--line)" }}>
-                <span className="mono text-[11px] uppercase tracking-wider text-[var(--accent-deep)]">Services</span>
+                <span className="mono text-[11px] uppercase tracking-wider text-[var(--accent-ink)]">Services</span>
                 <Link to="/services" onClick={() => setOpen(false)} className="mono lnk text-[11px]">
                   All services →
                 </Link>
@@ -229,7 +263,7 @@ export function Header() {
                 >
                   <div className="flex items-baseline gap-[14px]">
                     <span className="mono mono-a">{s.n}</span>
-                    <span className="d4 group-hover:text-[var(--accent-deep)] transition-colors">{s.title}</span>
+                    <span className="d4 group-hover:text-[var(--accent-ink)] transition-colors">{s.title}</span>
                   </div>
                   <span className="mono text-[var(--muted)] group-hover:translate-x-1 transition-transform">→</span>
                 </Link>
