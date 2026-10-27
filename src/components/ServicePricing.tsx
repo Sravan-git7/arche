@@ -1,6 +1,6 @@
-import { pricingData, type ServicePricingData } from "../data/pricing";
+import { pricingData } from "../data/pricing";
 import { serviceToBuildOption } from "./ServicePricingHelper";
-import { navigate, Link } from "../lib/router";
+import { navigate } from "../lib/router";
 
 export { serviceToBuildOption };
 
@@ -57,7 +57,7 @@ export function ServicePricing({
           </div>
 
           <div className="flex items-center gap-[10px]">
-            <span className="mono text-[11px] text-[var(--accent-deep)] font-medium">
+            <span className="mono text-[11px] text-[var(--accent-ink)] font-medium">
               ● SCOPE-BASED PRICING
             </span>
           </div>
@@ -74,7 +74,7 @@ export function ServicePricing({
           <div className="grid gap-[24px] md:grid-cols-12 items-baseline">
             {/* 1. Starting Price Framing */}
             <div className="md:col-span-5">
-              <span className="mono text-[10px] uppercase tracking-wider block mb-[6px]" style={{ color: "var(--accent-deep)" }}>
+              <span className="mono text-[10px] uppercase tracking-wider block mb-[6px]" style={{ color: "var(--accent-ink)" }}>
                 Starting Scope Framing
               </span>
               <p className="d3 font-medium text-[clamp(20px,2.2vw,30px)] text-[var(--fg)]">
@@ -124,7 +124,7 @@ export function ServicePricing({
               <div>
                 <div className="flex items-baseline justify-between mb-[12px]">
                   <h3 className="d4 font-medium">{scope.name}</h3>
-                  <span className="mono text-[10px] uppercase tracking-wider text-[var(--accent-deep)]">
+                  <span className="mono text-[10px] uppercase tracking-wider text-[var(--accent-ink)]">
                     {idx === 0 ? "Typical Entry" : "Comprehensive"}
                   </span>
                 </div>
@@ -145,7 +145,7 @@ export function ServicePricing({
                 <ul className="m-0 flex list-none flex-col gap-[9px] p-0 mb-[24px]">
                   {scope.includes.map((inc) => (
                     <li key={inc} className="mono text-[11px] flex items-start gap-[9px] text-[var(--fg)]">
-                      <span className="mono text-[var(--accent-deep)] font-bold">✓</span>
+                      <span className="mono text-[var(--accent-ink)] font-bold">✓</span>
                       <span>{inc}</span>
                     </li>
                   ))}

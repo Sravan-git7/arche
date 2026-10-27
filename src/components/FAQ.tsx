@@ -66,7 +66,7 @@ function Item({
         className="group flex w-full items-start gap-[16px] border-t py-[clamp(16px,1.9vw,24px)] text-left md:gap-[36px]"
         style={{ borderColor: "var(--line)" }}
       >
-        <span className="mono flex-none pt-[6px]" style={{ width: 26, color: open ? "var(--accent-deep)" : "var(--faint)", transition: "color .4s" }}>
+        <span className="mono flex-none pt-[6px]" style={{ width: 26, color: open ? "var(--accent-ink)" : "var(--faint)", transition: "color .4s" }}>
           {n}
         </span>
         <h3 className="d4 flex-1" style={{ maxWidth: "26ch", color: open ? "var(--fg)" : "var(--muted)", transition: "color .4s" }}>

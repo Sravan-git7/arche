@@ -608,10 +608,10 @@ export function ConnectedSystem() {
                       }}
                     >
                       <div className="flex items-center justify-between gap-[10px] mb-[3px]">
-                        <span className="mono text-[9px] uppercase font-bold" style={{ color: "var(--accent-deep)" }}>
+                        <span className="mono text-[9px] uppercase font-bold" style={{ color: "var(--accent-ink)" }}>
                           {m.num} · {m.category}
                         </span>
-                        <span className="mono text-[9px]" style={{ color: isLinked ? "var(--accent-deep)" : "var(--muted)" }}>
+                        <span className="mono text-[9px]" style={{ color: isLinked ? "var(--accent-ink)" : "var(--muted)" }}>
                           {isLinked ? "● Linked" : "○ Unlinked"}
                         </span>
                       </div>
@@ -652,6 +652,20 @@ export function ConnectedSystem() {
                     touchAction: "none",
                   }}
                   onPointerDown={onPointerDown(n.id)}
+                  onClick={(e) => {
+                    // Enter / Space on a focused module produces a synthetic
+                    // click with detail === 0. Real pointer clicks are already
+                    // handled by onPointerDown / onPointerUp (drag + tap), so
+                    // only handle the keyboard path here to avoid double-firing.
+                    if (e.detail !== 0) return;
+                    setInspectedId(n.id);
+                    if (picked && picked !== n.id) {
+                      const linked = tryConnect(picked, n.id);
+                      setPicked(linked ? null : n.id);
+                    } else {
+                      setPicked(picked === n.id ? null : n.id);
+                    }
+                  }}
                   onMouseEnter={() => setHoveredId(n.id)}
                   onMouseLeave={() => setHoveredId(null)}
                   onFocus={() => setHoveredId(n.id)}
@@ -711,7 +725,7 @@ export function ConnectedSystem() {
               <p className="mono text-[10px] sm:text-[11px] truncate" style={{ color: "var(--fg)" }}>
                 {activeModule ? (
                   <>
-                    <strong style={{ color: "var(--accent-deep)" }}>
+                    <strong style={{ color: "var(--accent-ink)" }}>
                       {activeModule.num} {activeModule.k.toUpperCase()}:
                     </strong>{" "}
                     {activeModule.desc}
@@ -745,7 +759,7 @@ export function ConnectedSystem() {
               <div className="max-w-[700px]">
                 <div className="flex items-center gap-[8px] mb-[12px]">
                   <span className="block h-[8px] w-[8px] rounded-full bg-[var(--accent-deep)] ring-4 ring-[rgba(200,241,79,0.35)] animate-pulse" />
-                  <span className="mono mono-a uppercase tracking-wider text-[11px]" style={{ color: "var(--accent-deep)" }}>
+                  <span className="mono mono-a uppercase tracking-wider text-[11px]" style={{ color: "var(--accent-ink)" }}>
                     System Architecture · Connected
                   </span>
                 </div>
@@ -784,7 +798,7 @@ export function ConnectedSystem() {
               style={{ borderColor: "var(--line)" }}
             >
               <div className="rounded-[4px] p-[12px_14px]" style={{ background: "var(--bg-2)" }}>
-                <span className="mono text-[10px] block font-semibold mb-[4px]" style={{ color: "var(--accent-deep)" }}>
+                <span className="mono text-[10px] block font-semibold mb-[4px]" style={{ color: "var(--accent-ink)" }}>
                   01 · INBOUND FLOW
                 </span>
                 <p className="mono text-[11px] leading-snug" style={{ color: "var(--fg)" }}>
@@ -793,7 +807,7 @@ export function ConnectedSystem() {
               </div>
 
               <div className="rounded-[4px] p-[12px_14px]" style={{ background: "var(--bg-2)" }}>
-                <span className="mono text-[10px] block font-semibold mb-[4px]" style={{ color: "var(--accent-deep)" }}>
+                <span className="mono text-[10px] block font-semibold mb-[4px]" style={{ color: "var(--accent-ink)" }}>
                   02 · QUALIFICATION
                 </span>
                 <p className="mono text-[11px] leading-snug" style={{ color: "var(--fg)" }}>
@@ -802,7 +816,7 @@ export function ConnectedSystem() {
               </div>
 
               <div className="rounded-[4px] p-[12px_14px]" style={{ background: "var(--bg-2)" }}>
-                <span className="mono text-[10px] block font-semibold mb-[4px]" style={{ color: "var(--accent-deep)" }}>
+                <span className="mono text-[10px] block font-semibold mb-[4px]" style={{ color: "var(--accent-ink)" }}>
                   03 · AUTONOMOUS SYNC
                 </span>
                 <p className="mono text-[11px] leading-snug" style={{ color: "var(--fg)" }}>

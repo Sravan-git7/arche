@@ -6,7 +6,7 @@ export type Project = {
   name: string;
   service: string; // service slug
   serviceLabel: string;
-  status: "Arche Lab" | "Concept" | "Internal Project" | "Prototype" | "Confidential Project";
+  status: "Arche Lab" | "Concept" | "Internal Project" | "Prototype";
   year: string;
   scope: string[];
   summary: string;
@@ -16,8 +16,9 @@ export type Project = {
 
 /**
  * No fabricated clients, metrics or testimonials. Every entry is honestly
- * labelled — Concept, Internal Project, Prototype or Confidential — and
- * represents the type of system Arche builds for each service line.
+ * labelled — Arche Lab, Concept, Internal Project or Prototype — and
+ * represents a self-initiated build or a system Arche can build for a
+ * service line. Nothing here is presented as a verified client engagement.
  */
 export const projects: Project[] = [
   {
@@ -30,7 +31,7 @@ export const projects: Project[] = [
     year: "2026",
     scope: ["Short-form", "Grading", "Captions"],
     summary:
-      "A short-form editing pipeline: selection scan, rhythm pass, caption system and grade — the same sequence applied to every client edit.",
+      "A short-form editing pipeline: selection scan, rhythm pass, caption system and grade — the same sequence applied to every edit.",
     img: media["w-04"],
     ratio: "wide",
   },
@@ -82,11 +83,11 @@ export const projects: Project[] = [
     name: "Intake Routing Flow",
     service: "ai-automation",
     serviceLabel: "AI Automation",
-    status: "Confidential Project",
+    status: "Prototype",
     year: "2026",
     scope: ["Automation", "Classification", "CRM"],
     summary:
-      "Inbound requests classified, enriched and routed into the right pipeline automatically — with a human fallback path for edge cases.",
+      "A prototype intake pipeline: inbound requests classified, enriched and routed automatically — with a human fallback path for edge cases.",
     img: media["w-07"],
     ratio: "wide",
   },

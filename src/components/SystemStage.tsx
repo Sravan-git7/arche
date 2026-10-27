@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactElement } from "react";
 import { services } from "../data/site";
-import { previewPlayed } from "../lib/autoplay";
 import { SCENES } from "./Scenes";
 import { TRY } from "./Demos";
 import { gsap, prefersReducedMotion } from "../lib/gsap";
@@ -23,14 +22,12 @@ import { VideoEditingDemo } from "./VideoEditingDemo";
  * Rapid switches collapse to the latest target; a switch back mid-flight
  * returns without remounting.
  *
- * PROMPT 24 — autoplay-first. Every stage also receives `auto`: true the
- * first time it is the committed tab and on screen. A stage uses it to run
- * its own short representative preview without waiting for a click, then
- * hands control to the visitor for good.
+ * PROMPT 24 — autoplay-first. Each stage owns its own short first-view
+ * preview, keyed off `active`; the frame only decides when a stage is live.
  */
 
 export type DemoMode = "watch" | "try";
-export type StageProps = { active: boolean; mode: DemoMode; preview: boolean; auto: boolean };
+export type StageProps = { active: boolean; mode: DemoMode; preview: boolean };
 
 const withScenePad = (el: ReactElement) => (
   <div className="px-[clamp(4px,0.8vw,12px)] pt-[34px] pb-[8px] [&_svg]:mx-auto min-[900px]:[&_svg]:max-h-[392px]">{el}</div>
@@ -48,20 +45,20 @@ export const STAGES: Record<string, (p: StageProps) => ReactElement> = Object.fr
 );
 
 /** Video Editing — RAW → SELECT → CUT → MOTION → CAPTIONS → GRADE → EXPORT scrubber (Prompt 09 / Prompt 28). */
-STAGES["video-editing"] = ({ active, preview, auto }: StageProps) => (
-  <VideoEditingDemo active={active} preview={preview} auto={auto} />
+STAGES["video-editing"] = ({ active, preview }: StageProps) => (
+  <VideoEditingDemo active={active} preview={preview} />
 );
 /** Web Development — IDEA → STRUCTURE → INTERFACE → LIVE (Prompt 08 / Prompt 28). */
-STAGES["web-development"] = ({ active, preview, auto }: StageProps) => (
-  <WebDevDemo active={active} preview={preview} auto={auto} />
+STAGES["web-development"] = ({ active, preview }: StageProps) => (
+  <WebDevDemo active={active} preview={preview} />
 );
 /** AI Automation — a real MANUAL then AUTOMATED run (Prompt 06 / Prompt 28). */
-STAGES["ai-automation"] = ({ active, preview, auto }: StageProps) => (
-  <AutomationDemo active={active} preview={preview} auto={auto} />
+STAGES["ai-automation"] = ({ active, preview }: StageProps) => (
+  <AutomationDemo active={active} preview={preview} />
 );
 /** AI Chatbots — three suggested questions; auto-sends first question on view (Prompt 07 / Prompt 28). */
-STAGES["ai-chatbots"] = ({ active, preview, auto }: StageProps) => (
-  <AgentDemo active={active} preview={preview} auto={auto} />
+STAGES["ai-chatbots"] = ({ active, preview }: StageProps) => (
+  <AgentDemo active={active} preview={preview} />
 );
 
 /** Stages that bring their own controls: the frame hides its Watch / Try toggle. */
@@ -186,8 +183,6 @@ export function ServiceStage({
   const showToggle = !isPreview && !SELF_CONTROLLED.has(shown);
   const Stage = STAGES[shown];
   // First view of this tab while the section is on screen → demonstrate itself.
-  // A hover-preview never auto-plays: it is already a visitor-driven look.
-  const auto = active && !isPreview && !previewPlayed(shown);
   const hand = HANDOFF[shown];
   const sv = services.find((x) => x.slug === shown)!;
 
@@ -227,7 +222,7 @@ export function ServiceStage({
         className="relative flex flex-col justify-center min-[900px]:h-[var(--svc-stage-h,440px)] min-[900px]:overflow-hidden"
         style={{ minHeight: 320, transformOrigin: "50% 50%", willChange: "transform, opacity" }}
       >
-        <Stage key={shown} active={active} mode={isPreview ? "watch" : mode} preview={isPreview} auto={auto} />
+        <Stage key={shown} active={active} mode={isPreview ? "watch" : mode} preview={isPreview} />
       </div>
 
       {/* memory rail — services the visitor has opened stay lit */}
@@ -247,7 +242,7 @@ export function ServiceStage({
                     transition: "all 0.4s var(--e-out)",
                   }}
                 />
-                <span className="mono max-[899px]:hidden" style={{ color: current ? "var(--accent-deep)" : lit ? "var(--fg)" : "var(--faint)" }}>
+                <span className="mono max-[899px]:hidden" style={{ color: current ? "var(--accent-ink)" : lit ? "var(--fg)" : "var(--faint)" }}>
                   {s.short}
                 </span>
               </span>
@@ -259,8 +254,8 @@ export function ServiceStage({
         })}
         <span className="ml-auto flex items-center gap-[10px]">
           <span className="mono">{hand.inn}</span>
-          <span className="mono" style={{ color: "var(--accent-deep)" }}>→</span>
-          <span className="mono" style={{ color: "var(--accent-deep)" }}>{hand.out}</span>
+          <span className="mono" style={{ color: "var(--accent-ink)" }}>→</span>
+          <span className="mono" style={{ color: "var(--accent-ink)" }}>{hand.out}</span>
         </span>
       </div>
     </div>

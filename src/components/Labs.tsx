@@ -27,8 +27,8 @@ const pointLight = (a = 1, c = "200,241,79") =>
   `radial-gradient(circle, rgba(250,252,240,${a}) 0 16%, rgba(${c},${0.85 * a}) 34%, rgba(${c},${0.22 * a}) 58%, transparent 72%)`;
 const reduced = () => prefersReducedMotion();
 const mono = "mono";
-const dim = "rgba(244,242,237,0.5)";
-const faint = "rgba(244,242,237,0.32)";
+const dim = "rgba(244,242,237,0.68)";
+const faint = "rgba(244,242,237,0.6)";
 
 export function Labs() {
   return (
@@ -79,7 +79,7 @@ function LabCard({ tag, title, subtitle, children }: { tag: string; title: strin
         <span className="mono rounded-full border px-[8px] py-[3px] text-[9.5px]" style={{ borderColor: "rgba(244, 242, 237, 0.2)", color: "var(--accent)" }}>
           {tag}
         </span>
-        <span className="mono text-[10px]" style={{ color: "rgba(244, 242, 237, 0.45)" }}>
+        <span className="mono text-[10px]" style={{ color: "rgba(244, 242, 237, 0.62)" }}>
           {subtitle}
         </span>
       </div>
@@ -227,7 +227,7 @@ function LoadBalancerLab() {
       </div>
 
       <div className="rounded-[4px] border px-[8px] py-[6px]" style={{ borderColor: "rgba(244,242,237,0.08)", background: "#141416" }}>
-        <p className={`${mono} text-[9px] leading-[1.5]`} style={{ color: "rgba(244,242,237,.7)" }} aria-live="polite">
+        <p className={`${mono} min-w-0 flex-1 text-[9px] leading-[1.5]`} style={{ color: "rgba(244,242,237,.7)" }} aria-live="polite">
           <strong style={{ color: LIME }}>{s.active}/{WORKERS}</strong> workers active · queue: <strong style={{ color: q ? "#f4f2ed" : faint }}>{q}</strong>
           <span style={{ color: faint }}>
             {" "}· {traffic === 0 ? "idle" : saturated ? "at capacity — queue absorbing the spike" : q ? "scaling up…" : s.active ? "keeping pace" : "warming up"}
@@ -600,7 +600,7 @@ function RaceLab() {
         {track("MANUAL — YOU", s.manPos, manT, s.manDone, flashM, true)}
       </div>
       <div className="flex items-center justify-between gap-[8px]">
-        <p className={`${mono} text-[9px] leading-[1.5]`} style={{ color: "rgba(244,242,237,.7)" }} aria-live="polite">
+        <p className={`${mono} min-w-0 flex-1 text-[9px] leading-[1.5]`} style={{ color: "rgba(244,242,237,.7)" }} aria-live="polite">
           {phase === "ready" && "Press START. Automated runs itself — you click PROCESS at every checkpoint."}
           {phase === "running" && (s.waiting ? `Checkpoint ${waitingAt + 1}/${CPS} waiting on you…` : s.autoDone ? "Automated already finished. Keep clicking." : "Both running…")}
           {phase === "done" && (
@@ -807,10 +807,10 @@ function BuildFlowLab() {
       </div>
 
       <div className="flex items-center justify-between gap-[8px]">
-        <p className={`${mono} min-h-[28px] text-[9px] leading-[1.5]`} style={{ color: error ? FAULT : done ? LIME : "rgba(244,242,237,.6)" }} aria-live="polite">
+        <p className={`${mono} min-w-0 min-h-[28px] flex-1 text-[9px] leading-[1.5]`} style={{ color: error ? FAULT : done ? LIME : "rgba(244,242,237,.6)" }} aria-live="polite">
           {error ? `✕ ${error.msg}` : done ? `✓ Flow ran — ${blocks.length} step${blocks.length > 1 ? "s" : ""}, no one touched it.` : run ? "Running…" : `${blocks.length}/${MAX_BLOCKS} blocks · any order you like — RUN checks it.`}
         </p>
-        <div className="flex flex-none gap-[6px]">
+        <div className="flex flex-none items-center gap-[6px] max-[360px]:gap-[3px]">
           {blocks.length > 0 && (
             <button type="button" onClick={() => { setBlocks([]); reset(); }} className={`${mono} lab-glow-hover rounded-full border px-[8px] py-[4px] text-[8.5px]`} style={{ borderColor: "rgba(244,242,237,.2)", color: dim }}>
               clear

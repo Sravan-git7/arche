@@ -38,11 +38,24 @@ export default function App() {
 
   return (
     <>
+      <a
+        className="skip-link"
+        href="#main"
+        onClick={(e) => {
+          // A real hash jump would be read as a route by the hash router.
+          e.preventDefault();
+          const main = document.getElementById("main");
+          main?.focus({ preventScroll: true });
+          main?.scrollIntoView({ block: "start" });
+        }}
+      >
+        Skip to content
+      </a>
       <Intro />
       <Cursor />
       <RouteWipe />
       <Header />
-      <main key={route} className="relative w-full">
+      <main id="main" key={route} tabIndex={-1} className="relative w-full">
         {page}
       </main>
       <Footer />

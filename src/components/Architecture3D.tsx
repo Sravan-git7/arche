@@ -33,6 +33,8 @@ export function Architecture3D() {
   const sceneRef = useRef<HTMLDivElement>(null);
   const cards = useRef<(HTMLDivElement | null)[]>([]);
   const links = useRef<(SVGLineElement | null)[]>([]);
+  const signals = useRef<(SVGCircleElement | null)[]>([]);
+  const captions = useRef<(HTMLDivElement | null)[]>([]);
   const railFill = useRef<HTMLSpanElement>(null);
   const labelSwap = useRef<HTMLDivElement>(null);
   const labelTl = useRef<gsap.core.Timeline | null>(null);
@@ -41,6 +43,9 @@ export function Architecture3D() {
   const [shown, setShown] = useState(0);
   const shownRef = useRef(0);
   const [hover, setHover] = useState(false);
+  // Touch / keyboard visitors cannot hover: tapping (or Enter on the jump
+  // control + this plane) pins the role tooltip open instead.
+  const [tipPinned, setTipPinned] = useState(false);
   const [converged, setConverged] = useState(false);
   const [rail3d, setRail3d] = useState(
     () => typeof window !== "undefined" && window.matchMedia("(min-width: 900px)").matches && !prefersReducedMotion()
@@ -123,7 +128,37 @@ export function Architecture3D() {
         line.setAttribute("stroke-dashoffset", (len * (1 - prog)).toFixed(2));
         line.setAttribute("opacity", (on ? Math.min(a.opacity, b.opacity) * (0.4 + prog * 0.6) : 0).toFixed(3));
         line.setAttribute("stroke-width", prog >= 1 ? "2.2" : "1.4");
+
+        // A signal packet rides the head of the connection as it draws,
+        // so a link reads as *transmission*, not just a drawn line.
+        const packet = signals.current[i];
+        if (packet) {
+          const t = Math.max(0, Math.min(1, prog));
+          packet.setAttribute("cx", (a.x + (b.x - a.x) * t).toFixed(2));
+          packet.setAttribute("cy", (a.y + (b.y - a.y) * t).toFixed(2));
+          const travelling = on && t > 0.02 && t < 0.995;
+          packet.setAttribute("opacity", travelling ? Math.min(1, a.opacity * 1.4).toFixed(3) : "0");
+        }
       }
+
+      // Captions travel with their plane. Without them the rail reads as
+      // anonymous floating cards; the stage names make the sequence legible
+      // without requiring a hover (which touch devices cannot do).
+      pts.forEach((pt, i) => {
+        const cap = captions.current[i];
+        if (!cap) return;
+        const below = pt.y + (CARD.h * pt.scale) / 2 + 9;
+        cap.style.transform = `translate3d(${pt.x.toFixed(2)}px, ${below.toFixed(2)}px, 0) translate(-50%, 0)`;
+        // Only the focused stage and its immediate neighbours get a name:
+        // distant planes would otherwise leave labels floating over the
+        // active cluster. Everything retires at convergence.
+        const near = Math.abs(i - p * LAST) <= 1.15;
+        cap.style.opacity = (pt.opacity * (i === idx ? 1 : 0.5)).toFixed(3);
+        cap.style.visibility =
+          p < CONVERGE_AT && near && pt.opacity > 0.42 && pt.visible && below < box.h - 6
+            ? "visible"
+            : "hidden";
+      });
 
       if (railFill.current) railFill.current.style.transform = `scaleY(${p.toFixed(4)})`;
 
@@ -137,6 +172,7 @@ export function Architecture3D() {
         setConverged(conv);
         if (conv) {
           setHover(false);
+          setTipPinned(false);
           hoverRef.current = false;
         }
       }
@@ -190,6 +226,7 @@ export function Architecture3D() {
 
   /* ---- the active-stage label leaves before the next one arrives -------- */
   useEffect(() => {
+    setTipPinned(false);
     const el = labelSwap.current;
     if (!el || shownRef.current === active) return;
     if (prefersReducedMotion()) {
@@ -321,6 +358,20 @@ export function Architecture3D() {
                   filter="url(#rail-line-glow)"
                 />
               ))}
+              {STAGES.slice(1).map((s, i) => (
+                <circle
+                  key={`signal-${s.id}`}
+                  ref={(el) => {
+                    signals.current[i] = el;
+                  }}
+                  cx="0"
+                  cy="0"
+                  r="5"
+                  fill="var(--accent)"
+                  opacity="0"
+                  filter="url(#rail-line-glow)"
+                />
+              ))}
             </svg>
 
             {/* the five cluster planes — enhanced bloom & brightness */}
@@ -361,6 +412,9 @@ export function Architecture3D() {
                     setHover(false);
                     hoverRef.current = false;
                   }}
+                  onClick={() => {
+                    if (on && !converged) setTipPinned((v) => !v);
+                  }}
                   aria-hidden
                 >
                   {/* Subtle Expanding Pulse Ring on active cluster */}
@@ -378,7 +432,7 @@ export function Architecture3D() {
                     className="stage-glyph pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
                     style={{
                       width: 118,
-                      color: on ? "var(--accent-deep)" : "var(--faint)",
+                      color: on ? "var(--accent-ink)" : "var(--faint)",
                       transition: "color .4s var(--e-out), filter .25s var(--e-out)",
                     }}
                   >
@@ -390,7 +444,7 @@ export function Architecture3D() {
                     style={{
                       fontSize: 9,
                       letterSpacing: ".16em",
-                      color: on ? "var(--accent-deep)" : "var(--faint)",
+                      color: on ? "var(--accent-ink)" : "var(--faint)",
                       transition: "color .4s var(--e-out)",
                     }}
                   >
@@ -406,6 +460,22 @@ export function Architecture3D() {
               );
             })}
 
+            {/* Stage captions — the same DOM nodes are repositioned every
+                frame, so the five planes always read as a named sequence. */}
+            {STAGES.map((s, i) => (
+              <div
+                key={`caption-${s.id}`}
+                ref={(el) => {
+                  captions.current[i] = el;
+                }}
+                className="rail-stage-caption"
+                aria-hidden
+              >
+                <span className="rail-stage-caption-num">{s.num}</span>
+                <span className="rail-stage-caption-name">{s.title}</span>
+              </div>
+            ))}
+
             {/* ---------- HUD: Generous Padding & Spacing (Prompt 29) ---------- */}
 
             {/* Left HUD: The Camera Rail */}
@@ -416,8 +486,9 @@ export function Architecture3D() {
                 borderColor: "var(--line)",
                 background: "var(--bg)",
                 boxShadow: "0 18px 40px -24px rgba(12,12,13,0.5)",
-                opacity: converged ? 0.35 : 1,
-                transition: "opacity .4s var(--e-out)",
+                opacity: converged ? 0 : 1,
+                visibility: converged ? "hidden" : "visible",
+                transition: "opacity .4s var(--e-out), visibility .4s",
               }}
               aria-hidden
             >
@@ -454,7 +525,7 @@ export function Architecture3D() {
                           transition: "all .35s var(--e-out)",
                         }}
                       />
-                      <span className="mono" style={{ fontSize: 9.5, color: state === "now" ? "var(--accent-deep)" : "var(--faint)" }}>
+                      <span className="mono" style={{ fontSize: 9.5, color: state === "now" ? "var(--accent-ink)" : "var(--faint)" }}>
                         {s.num}
                       </span>
                       <span
@@ -481,11 +552,11 @@ export function Architecture3D() {
             <div
               className="pointer-events-none absolute top-[24px] min-[1200px]:top-[36px] right-[24px] min-[1200px]:right-[38px] z-[36] max-w-[48%]"
               style={{
-                opacity: hover && !converged ? 1 : 0,
-                transform: hover && !converged ? "none" : "translateY(-6px)",
+                opacity: (hover || tipPinned) && !converged ? 1 : 0,
+                transform: (hover || tipPinned) && !converged ? "none" : "translateY(-6px)",
                 transition: "opacity .25s linear, transform .35s var(--e-out)",
               }}
-              aria-hidden={!hover}
+              aria-hidden={!hover && !tipPinned}
             >
               <div
                 className="mono block rounded-[6px] px-[18px] py-[14px] shadow-lg"
@@ -507,7 +578,8 @@ export function Architecture3D() {
               style={{
                 width: "min(48%, 460px)",
                 opacity: converged ? 0 : 1,
-                transition: "opacity .4s var(--e-out)",
+                visibility: converged ? "hidden" : "visible",
+                transition: "opacity .4s var(--e-out), visibility .4s",
               }}
               aria-live="polite"
             >
@@ -521,7 +593,7 @@ export function Architecture3D() {
                 }}
               >
                 <div className="flex items-baseline justify-between gap-[12px] pb-[10px] border-b" style={{ borderColor: "var(--line)" }}>
-                  <span className="mono font-semibold" style={{ color: "var(--accent-deep)", fontSize: 12, letterSpacing: ".1em" }}>
+                  <span className="mono font-semibold" style={{ color: "var(--accent-ink)", fontSize: 12, letterSpacing: ".1em" }}>
                     {stage.num} // {stage.title}
                   </span>
                   <span className="mono" style={{ color: "var(--muted)", fontSize: 10, letterSpacing: ".08em" }}>
@@ -541,7 +613,7 @@ export function Architecture3D() {
               aria-hidden={!converged}
             >
               <div
-                className="flex flex-col items-center gap-[16px] rounded-[10px] border px-[36px] py-[28px]"
+                className="rail-converged"
                 style={{
                   borderColor: "var(--accent-deep)",
                   background: "var(--bg)",
@@ -550,13 +622,28 @@ export function Architecture3D() {
                   transition: "transform .6s var(--e-out)",
                 }}
               >
-                <span className="flex items-center gap-[12px]">
-                  {STAGES.map((s) => (
-                    <span key={s.id} className="signal-dot" style={{ width: 9, height: 9 }} />
-                  ))}
+                <span className="mono" style={{ color: "var(--accent-ink)", fontSize: 10.5, letterSpacing: ".16em" }}>
+                  SYSTEM CONVERGED — ONE CONTINUOUS PATH
                 </span>
-                <span className="mono font-semibold" style={{ color: "var(--accent-deep)", fontSize: 12, letterSpacing: ".16em" }}>
-                  SYSTEM CONVERGED → PROCESS
+                <div className="rail-chain" aria-hidden>
+                  {STAGES.map((s, i) => (
+                    <span key={s.id} className="rail-chain-step">
+                      <span className="rail-chain-node">
+                        <span className="stage-glyph">
+                          <StageGlyph id={s.id} className="block h-auto w-full" />
+                        </span>
+                        <span className="mono rail-chain-name">{s.title}</span>
+                      </span>
+                      {i < LAST && (
+                        <span className="rail-chain-link">
+                          <span className="rail-chain-packet" style={{ animationDelay: `${i * 0.34}s` }} />
+                        </span>
+                      )}
+                    </span>
+                  ))}
+                </div>
+                <span className="mono" style={{ color: "var(--muted)", fontSize: 9.5, letterSpacing: ".1em" }}>
+                  INPUT → INTELLIGENCE → SYSTEM → ACTION → OUTPUT
                 </span>
               </div>
             </div>
@@ -587,7 +674,7 @@ export function Architecture3D() {
               ))}
             </div>
             <span className="mono text-[11px]" style={{ color: "var(--muted)" }}>
-              {converged ? "Converged — the system becomes the process" : "Scroll to travel the rail · hover a cluster for its role"}
+              {converged ? "Converged — the system becomes the process" : "Scroll to travel the rail · hover or tap a cluster for its role"}
             </span>
           </div>
         </div>
@@ -618,14 +705,14 @@ export function Architecture3D() {
               >
                 <span className="absolute top-[24px] left-[-25px] block h-[10px] w-[10px] rounded-full" style={{ background: "var(--accent-deep)" }} />
                 <div className="flex flex-wrap items-baseline justify-between gap-[8px]">
-                  <span className="mono font-semibold" style={{ color: "var(--accent-deep)", fontSize: 11.5, letterSpacing: ".1em" }}>
+                  <span className="mono font-semibold" style={{ color: "var(--accent-ink)", fontSize: 11.5, letterSpacing: ".1em" }}>
                     {st.num} // {st.title}
                   </span>
                   <span className="mono" style={{ color: "var(--muted)", fontSize: 10 }}>
                     {st.subtitle}
                   </span>
                 </div>
-                <span className="stage-glyph block w-[112px]" style={{ color: "var(--accent-deep)" }}>
+                <span className="stage-glyph block w-[112px]" style={{ color: "var(--accent-ink)" }}>
                   <StageGlyph id={st.id} className="block h-auto w-full" />
                 </span>
                 <p className="body-s text-[var(--fg)]">{st.label}</p>

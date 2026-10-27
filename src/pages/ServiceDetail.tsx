@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { services, type Service } from "../data/site";
+import { services } from "../data/site";
 import { projectsByService } from "../data/projects";
 import { ProjectRow } from "../components/WorkIndex";
 import { SCENES } from "../components/Scenes";
@@ -125,7 +125,7 @@ export function ServiceDetail({ slug }: { slug: string }) {
                         border: `1px solid ${k === s.arc.length - 1 ? "var(--accent-deep)" : "var(--line)"}`,
                         borderRadius: 999,
                         background: k === s.arc.length - 1 ? "rgba(127, 174, 0, 0.08)" : "var(--bg)",
-                        color: k === s.arc.length - 1 ? "var(--accent-deep)" : "var(--muted)",
+                        color: k === s.arc.length - 1 ? "var(--accent-ink)" : "var(--muted)",
                         fontWeight: k === s.arc.length - 1 ? 600 : 400,
                       }}
                     >
@@ -246,7 +246,7 @@ export function ServiceDetail({ slug }: { slug: string }) {
                 data-r="meta"
                 data-r-delay={i * 70}
               >
-                <span className="mono text-[13px] font-bold text-[var(--accent-deep)] pt-[2px]">
+                <span className="mono text-[13px] font-bold text-[var(--accent-ink)] pt-[2px]">
                   0{i + 1}
                 </span>
                 <div>
@@ -267,7 +267,7 @@ export function ServiceDetail({ slug }: { slug: string }) {
         <div className="wrap grid gap-[clamp(36px,5vw,80px)] md:grid-cols-12">
           {/* Left: How it runs */}
           <div className="md:col-span-7">
-            <p className="mono mb-[14px]" style={{ color: "var(--accent-deep)" }}>
+            <p className="mono mb-[14px]" style={{ color: "var(--accent-ink)" }}>
               How it works
             </p>
             <h2 className="d2 mb-[32px] max-w-[16ch]" data-r="mask">
@@ -283,7 +283,7 @@ export function ServiceDetail({ slug }: { slug: string }) {
                   data-r="meta"
                   data-r-delay={i * 70}
                 >
-                  <span className="mono text-[13px] font-semibold" style={{ width: 32, color: "var(--accent-deep)" }}>
+                  <span className="mono text-[13px] font-semibold" style={{ width: 32, color: "var(--accent-ink)" }}>
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <div>
@@ -301,7 +301,7 @@ export function ServiceDetail({ slug }: { slug: string }) {
 
           {/* Right: What you receive / Deliverables */}
           <div className="md:col-span-5 md:border-l md:pl-[clamp(24px,3.5vw,50px)]" style={{ borderColor: "var(--line)" }}>
-            <p className="mono mb-[14px]" style={{ color: "var(--accent-deep)" }}>
+            <p className="mono mb-[14px]" style={{ color: "var(--accent-ink)" }}>
               What you receive
             </p>
             <h2 className="d3 mb-[28px]" data-r="mask">
@@ -317,14 +317,14 @@ export function ServiceDetail({ slug }: { slug: string }) {
                   data-r="meta"
                   data-r-delay={i * 60}
                 >
-                  <span className="mono text-[var(--accent-deep)] font-bold">✓</span>
+                  <span className="mono text-[var(--accent-ink)] font-bold">✓</span>
                   <p className="body-s text-[var(--fg)] leading-snug">{d}</p>
                 </li>
               ))}
             </ul>
 
             <div className="rounded-[6px] border p-[16px_20px]" style={{ borderColor: "var(--line)", background: "var(--card)" }}>
-              <span className="mono text-[10px] uppercase tracking-wider block mb-[4px]" style={{ color: "var(--accent-deep)" }}>
+              <span className="mono text-[10px] uppercase tracking-wider block mb-[4px]" style={{ color: "var(--accent-ink)" }}>
                 Timeline & SLA
               </span>
               <p className="mono text-[12px] text-[var(--fg)]">
@@ -395,14 +395,14 @@ export function ServiceDetail({ slug }: { slug: string }) {
               >
                 <div>
                   <span className="mono text-[11px] block text-[var(--muted)] mb-[8px]">{o.n}</span>
-                  <span className="d4 block transition-colors duration-300 group-hover:text-[var(--accent-deep)] font-medium">
+                  <span className="d4 block transition-colors duration-300 group-hover:text-[var(--accent-ink)] font-medium">
                     {o.title}
                   </span>
                   <span className="body-s text-[var(--muted)] block mt-[6px] leading-snug">
                     {o.tagline}
                   </span>
                 </div>
-                <span className="mono text-[11px] text-[var(--accent-deep)] group-hover:translate-x-1 transition-transform inline-flex items-center gap-[4px]">
+                <span className="mono text-[11px] text-[var(--accent-ink)] group-hover:translate-x-1 transition-transform inline-flex items-center gap-[4px]">
                   Explore {o.short} →
                 </span>
               </Link>

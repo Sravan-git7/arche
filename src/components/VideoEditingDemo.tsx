@@ -46,11 +46,9 @@ const SEGMENTS = [
 export function VideoEditingDemo({
   active = false,
   preview = false,
-  auto = false,
 }: {
   active?: boolean;
   preview?: boolean;
-  auto?: boolean;
 }) {
   const LAST = STAGES.length - 1;
   const [stageIndex, setStageIndex] = useState<number>(0);
@@ -193,10 +191,10 @@ export function VideoEditingDemo({
     >
       {/* Top Meta Header */}
       <div className="flex items-center justify-between border-b pb-[10px]" style={{ borderColor: "var(--line)" }}>
-        <div className="flex items-center gap-[8px]">
-          <span className="block h-[6px] w-[6px] rounded-full" style={{ background: "var(--accent-deep)" }} />
-          <span className="mono mono-fg">STAGE: {currentStage.label}</span>
-          <span className="mono text-[10px] opacity-60">· {currentStage.name}</span>
+        <div className="flex min-w-0 items-center gap-[8px]">
+          <span className="block h-[6px] w-[6px] flex-none rounded-full" style={{ background: "var(--accent-deep)" }} />
+          <span className="mono mono-fg whitespace-nowrap">STAGE: {currentStage.label}</span>
+          <span className="mono hidden truncate text-[10px] opacity-60 sm:inline">· {currentStage.name}</span>
         </div>
         <div className="flex items-center gap-[12px]">
           <span className="mono text-[10px] opacity-50">
@@ -257,7 +255,7 @@ export function VideoEditingDemo({
           }}
         >
           <div className="flex justify-between items-start font-mono text-[9px]">
-            <span style={{ color: "var(--accent-deep)" }}>TAKE 03 SELECTED</span>
+            <span style={{ color: "var(--accent-ink)" }}>TAKE 03 SELECTED</span>
             <span className="text-[#a1a1aa]">RATIO: KEEP 12%</span>
           </div>
           <div className="my-auto flex items-center justify-center gap-[6px]">
@@ -300,7 +298,7 @@ export function VideoEditingDemo({
         >
           <div className="flex justify-between items-start font-mono text-[9px] text-white">
             <span>GRAPHICS / ACCENT</span>
-            <span style={{ color: "var(--accent-deep)" }}>KINETIC PASS</span>
+            <span style={{ color: "var(--accent-ink)" }}>KINETIC PASS</span>
           </div>
           <div className="my-auto flex flex-col items-center">
             <div className="relative border border-dashed border-[#c8f14f] px-[16px] py-[8px] rounded">
@@ -324,7 +322,7 @@ export function VideoEditingDemo({
         >
           <div className="flex justify-between items-start font-mono text-[9px] text-[#a1a1aa]">
             <span>SUBTITLES: AUTO-SYNC</span>
-            <span style={{ color: "var(--accent-deep)" }}>ACCURACY 99.4%</span>
+            <span style={{ color: "var(--accent-ink)" }}>ACCURACY 99.4%</span>
           </div>
           <div className="my-auto text-center">
             <span className="inline-block rounded bg-black/85 px-[10px] py-[4px] font-sans text-[13px] font-medium tracking-tight text-white border border-white/10 shadow-lg">
@@ -387,9 +385,10 @@ export function VideoEditingDemo({
 
       {/* Timeline Structure (Segments) */}
       <div className="flex flex-col gap-[6px]">
-        <div className="flex justify-between items-center text-[10px] font-mono opacity-60">
-          <span>TIMELINE SEGMENTS (HOVER TO JUMP)</span>
-          <span>SELECT PASS</span>
+        <div className="flex items-center justify-between gap-[8px] text-[10px] font-mono opacity-60">
+          <span className="hidden sm:inline">TIMELINE SEGMENTS (HOVER TO JUMP)</span>
+          <span className="sm:hidden">SEGMENTS (TAP TO JUMP)</span>
+          <span className="flex-none whitespace-nowrap">SELECT PASS</span>
         </div>
         {/* Desktop non-drag hover jump + visual segment boxes */}
         <div className="flex w-full gap-[4px] h-[32px]">
@@ -421,7 +420,7 @@ export function VideoEditingDemo({
               >
                 <span
                   className="font-mono text-[8px] transition-colors"
-                  style={{ color: isHighlighted ? "var(--accent-deep)" : "var(--muted)" }}
+                  style={{ color: isHighlighted ? "var(--accent-ink)" : "var(--muted)" }}
                 >
                   {seg.label}
                 </span>
@@ -438,7 +437,7 @@ export function VideoEditingDemo({
       <div className="flex flex-col gap-[6px]">
         <div className="flex justify-between items-center text-[10px] font-mono opacity-60">
           <span>DRAG PLAYHEAD ACROSS WAVEFORM</span>
-          <span style={{ color: "var(--accent-deep)" }}>
+          <span style={{ color: "var(--accent-ink)" }}>
             STAGE: {currentStage.label}
           </span>
         </div>
@@ -512,7 +511,7 @@ export function VideoEditingDemo({
         className="flex items-center justify-between border-t pt-[8px] mt-[2px]"
         style={{ borderColor: "var(--line)" }}
       >
-        <div className="flex flex-wrap items-center gap-[6px]">
+        <div className="hide-scroll flex min-w-0 flex-1 items-center gap-[4px] overflow-x-auto whitespace-nowrap max-[420px]:text-[7.5px]">
           {STAGES.map((st, i) => {
             const isCurrent = i === stageIndex;
             const isPassed = i < stageIndex;
@@ -521,7 +520,7 @@ export function VideoEditingDemo({
                 key={st.id}
                 type="button"
                 onClick={() => jumpToStage(i)}
-                className="font-mono text-[8.5px] tracking-wider transition-colors"
+                className="flex-none font-mono text-[8.5px] tracking-wider transition-colors max-[420px]:text-[7.5px]"
                 style={{
                   color: isCurrent
                     ? "var(--accent-deep)"
@@ -537,7 +536,7 @@ export function VideoEditingDemo({
             );
           })}
         </div>
-        <span className="mono text-[9px] text-[var(--accent-deep)] hidden sm:inline">
+        <span className="mono text-[9px] text-[var(--accent-ink)] hidden sm:inline">
           {currentStage.desc}
         </span>
       </div>

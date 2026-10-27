@@ -211,7 +211,7 @@ export function AutomationCompare() {
         >
           {/* CONNECTED layer — the ground truth underneath, revealed on the left */}
           <div className="on-ink absolute inset-0 p-[clamp(16px,2vw,28px)]">
-            <p className="mono mb-[14px]" style={{ color: "var(--accent-deep)" }}>
+            <p className="mono mb-[14px]" style={{ color: "var(--accent-ink)" }}>
               Connected · one trigger
             </p>
             <div className="relative flex max-w-[680px] flex-wrap items-center gap-[8px]">
@@ -234,7 +234,7 @@ export function AutomationCompare() {
                       {a}
                     </span>
                     {i < AUTO.length - 1 && (
-                      <span className="mono" style={{ color: i + 1 < lit ? "var(--accent-deep)" : "var(--faint)", transition: "color .35s var(--e-out)" }}>
+                      <span className="mono" style={{ color: i + 1 < lit ? "var(--accent-ink)" : "var(--faint)", transition: "color .35s var(--e-out)" }}>
                         →
                       </span>
                     )}
@@ -351,7 +351,7 @@ export function AutomationCompare() {
                   <span className="mono" style={{ fontSize: 9.5, letterSpacing: ".1em" }}>
                     DRAG RIGHT TO ROUTE THE EVENT AUTOMATICALLY
                   </span>
-                  <span className="mono" style={{ fontSize: 10, color: "var(--accent-deep)" }}>
+                  <span className="mono" style={{ fontSize: 10, color: "var(--accent-ink)" }}>
                     →
                   </span>
                 </span>
@@ -390,7 +390,7 @@ function Metric({
       <span
         ref={vRef}
         className="ba-metric numeral text-[clamp(20px,2.2vw,30px)]"
-        style={{ color: hot ? "var(--accent-deep)" : "var(--fg)" }}
+        style={{ color: hot ? "var(--accent-ink)" : "var(--fg)" }}
       >
         {initial}
       </span>

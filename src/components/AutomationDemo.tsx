@@ -91,11 +91,9 @@ const fmt = (s: number) => `${s.toFixed(1)}s`;
 export function AutomationDemo({
   active = true,
   preview = false,
-  auto = false,
 }: {
   active?: boolean;
   preview?: boolean;
-  auto?: boolean;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const tl = useRef<gsap.core.Timeline | null>(null);
@@ -563,11 +561,11 @@ export function AutomationDemo({
 
       {/* status */}
       <div className="flex flex-wrap items-center justify-between gap-[8px] border-t pt-[10px]" style={{ borderColor: "var(--line)" }}>
-        <span className="mono" style={{ color: phase === "done" ? "var(--accent-deep)" : phase === "running" ? "var(--fg)" : "var(--faint)" }}>
+        <span className="mono" style={{ color: phase === "done" ? "var(--accent-ink)" : phase === "running" ? "var(--fg)" : "var(--faint)" }}>
           {phase === "running" ? (
             <>
               {chainOn && (
-                <span style={{ color: "var(--accent-deep)" }}>
+                <span style={{ color: "var(--accent-ink)" }}>
                   Auto-preview · {mode === "manual" ? "manual" : "automated"} run ·{" "}
                 </span>
               )}

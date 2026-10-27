@@ -43,6 +43,31 @@ const CARDS: Card[] = [
   { id: "crm", k: "CRM", a: "No owner", b: "Assigned", tag: "Assigned", x: 33, y: 86, rx: 140, dur: 3.1, delay: -2.0 },
 ];
 
+/** What each tool is for, what breaks when it stands alone, and what it
+ *  becomes inside a connected workflow. Conceptual — no client system. */
+const CARD_DETAIL: Record<CardId, { role: string; friction: string; resolved: string }> = {
+  web: {
+    role: "Entry point — captures intent.",
+    friction: "A form submission lands here and waits for someone to notice it.",
+    resolved: "The inquiry becomes a trigger, not a dead end.",
+  },
+  email: {
+    role: "Transport — carries the request.",
+    friction: "Someone reads, retypes and forwards the same details by hand.",
+    resolved: "The request is parsed once, then passed on with its context intact.",
+  },
+  sheet: {
+    role: "Record — holds the working data.",
+    friction: "A second copy of the truth, updated after the fact.",
+    resolved: "The row writes itself from the same event that fed the CRM.",
+  },
+  crm: {
+    role: "Ownership — decides what happens next.",
+    friction: "No owner, no follow-up, no way to see what was lost.",
+    resolved: "A qualified lead arrives with its history attached.",
+  },
+};
+
 // Website → Email, then the fan-out: Email → Sheet and Website → CRM
 const FAN = ["M58 24 H102", "M127 36 V74", "M33 36 V74"];
 const ROW = `M${CARDS[0].rx} ${ROW_Y} H${CARDS[3].rx}`;
@@ -142,10 +167,58 @@ function CardBody({ c, bridge }: { c: Card; bridge?: boolean }) {
   );
 }
 
+type InspectProps = { inspect: CardId | null; onInspect: (id: CardId | null) => void };
+
+/**
+ * Inspecting one tool does not interrupt the scroll choreography: it adds a
+ * quiet readout underneath the diagram. With nothing selected it states the
+ * target chain so the visitor always knows where the sequence is heading.
+ */
+function Inspector({ inspect, onInspect }: InspectProps) {
+  const c = inspect ? CARDS.find((x) => x.id === inspect) : null;
+  const d = inspect ? CARD_DETAIL[inspect] : null;
+  return (
+    <div className="pf-inspector" aria-live="polite">
+      {c && d ? (
+        <>
+          <div className="flex items-start justify-between gap-[12px]">
+            <span className="mono mono-a">{c.k} — {d.role}</span>
+            <button
+              type="button"
+              className="mono lnk flex-none"
+              onClick={() => onInspect(null)}
+              aria-label="Close tool inspection"
+            >
+              ✕ Close
+            </button>
+          </div>
+          <p className="body-s mt-[8px]">
+            <span style={{ color: "var(--faint)" }}>Alone: </span>{d.friction}{" "}
+            <span style={{ color: "var(--accent-ink)" }}>Connected: </span>{d.resolved}
+          </p>
+        </>
+      ) : (
+        <>
+          <span className="mono mono-a">Target state · conceptual model</span>
+          <p className="body-s mt-[8px]">
+            Website <span style={{ color: "var(--accent-ink)" }}>→</span> AI Agent{" "}
+            <span style={{ color: "var(--accent-ink)" }}>→</span> Qualified Lead{" "}
+            <span style={{ color: "var(--accent-ink)" }}>→</span> CRM
+          </p>
+          <span className="mono mt-[6px] block" style={{ color: "var(--faint)", fontSize: 9 }}>
+            Click or tap any tool to inspect it. Escape closes.
+          </span>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function ProblemSystem() {
   const [desktop, setDesktop] = useState(
     () => typeof window !== "undefined" && window.matchMedia("(min-width: 900px)").matches
   );
+  const [inspect, setInspect] = useState<CardId | null>(null);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 900px)");
@@ -154,13 +227,22 @@ export function ProblemSystem() {
     return () => mq.removeEventListener("change", on);
   }, []);
 
-  return desktop ? <ProblemPinned /> : <ProblemStacked />;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setInspect(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const props = { inspect, onInspect: setInspect };
+  return desktop ? <ProblemPinned {...props} /> : <ProblemStacked {...props} />;
 }
 
 /* ================================================================== */
 /* Desktop — pinned, scroll-linked                                      */
 /* ================================================================== */
-function ProblemPinned() {
+function ProblemPinned({ inspect, onInspect }: InspectProps) {
   const root = useRef<HTMLElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const status = useRef<HTMLSpanElement>(null);
@@ -315,8 +397,20 @@ function ProblemPinned() {
                   data-sync="0"
                   data-flip="0"
                   data-done="0"
-                  className="pf-card absolute flex w-[31%] flex-col rounded-[5px] border p-[clamp(9px,1vw,13px)]"
+                  className="pf-card pf-inspect absolute flex w-[31%] flex-col rounded-[5px] border p-[clamp(9px,1vw,13px)]"
                   style={{ left: `${(c.x / W) * 100}%`, top: `${(c.y / H) * 100}%`, transform: "translate(-50%,-50%)" }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Inspect the ${c.k} tool`}
+                  aria-pressed={inspect === c.id}
+                  data-cursor="EXPLORE"
+                  onClick={() => onInspect(inspect === c.id ? null : c.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onInspect(inspect === c.id ? null : c.id);
+                    }
+                  }}
                 >
                   <CardBody c={c} />
                 </div>
@@ -345,6 +439,7 @@ function ProblemPinned() {
                 aria-hidden
               />
             </div>
+            <Inspector inspect={inspect} onInspect={onInspect} />
           </div>
         </div>
       </div>
@@ -357,7 +452,7 @@ function ProblemPinned() {
 /* ================================================================== */
 const MOBILE_ORDER: CardId[] = ["web", "email", "sheet", "crm"];
 
-function ProblemStacked() {
+function ProblemStacked({ inspect, onInspect }: InspectProps) {
   const root = useRef<HTMLElement>(null);
 
   useLayoutEffect(() => {
@@ -404,13 +499,27 @@ function ProblemStacked() {
                     <span className="pfm-seg absolute inset-0" style={{ background: "var(--accent-deep)" }} />
                   </span>
                 )}
-                <div className="pf-card flex flex-col rounded-[5px] border p-[14px]">
+                <div
+                  className="pf-card pf-inspect flex flex-col rounded-[5px] border p-[14px]"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Inspect the ${c.k} tool`}
+                  aria-pressed={inspect === c.id}
+                  onClick={() => onInspect(inspect === c.id ? null : c.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onInspect(inspect === c.id ? null : c.id);
+                    }
+                  }}
+                >
                   <CardBody c={c} bridge={i === 0} />
                 </div>
               </div>
             );
           })}
         </div>
+        <Inspector inspect={inspect} onInspect={onInspect} />
       </div>
     </section>
   );

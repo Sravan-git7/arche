@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type AnchorHTMLAttributes, type MouseEvent } from "react";
 import { gsap, ScrollTrigger, prefersReducedMotion } from "./gsap";
 
 /**
@@ -75,6 +75,20 @@ export function RouteWipe() {
   );
 }
 
+type LinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> & {
+  to: string;
+  /** Contextual cursor label (rendered as data-cursor on the anchor). */
+  cursor?: string;
+  /** Fires once the press micro-reward has finished, just before navigation. */
+  onNavigate?: () => void;
+};
+
+/**
+ * Router link. Anchor attributes (onClick, aria-*, data-*, title, target…)
+ * are forwarded to the DOM node — callers rely on this to close menus and
+ * to tag primary CTAs with `data-magnetic`. A consumer's onClick runs first
+ * and may cancel navigation with `preventDefault()`.
+ */
 export function Link({
   to,
   children,
@@ -82,21 +96,18 @@ export function Link({
   style,
   cursor,
   onNavigate,
-}: {
-  to: string;
-  children: ReactNode;
-  className?: string;
-  style?: React.CSSProperties;
-  cursor?: string;
-  onNavigate?: () => void;
-}) {
-  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  onClick,
+  ...rest
+}: LinkProps) {
+  const handleClick = (e: MouseEvent<HTMLAnchorElement>) => {
+    onClick?.(e);
+    if (e.defaultPrevented) return;
     e.preventDefault();
     const target = e.currentTarget;
     const isBtn = target.classList.contains("btn") || target.dataset.magnetic !== undefined || (typeof children === "string" && children.toLowerCase().includes("start a project"));
 
     if (isBtn && !prefersReducedMotion()) {
-      // PROMPT 32 (Delight 4): ~150ms tactile scale-down-then-up press micro-reward
+      // ~150ms tactile scale-down-then-up press micro-reward
       gsap.to(target, {
         scale: 0.94,
         duration: 0.07,
@@ -117,6 +128,7 @@ export function Link({
 
   return (
     <a
+      {...rest}
       href={`#${to}`}
       className={className}
       style={style}
@@ -129,10 +141,18 @@ export function Link({
 }
 
 /** Per-page boot: title, scroll reset, deferred ScrollTrigger refresh. */
+let firstPage = true;
+
 export function usePage(title: string) {
   useEffect(() => {
     document.title = title;
     window.scrollTo(0, 0);
+    // After a route change the clicked link may have been unmounted, which
+    // drops focus back to <body>. Always hand focus to the new landmark on
+    // navigation (but not on the very first page load).
+    const main = document.getElementById("main");
+    if (main && !firstPage) main.focus({ preventScroll: true });
+    firstPage = false;
     const t = setTimeout(() => ScrollTrigger.refresh(), 120);
     return () => clearTimeout(t);
   }, [title]);

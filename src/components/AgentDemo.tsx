@@ -63,11 +63,9 @@ const LINE_GAP = 145;
 export function AgentDemo({
   active = true,
   preview = false,
-  auto = false,
 }: {
   active?: boolean;
   preview?: boolean;
-  auto?: boolean;
 }) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [used, setUsed] = useState<Set<Turn["id"]>>(() => new Set());
@@ -239,7 +237,7 @@ export function AgentDemo({
                       {item.flow.map((step, i) => (
                         <span key={step} className="agent-flow-part flex items-center gap-[5px]" style={{ animationDelay: `${i * 70}ms` }}>
                           <span className="block h-[5px] w-[5px] rounded-full" style={{ background: i === item.flow.length - 1 ? "var(--accent-deep)" : "var(--faint)" }} />
-                          <span className="mono whitespace-nowrap" style={{ color: i === item.flow.length - 1 ? "var(--accent-deep)" : "var(--fg)", fontSize: 8.5 }}>{step}</span>
+                          <span className="mono whitespace-nowrap" style={{ color: i === item.flow.length - 1 ? "var(--accent-ink)" : "var(--fg)", fontSize: 8.5 }}>{step}</span>
                           {i < item.flow.length - 1 && <span className="mono" aria-hidden style={{ color: "var(--faint)", fontSize: 8 }}>→</span>}
                         </span>
                       ))}

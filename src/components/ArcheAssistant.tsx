@@ -246,7 +246,7 @@ export function ArcheAssistant() {
                 ) : (
                   <div key={m.id} className="flex justify-start">
                     <div className="max-w-[90%]">
-                      <p className="mono mb-[6px]" style={{ color: "var(--accent-deep)" }}>
+                      <p className="mono mb-[6px]" style={{ color: "var(--accent-ink)" }}>
                         ● {m.label}
                       </p>
                       <div
@@ -366,7 +366,7 @@ function TriggerPanel({ trigger, runId, busy }: { trigger: VisualTrigger; runId:
           <span className={`block h-[7px] w-[7px] rounded-full ${busy ? "demo-pulse" : ""}`} style={{ background: "var(--accent-deep)" }} />
           <span className="mono mono-fg">System view</span>
         </div>
-        <span className="mono swap-fade" key={trigger} style={{ color: "var(--accent-deep)" }}>
+        <span className="mono swap-fade" key={trigger} style={{ color: "var(--accent-ink)" }}>
           {TRIGGER_NAMES[trigger]}
         </span>
       </div>
@@ -453,7 +453,7 @@ function MiniWeb() {
       {/* phase rail */}
       <div className="flex w-full max-w-[250px] items-center justify-between">
         {WEB_PHASES.map((p, i) => (
-          <span key={p} className="mono text-[7.5px]" style={{ color: i === ph ? "var(--accent-deep)" : i < ph ? "var(--muted)" : "var(--faint)", fontWeight: i === ph ? 700 : 400, transition: "color .3s" }}>
+          <span key={p} className="mono text-[7.5px]" style={{ color: i === ph ? "var(--accent-ink)" : i < ph ? "var(--muted)" : "var(--faint)", fontWeight: i === ph ? 700 : 400, transition: "color .3s" }}>
             {p}
           </span>
         ))}
@@ -541,11 +541,11 @@ function MiniAuto() {
         ✉ 1 event
       </span>
       <span className="sv-pop absolute grid h-[30px] w-[30px] place-items-center rounded-full border" style={{ left: "50%", top: "50%", translate: "-50% -50%", borderColor: "var(--accent-deep)", background: "var(--bg)", ...at(500) }}>
-        <span className="mono text-[8px] font-bold" style={{ color: "var(--accent-deep)" }}>AI</span>
+        <span className="mono text-[8px] font-bold" style={{ color: "var(--accent-ink)" }}>AI</span>
       </span>
       {outs.map((o, i) => (
         <span key={o.k} className="sv-pop mono absolute flex items-center gap-[5px] rounded-[4px] border px-[7px] py-[4px] text-[8px]" style={{ left: "84%", top: `${o.y}%`, translate: "-50% -50%", borderColor: "var(--accent-deep)", background: "var(--bg)", color: "var(--fg)", ...at(1150 + i * 150) }}>
-          <span style={{ color: "var(--accent-deep)" }}>✓</span>
+          <span style={{ color: "var(--accent-ink)" }}>✓</span>
           {o.k}
         </span>
       ))}
