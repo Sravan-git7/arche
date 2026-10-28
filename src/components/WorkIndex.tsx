@@ -141,6 +141,11 @@ export function ProjectRow({ p, i, isLast = false }: { p: Project; i: number; is
           onPointerMove={onPointerMove}
           onPointerLeave={onPointerLeave}
           onClick={toggleExpand}
+          onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setExpanded((value) => !value); } }}
+          role="button"
+          tabIndex={0}
+          aria-expanded={expanded}
+          aria-label={`${expanded ? "Close" : "Open"} ${p.name} details`}
           data-cursor={expanded ? "CLOSE" : "VIEW"}
         >
           <div style={{ aspectRatio: RATIO[p.ratio], borderRadius: 6, overflow: "hidden" }}>
@@ -192,6 +197,7 @@ export function ProjectRow({ p, i, isLast = false }: { p: Project; i: number; is
             <button
               type="button"
               onClick={toggleExpand}
+              aria-expanded={expanded}
               className="mono btn btn-ghost text-[10px]"
               data-cursor={expanded ? "CLOSE" : "VIEW"}
             >
@@ -223,6 +229,7 @@ export function ProjectRow({ p, i, isLast = false }: { p: Project; i: number; is
             <button
               type="button"
               onClick={toggleExpand}
+              aria-expanded={expanded}
               className="mono mono-fg inline-flex items-center gap-[8px] transition-colors duration-500 group-hover:text-[var(--accent-ink)]"
             >
               {expanded ? "Collapse details" : "Expand case view"}
@@ -261,13 +268,13 @@ export function ProjectRow({ p, i, isLast = false }: { p: Project; i: number; is
             <div>
               <p className="mono mb-[6px]" style={{ color: "var(--accent-ink)" }}>Architecture</p>
               <p className="body-s">
-                Designed to operate as a self-contained module within Arche's pipeline. Integrates directly into target business workflows.
+                An example of a self-contained module and how it could connect to a wider business workflow.
               </p>
             </div>
             <div>
               <p className="mono mb-[6px]" style={{ color: "var(--accent-ink)" }}>Honesty Verification</p>
               <p className="body-s">
-                Classified as <strong className="text-[var(--fg)]">{tag}</strong>. Self-initiated work: no client names, testimonials or invented results — only what was actually built.
+                Classified as <strong className="text-[var(--fg)]">{tag}</strong>. Self-initiated work or a concept — not a client case study, testimonial or claimed result.
               </p>
             </div>
             <div>

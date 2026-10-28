@@ -19,7 +19,7 @@ import { useMagnetic } from "./lib/interact";
  *   /services              services index
  *   /services/:slug        dedicated service pages
  *   /work                  portfolio index
- *   /contact               start-a-project flow (inquiry → reserve)
+ *   /contact               start-a-project inquiry
  *
  * Page transitions run through <RouteWipe/>; smooth scroll via Lenis;
  * reveal grammar is booted per page so ScrollTriggers rebuild cleanly.

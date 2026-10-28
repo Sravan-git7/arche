@@ -2,7 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactElement } from 
 import { services } from "../data/site";
 import { SCENES } from "./Scenes";
 import { TRY } from "./Demos";
-import { gsap, prefersReducedMotion } from "../lib/gsap";
+import { onMotionPreferenceChange, prefersReducedMotion } from "../lib/gsap";
+import { captureServiceFilm, playServiceFilm, type ServiceFilmCapture, type ServiceFilmControl } from "../lib/serviceMotion";
 import { AutomationDemo } from "./AutomationDemo";
 import { AgentDemo } from "./AgentDemo";
 import { WebDevDemo } from "./WebDevDemo";
@@ -16,14 +17,10 @@ import { VideoEditingDemo } from "./VideoEditingDemo";
  * Prompts 06–09 replace these registry entries with genuinely distinct
  * interaction models; the frame, transition and memory rail stay the same.
  *
- * Switching is a depth-swap, not a crossfade:
- *   out  → scale 0.96 + fade, ~200ms
- *   in   → from scale 1.04 + 0 opacity, ~300ms
- * Rapid switches collapse to the latest target; a switch back mid-flight
- * returns without remounting.
- *
- * PROMPT 24 — autoplay-first. Each stage owns its own short first-view
- * preview, keyed off `active`; the frame only decides when a stage is live.
+ * The selected demo mounts immediately. A short, inert snapshot of the
+ * outgoing interface carries its actual timeline, page, workflow or agent
+ * elements into the next composition. Interrupted films are reverted before
+ * measuring the next pair; the latest selected service always wins.
  */
 
 export type DemoMode = "watch" | "try";
@@ -111,73 +108,59 @@ export function ServiceStage({
   const target = previewSlug ?? slug;
   const [shown, setShown] = useState(target);
   const [mode, setMode] = useState<DemoMode>("watch");
+  const shell = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
   const shownRef = useRef(target);
-  const want = useRef(target);
-  const busy = useRef(false);
-  const mounted = useRef(false);
+  const pending = useRef<ServiceFilmCapture | null>(null);
+  const film = useRef<ServiceFilmControl | null>(null);
 
-  // fadeIn / swapOut live in refs so the tween callbacks always see fresh logic
-  const fadeIn = useRef<() => void>(() => {});
-  const swapOut = useRef<() => void>(() => {});
-
-  fadeIn.current = () => {
-    gsap.fromTo(
-      layer.current,
-      { scale: 1.04, opacity: 0 },
-      {
-        scale: 1,
-        opacity: 1,
-        duration: 0.3,
-        ease: "power3.out",
-        overwrite: true,
-        onComplete: () => {
-          busy.current = false;
-          swapOut.current(); // a newer target may have arrived meanwhile
-        },
-      }
-    );
+  const cancelFilm = () => {
+    pending.current?.dispose();
+    pending.current = null;
+    const current = film.current;
+    film.current = null;
+    current?.cancel();
   };
 
-  swapOut.current = () => {
-    if (busy.current || want.current === shownRef.current) return;
-    busy.current = true;
-    gsap.to(layer.current, {
-      scale: 0.96,
-      opacity: 0,
-      duration: 0.2,
-      ease: "power2.in",
-      overwrite: true,
-      onComplete: () => {
-        if (want.current === shownRef.current) {
-          // switched back mid-flight: no remount, just come back in
-          fadeIn.current();
-          return;
-        }
-        shownRef.current = want.current;
-        setShown(want.current);
-      },
-    });
-  };
-
-  useEffect(() => {
-    want.current = target;
-    if (prefersReducedMotion()) {
-      shownRef.current = target;
-      setShown(target);
-      return;
+  // Capture before React replaces the outgoing demo, then commit the latest
+  // target in the same layout pass. Off-screen and reduced-motion changes
+  // resolve immediately without a temporary snapshot.
+  useLayoutEffect(() => {
+    if (target === shownRef.current) return;
+    cancelFilm();
+    if (active && !prefersReducedMotion() && document.visibilityState === "visible" && shell.current && layer.current) {
+      pending.current = captureServiceFilm(shell.current, layer.current, shownRef.current, target);
     }
-    swapOut.current();
+    shownRef.current = target;
+    setShown(target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target]);
 
   useLayoutEffect(() => {
-    if (!mounted.current) {
-      mounted.current = true;
-      return;
+    const capture = pending.current;
+    pending.current = null;
+    if (!capture) return;
+    if (!layer.current || !active || prefersReducedMotion()) { capture.dispose(); return; }
+    let control: ServiceFilmControl | null = null;
+    try {
+      control = playServiceFilm(capture, layer.current, () => {
+        if (film.current === control) film.current = null;
+      });
+      film.current = control;
+    } catch {
+      // A failed visual effect must never strand the controls or content.
+      capture.dispose();
+      if (layer.current) layer.current.style.removeProperty("opacity");
     }
-    if (prefersReducedMotion()) return;
-    fadeIn.current();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shown]);
+
+  useEffect(() => {
+    if (!active) cancelFilm();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active]);
+  useEffect(() => onMotionPreferenceChange((reduced) => { if (reduced) cancelFilm(); }), []);
+  useEffect(() => () => cancelFilm(), []);
 
   const isPreview = previewSlug !== null && shown === previewSlug;
   const showToggle = !isPreview && !SELF_CONTROLLED.has(shown);
@@ -189,7 +172,10 @@ export function ServiceStage({
   return (
     <div
       id="services-stage"
+      role="tabpanel"
+      aria-labelledby={`svc-tab-${slug}`}
       data-service={slug}
+      data-rendered-service={shown}
       className="relative overflow-hidden"
       style={{ background: "var(--bg-2)", borderRadius: 4, minHeight: 380 }}
     >
@@ -208,9 +194,9 @@ export function ServiceStage({
         >
           Preview · {sv.short} — click to open
         </span>
-        <div style={{ opacity: showToggle ? 1 : 0, pointerEvents: showToggle ? "auto" : "none", transition: "opacity .25s var(--e-out)" }}>
+        {showToggle && <div style={{ pointerEvents: "auto" }}>
           <DemoToggle mode={mode} onChange={setMode} />
-        </div>
+        </div>}
       </div>
 
       {/* Fixed height on desktop: switching or previewing a tab must never
@@ -218,11 +204,18 @@ export function ServiceStage({
           pinned (Prompt 33) the module must fit the viewport on short
           screens, so the height reads --svc-stage-h (set on the section). */}
       <div
-        ref={layer}
-        className="relative flex flex-col justify-center min-[900px]:h-[var(--svc-stage-h,440px)] min-[900px]:overflow-hidden"
-        style={{ minHeight: 320, transformOrigin: "50% 50%", willChange: "transform, opacity" }}
+        ref={shell}
+        className="relative"
+        onPointerDownCapture={() => film.current?.finish()}
+        onFocusCapture={() => film.current?.finish()}
       >
-        <Stage key={shown} active={active} mode={isPreview ? "watch" : mode} preview={isPreview} />
+        <div
+          ref={layer}
+          className="relative flex flex-col justify-center min-[900px]:h-[var(--svc-stage-h,440px)] min-[900px]:overflow-hidden"
+          style={{ minHeight: 320, transformOrigin: "50% 50%" }}
+        >
+          <Stage key={shown} active={active} mode={isPreview ? "watch" : mode} preview={isPreview} />
+        </div>
       </div>
 
       {/* memory rail — services the visitor has opened stay lit */}
@@ -242,7 +235,7 @@ export function ServiceStage({
                     transition: "all 0.4s var(--e-out)",
                   }}
                 />
-                <span className="mono max-[899px]:hidden" style={{ color: current ? "var(--accent-ink)" : lit ? "var(--fg)" : "var(--faint)" }}>
+                <span className="mono max-[1199px]:hidden" style={{ color: current ? "var(--accent-ink)" : lit ? "var(--fg)" : "var(--faint)" }}>
                   {s.short}
                 </span>
               </span>

@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Lenis from "lenis";
-import { gsap, ScrollTrigger, prefersReducedMotion } from "./gsap";
+import { gsap, ScrollTrigger, onMotionPreferenceChange, prefersReducedMotion } from "./gsap";
 
 /**
  * The reference is a Framer site with "Smooth Scrolling" enabled — content
@@ -13,8 +13,10 @@ let instance: Lenis | null = null;
 export const getLenis = (): Lenis | null => instance;
 
 export function useLenis() {
+  const [reduced, setReduced] = useState(prefersReducedMotion);
+  useEffect(() => onMotionPreferenceChange(setReduced), []);
   useEffect(() => {
-    if (prefersReducedMotion()) return;
+    if (reduced) return;
 
     const lenis = new Lenis({
       duration: 1.05,
@@ -47,5 +49,5 @@ export function useLenis() {
       lenis.destroy();
       if (instance === lenis) instance = null;
     };
-  }, []);
+  }, [reduced]);
 }

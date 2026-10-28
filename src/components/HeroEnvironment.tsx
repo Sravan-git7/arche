@@ -1,5 +1,5 @@
-import { useLayoutEffect, useRef } from "react";
-import { gsap, prefersReducedMotion } from "../lib/gsap";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { gsap, onMotionPreferenceChange, prefersReducedMotion } from "../lib/gsap";
 import { hasFinePointer } from "../lib/interact";
 import { whenIntroDone } from "./Intro";
 
@@ -29,6 +29,8 @@ const SIGNAL_PLATE = 2;
 
 export function HeroEnvironment() {
   const root = useRef<HTMLDivElement>(null);
+  const [reduced, setReduced] = useState(prefersReducedMotion);
+  useEffect(() => onMotionPreferenceChange(setReduced), []);
 
   useLayoutEffect(() => {
     const el = root.current;
@@ -42,11 +44,19 @@ export function HeroEnvironment() {
     // Architectural angle is owned by GSAP so it composes with z/x tweens.
     gsap.set(plates, { rotationX: 58, rotationZ: -34, transformOrigin: "50% 50%" });
 
-    const reduce = prefersReducedMotion();
     const fine = hasFinePointer();
-    if (reduce) return;
+    if (reduced) return;
 
     let cleanupPointer = () => {};
+    let visible = true;
+    let introStarted = false;
+    let entrance: gsap.core.Timeline | null = null;
+    const observer = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      if (!introStarted || !entrance) return;
+      if (visible) entrance.resume(); else entrance.pause();
+    });
+    observer.observe(el);
 
     const ctx = gsap.context(() => {
       // Scroll exit — the camera pulls back through the planes.
@@ -70,7 +80,7 @@ export function HeroEnvironment() {
       gsap.set(plates, { z: -320, x: 36, opacity: 0 });
       gsap.set(signal, { opacity: 0, scale: 0.4 });
 
-      const entrance = gsap.timeline({ paused: true });
+      entrance = gsap.timeline({ paused: true });
       entrance
         .to(plates, { z: 0, x: 0, opacity: 1, duration: 1.1, ease: "expo.out", stagger: 0.12 })
         .to(signal, { opacity: 1, scale: 1, duration: 0.6, ease: "back.out(2)" }, "-=0.45")
@@ -80,6 +90,7 @@ export function HeroEnvironment() {
       const xs = pars.map((p) => gsap.quickTo(p, "x", { duration: 0.55, ease: "back.out(1.25)" }));
       const ys = pars.map((p) => gsap.quickTo(p, "y", { duration: 0.55, ease: "back.out(1.25)" }));
       const onMove = (e: PointerEvent) => {
+        if (!visible) return;
         const nx = (e.clientX / window.innerWidth - 0.5) * 2;
         const ny = (e.clientY / window.innerHeight - 0.5) * 2;
         PLATES.forEach((p, i) => {
@@ -90,15 +101,16 @@ export function HeroEnvironment() {
       window.addEventListener("pointermove", onMove, { passive: true });
       cleanupPointer = () => window.removeEventListener("pointermove", onMove);
 
-      const cancel = whenIntroDone(() => entrance.play());
+      const cancel = whenIntroDone(() => { introStarted = true; if (visible) entrance?.play(); });
       return () => cancel();
     }, el);
 
     return () => {
+      observer.disconnect();
       cleanupPointer();
       ctx.revert();
     };
-  }, []);
+  }, [reduced]);
 
   const sp = PLATES[SIGNAL_PLATE];
 

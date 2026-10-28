@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { siteContent } from "../data/site";
-import { gsap, ScrollTrigger, prefersReducedMotion } from "../lib/gsap";
-import { emitThread } from "../lib/threadBus";
+import { gsap, ScrollTrigger, onMotionPreferenceChange, prefersReducedMotion } from "../lib/gsap";
 
 /**
  * PROBLEM — one of the site's two pinned sequences.
@@ -37,10 +36,10 @@ const H = 110;
 const ROW_Y = 58;
 
 const CARDS: Card[] = [
-  { id: "web", k: "Website", a: "New inquiry", tag: "Captured", x: 33, y: 24, rx: 20, dur: 1.7, delay: -0.3 },
-  { id: "email", k: "Email", a: "Unread · 12m", b: "Read", tag: "Sent", x: 127, y: 24, rx: 60, dur: 2.6, delay: -1.1 },
-  { id: "sheet", k: "Sheet", a: "Row pending", tag: "Logged", x: 127, y: 86, rx: 100, dur: 1.25, delay: -0.6 },
-  { id: "crm", k: "CRM", a: "No owner", b: "Assigned", tag: "Assigned", x: 33, y: 86, rx: 140, dur: 3.1, delay: -2.0 },
+  { id: "web", k: "Website", a: "New inquiry", tag: "Inquiry", x: 33, y: 24, rx: 20, dur: 1.7, delay: -0.3 },
+  { id: "email", k: "Email", a: "Unread · 12m", b: "Read", tag: "Inbox", x: 127, y: 24, rx: 60, dur: 2.6, delay: -1.1 },
+  { id: "sheet", k: "Spreadsheet", a: "Row pending", b: "Lead logged", tag: "Manual entry", x: 127, y: 86, rx: 100, dur: 1.25, delay: -0.6 },
+  { id: "crm", k: "CRM", a: "No owner", b: "Assigned", tag: "Pipeline", x: 33, y: 86, rx: 140, dur: 3.1, delay: -2.0 },
 ];
 
 /** What each tool is for, what breaks when it stands alone, and what it
@@ -163,11 +162,13 @@ function CardBody({ c, bridge }: { c: Card; bridge?: boolean }) {
       <span className="pf-tag mono mt-[6px] block" style={{ fontSize: 9 }}>
         {c.tag}
       </span>
+      <span className="pf-card-mark" data-kind={c.id} aria-hidden="true"><i /><i /><i /></span>
     </>
   );
 }
 
 type InspectProps = { inspect: CardId | null; onInspect: (id: CardId | null) => void };
+type ProblemProps = InspectProps & { reduced: boolean };
 
 /**
  * Inspecting one tool does not interrupt the scroll choreography: it adds a
@@ -216,12 +217,14 @@ function Inspector({ inspect, onInspect }: InspectProps) {
 
 export function ProblemSystem() {
   const [desktop, setDesktop] = useState(
-    () => typeof window !== "undefined" && window.matchMedia("(min-width: 900px)").matches
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 900px) and (min-height: 760px)").matches
   );
   const [inspect, setInspect] = useState<CardId | null>(null);
+  const [reduced, setReduced] = useState(prefersReducedMotion);
+  useEffect(() => onMotionPreferenceChange(setReduced), []);
 
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 900px)");
+    const mq = window.matchMedia("(min-width: 900px) and (min-height: 760px)");
     const on = () => setDesktop(mq.matches);
     mq.addEventListener("change", on);
     return () => mq.removeEventListener("change", on);
@@ -235,14 +238,14 @@ export function ProblemSystem() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const props = { inspect, onInspect: setInspect };
+  const props = { inspect, onInspect: setInspect, reduced };
   return desktop ? <ProblemPinned {...props} /> : <ProblemStacked {...props} />;
 }
 
 /* ================================================================== */
 /* Desktop — pinned, scroll-linked                                      */
 /* ================================================================== */
-function ProblemPinned({ inspect, onInspect }: InspectProps) {
+function ProblemPinned({ inspect, onInspect, reduced }: ProblemProps) {
   const root = useRef<HTMLElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const status = useRef<HTMLSpanElement>(null);
@@ -257,6 +260,7 @@ function ProblemPinned({ inspect, onInspect }: InspectProps) {
     const slots = Array.from(st.querySelectorAll<HTMLElement>("[data-thread-slot]"));
     const fan = Array.from(st.querySelectorAll<SVGPathElement>(".pf-fan"));
     const fanGroup = st.querySelector<SVGGElement>(".pf-fan-g")!;
+    const packets = Array.from(st.querySelectorAll<SVGCircleElement>(".pf-packet"));
     const row = st.querySelector<SVGPathElement>(".pf-row")!;
     const signal = st.querySelector<HTMLElement>(".pf-signal")!;
     const webDot = cards[0].querySelector<HTMLElement>(".pf-dot")!;
@@ -289,6 +293,14 @@ function ProblemPinned({ inspect, onInspect }: InspectProps) {
       fan[0].style.strokeDashoffset = String(1 - drawEase(seg(p, T.lineA)));
       fan[1].style.strokeDashoffset = String(1 - drawEase(seg(p, T.fan)));
       fan[2].style.strokeDashoffset = String(1 - drawEase(seg(p, T.fan)));
+      // The request travels along the actual paths, not between arbitrary nodes.
+      [T.lineA, T.fan, T.fan].forEach((range, i) => {
+        const progress = drawEase(seg(p, range));
+        const point = fan[i].getPointAtLength(fan[i].getTotalLength() * progress);
+        packets[i].setAttribute("cx", String(point.x));
+        packets[i].setAttribute("cy", String(point.y));
+        packets[i].setAttribute("opacity", progress > 0.02 && progress < 0.98 ? "1" : "0");
+      });
 
       // state flips
       const [web, email, sheet, crm] = cards;
@@ -297,6 +309,7 @@ function ProblemPinned({ inspect, onInspect }: InspectProps) {
       setFlag(email, "flip", p >= T.emailRead);
       setFlag(email, "done", p >= T.emailRead);
       setFlag(sheet, "done", p >= T.sheetDone);
+      setFlag(sheet, "flip", p >= T.sheetDone);
       setFlag(crm, "flip", p >= T.crmOwned);
       setFlag(crm, "done", p >= T.crmOwned);
       [email, sheet, crm].forEach((c) => setFlag(c, "sync", p >= T.allSync));
@@ -312,11 +325,13 @@ function ProblemPinned({ inspect, onInspect }: InspectProps) {
         cards[i].style.transform = `translate(-50%,-50%) translate(${dx}px,${dy}px) scale(${1 - 0.6 * m})`;
         cards[i].style.opacity = String(1 - cardFade);
         const slot = slots[i];
-        if (slot) slot.style.transform = `translate(${dx}px,${dy}px)`;
+        if (slot) {
+          slot.style.transform = `translate(${dx}px,${dy}px)`;
+          slot.style.opacity = String(seg(p, [0.88, 0.96]));
+        }
       });
       fanGroup.style.opacity = String(1 - seg(p, [T.morph[0], T.morph[0] + 0.07]));
       row.style.strokeDashoffset = String(1 - drawEase(seg(p, T.row)));
-      emitThread();
 
       // status line
       const conn = p >= T.sheetDone ? 3 : p >= T.lineA[1] ? 1 : 0;
@@ -332,7 +347,7 @@ function ProblemPinned({ inspect, onInspect }: InspectProps) {
       }
     };
 
-    if (prefersReducedMotion()) {
+    if (reduced) {
       measure();
       render(T.crmOwned + 0.01); // resolved state, no pin, no morph
       return;
@@ -364,7 +379,7 @@ function ProblemPinned({ inspect, onInspect }: InspectProps) {
       cancelAnimationFrame(raf);
       ctx.revert();
     };
-  }, []);
+  }, [reduced]);
 
   return (
     <section ref={root} id="problem" data-bridge-root className="relative flex h-[100svh] w-full items-center pt-[72px]">
@@ -386,6 +401,7 @@ function ProblemPinned({ inspect, onInspect }: InspectProps) {
                   {FAN.map((d, i) => (
                     <path key={i} className="pf-fan" d={d} pathLength={1} strokeDasharray="1" style={{ strokeDashoffset: 1 }} stroke="var(--accent-deep)" strokeWidth=".5" fill="none" strokeLinecap="round" />
                   ))}
+                  {FAN.map((_, i) => <circle key={`packet-${i}`} className="pf-packet" r="1.1" fill="var(--accent-deep)" opacity="0" />)}
                 </g>
                 <path id="problem-diagram-line" className="pf-row" d={ROW} pathLength={1} strokeDasharray="1" style={{ strokeDashoffset: 1 }} stroke="var(--accent-deep)" strokeWidth=".45" fill="none" />
               </svg>
@@ -416,17 +432,14 @@ function ProblemPinned({ inspect, onInspect }: InspectProps) {
                 </div>
               ))}
 
-              {/* Anchors only — the shared thread nodes are rendered once by
-                  <SystemThread/> and travel from here into the Services tabs. */}
+              {/* The resolved workflow becomes the same dot-and-rail language
+                  used by the following service navigation. */}
               <div id="problem-diagram" aria-hidden>
-                {CARDS.map((c) => (
-                  <span
-                    key={c.id}
-                    data-thread-slot="problem"
-                    data-cmp={c.k}
-                    className="pointer-events-none absolute block"
-                    style={{ left: `${(c.x / W) * 100}%`, top: `${(c.y / H) * 100}%`, width: 0, height: 0 }}
-                  />
+                {CARDS.map((c, i) => (
+                  <span key={c.id} data-thread-slot="problem" className="pf-compact-anchor"
+                    style={{ left: `${(c.x / W) * 100}%`, top: `${(c.y / H) * 100}%`, opacity: 0 }}>
+                    <span className="pf-compact-node"><i />{["WEBSITE", "AI AGENT", "QUALIFIED", "CRM"][i]}</span>
+                  </span>
                 ))}
               </div>
 
@@ -452,7 +465,7 @@ function ProblemPinned({ inspect, onInspect }: InspectProps) {
 /* ================================================================== */
 const MOBILE_ORDER: CardId[] = ["web", "email", "sheet", "crm"];
 
-function ProblemStacked({ inspect, onInspect }: InspectProps) {
+function ProblemStacked({ inspect, onInspect, reduced }: ProblemProps) {
   const root = useRef<HTMLElement>(null);
 
   useLayoutEffect(() => {
@@ -465,10 +478,11 @@ function ProblemStacked({ inspect, onInspect }: InspectProps) {
       setFlag(el, "flip", on);
     };
 
-    if (prefersReducedMotion()) {
+    if (reduced) {
       items.forEach((el) => resolve(el, true));
       return;
     }
+    items.forEach((el) => resolve(el, false));
 
     const ctx = gsap.context(() => {
       items.forEach((el, i) => {
@@ -483,7 +497,7 @@ function ProblemStacked({ inspect, onInspect }: InspectProps) {
       });
     }, sec);
     return () => ctx.revert();
-  }, []);
+  }, [reduced]);
 
   return (
     <section ref={root} id="problem" className="relative w-full py-[clamp(56px,12vw,90px)]">

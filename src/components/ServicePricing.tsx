@@ -56,10 +56,11 @@ export function ServicePricing({
             </h2>
           </div>
 
-          <div className="flex items-center gap-[10px]">
+          <div className="flex flex-col items-start gap-[6px] md:items-end">
             <span className="mono text-[11px] text-[var(--accent-ink)] font-medium">
               ● SCOPE-BASED PRICING
             </span>
+            <span className="mono text-[9px]">Confirm figures and terms in your proposal</span>
           </div>
         </div>
 

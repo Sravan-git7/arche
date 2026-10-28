@@ -10,7 +10,6 @@ import { Architecture3D } from "../components/Architecture3D";
 import { Labs } from "../components/Labs";
 import { ProgressRail } from "../components/ProgressRail";
 import { BridgeDot } from "../components/BridgeDot";
-import { SystemThread } from "../components/SystemThread";
 import { Link, usePage } from "../lib/router";
 import { useReveal, useParallax } from "../lib/reveal";
 import { resetPreviews } from "../lib/autoplay";
@@ -97,7 +96,6 @@ export function Home() {
       </div>
       <ProgressRail />
       <BridgeDot />
-      <SystemThread />
     </>
   );
 }

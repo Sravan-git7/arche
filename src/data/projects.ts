@@ -59,7 +59,7 @@ export const projects: Project[] = [
     year: "2026",
     scope: ["Design", "Build", "Motion"],
     summary:
-      "This website — a data-driven, motion-heavy single-bundle build with route transitions, a reveal grammar and a payment-ready inquiry flow.",
+      "This website — a data-driven, motion-heavy single-bundle build with route transitions, a reveal grammar and a guided inquiry flow with a direct-email fallback.",
     img: media["w-01"],
     ratio: "wide",
   },
@@ -73,7 +73,7 @@ export const projects: Project[] = [
     year: "2025",
     scope: ["Landing", "Copy structure", "Speed"],
     summary:
-      "A reusable landing-page system: one narrative spine, one conversion path, sub-second load — restyled per engagement.",
+      "A reusable landing-page system: one narrative spine, one conversion path and a reusable interface structure — restyled per engagement.",
     img: media["w-03"],
     ratio: "square",
   },

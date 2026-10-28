@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { services, siteContent } from "../data/site";
 import { ServiceStage } from "./SystemStage";
 import { Link } from "../lib/router";
-import { gsap, ScrollTrigger, prefersReducedMotion } from "../lib/gsap";
+import { gsap, ScrollTrigger, onMotionPreferenceChange, prefersReducedMotion } from "../lib/gsap";
 import { emitThread } from "../lib/threadBus";
 import { hasFinePointer } from "../lib/interact";
 import { getLenis } from "../lib/useLenis";
@@ -21,7 +21,7 @@ import { DONE_BEAT_MS, IDLE_ADVANCE_MS, holdFor, onPreviewDone, previewPlayed } 
  * module pins for one scroll "unit" per service — roughly four viewport
  * heights in total — and scroll progress maps 1:1 to the fixed order
  * Video Editing → Web Development → AI Chatbots → AI Automation. Crossing a
- * 25% threshold commits that tab (the existing scale/fade depth-swap) and
+ * 25% threshold commits that tab (and its service-specific handoff) and
  * re-triggers its autoplay from the top; the tab bar + progress line stay
  * visible and follow the scroll position. Clicking a tab jumps the scroll
  * to that service's range, so manual and scroll control stay in sync.
@@ -41,7 +41,7 @@ const HOVER_MS = 400;
 const N = services.length;
 
 /** Pin length: one "unit" (~one viewport) per service — 4x a normal section. */
-const pinDistance = () => Math.round(window.innerHeight * N);
+const pinDistance = () => Math.round(window.innerHeight * N * 0.7);
 
 /** Which service owns a given pin progress (fixed order, 25% units). */
 const indexAt = (p: number) => Math.max(0, Math.min(N - 1, Math.floor(p * N + 1e-6)));
@@ -55,6 +55,7 @@ export function Chapters() {
   const firstIndex = useRef(true);
 
   const [index, setIndex] = useState(0);
+  const [reduced, setReduced] = useState(prefersReducedMotion);
   const [preview, setPreview] = useState<number | null>(null);
   const [inView, setInView] = useState(false);
   const [touring, setTouring] = useState(false);
@@ -62,7 +63,7 @@ export function Chapters() {
 
   /* ---- pinned scroll state (Prompt 33) — desktop only ---- */
   const [pinned, setPinned] = useState(
-    () => typeof window !== "undefined" && window.matchMedia("(min-width: 900px)").matches && !prefersReducedMotion()
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 900px) and (min-height: 760px)").matches && !prefersReducedMotion()
   );
   const [pinOn, setPinOn] = useState(false); // inside the pinned range right now
   const pinSt = useRef<ScrollTrigger | null>(null);
@@ -74,11 +75,14 @@ export function Chapters() {
   pinnedRef.current = pinned;
 
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 900px)");
+    const mq = window.matchMedia("(min-width: 900px) and (min-height: 760px)");
     const sync = () => setPinned(mq.matches && !prefersReducedMotion());
     mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
+    const offMotion = onMotionPreferenceChange(sync);
+    return () => { mq.removeEventListener("change", sync); offMotion(); };
   }, []);
+
+  useEffect(() => onMotionPreferenceChange(setReduced), []);
 
   /* ---- idle tour state (Prompt 24, non-pinned path) ---- */
   const touched = useRef(false); // visitor took control — permanently
@@ -183,7 +187,7 @@ export function Chapters() {
    */
   useEffect(() => {
     if (pinned) return;
-    if (!inView || touched.current || prefersReducedMotion()) return;
+    if (!inView || touched.current || reduced) return;
     if (autoSteps.current >= services.length - 1) {
       setTouring(false);
       return;
@@ -208,7 +212,7 @@ export function Chapters() {
       setTouring(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inView, index, pinned]);
+  }, [inView, index, pinned, reduced]);
 
   /*
    * PROMPT 20 — nav hover-preview handoff. A nav thumbnail click either
@@ -263,7 +267,7 @@ export function Chapters() {
    * One scroll "unit" per service — pinDistance() ≈ 4 viewport heights,
    * i.e. 4x a normal section's height. Progress maps to the fixed order
    * Video → Web → Chatbots → Automation; each 25% crossing commits that
-   * tab (existing depth-swap transition) and the newly-shown demo mounts
+   * tab (with its directional transformation) and the newly-shown demo mounts
    * fresh with active=true, so its autoplay restarts from the top.
    * Scrolling up applies the same mapping in reverse, and the pin simply
    * releases at both ends into normal flow.
@@ -294,9 +298,13 @@ export function Chapters() {
         pin: true,
         anticipatePin: 1,
         invalidateOnRefresh: true,
-        onRefresh: () => fitStage(),
+        onRefresh: (self) => {
+          fitStage();
+          sec.style.setProperty("--svc-scroll-progress", String(self.progress));
+        },
         onToggle: (self) => setPinOn(self.isActive),
         onUpdate: (self) => {
+          sec.style.setProperty("--svc-scroll-progress", String(self.progress));
           // A tab-click jump is in flight: the scroll is programmatic, so
           // don't re-derive the tab from it (no fight with Lenis, no
           // flicker through intermediate ranges). When the lock lapses the
@@ -326,33 +334,33 @@ export function Chapters() {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", onResize);
       ctx.revert();
+      sec.style.removeProperty("--svc-scroll-progress");
       pinSt.current = null;
       setPinOn(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pinned]);
 
-  // one-time clip-path reveal, opening from the centre
+  // The four resolved nodes in Problem become the four service-rail dots.
+  // Only the decorative rail moves: controls and copy are never clipped or
+  // made unavailable while the section enters the viewport.
   useLayoutEffect(() => {
     const m = moduleRef.current;
-    if (!m || prefersReducedMotion()) return;
+    if (!m || reduced) return;
+    const trace = m.querySelector<HTMLElement>(".svc-entry-trace");
+    const dots = m.querySelectorAll<HTMLElement>(".svc-tab-dot");
+    if (!trace || !dots.length) return;
+    const mobile = window.matchMedia("(max-width: 899px), (pointer: coarse)").matches;
+    const speed = mobile ? 0.7 : 1;
     const ctx = gsap.context(() => {
-      gsap.set(m, { clipPath: "inset(50% 50% 50% 50% round 6px)" });
-      ScrollTrigger.create({
-        trigger: root.current,
-        start: "top 88%",
-        once: true,
-        onEnter: () =>
-          gsap.to(m, {
-            clipPath: "inset(0% 0% 0% 0% round 0px)",
-            duration: 1,
-            ease: "expo.inOut",
-            onComplete: () => gsap.set(m, { clearProps: "clipPath" }),
-          }),
-      });
+      const arrival = gsap.timeline({ paused: true })
+        .fromTo(trace, { scaleX: 0, opacity: .85 }, { scaleX: 1, opacity: .85, duration: .5 * speed, ease: "power2.inOut", immediateRender: false }, 0)
+        .fromTo(dots, { scale: .45 }, { scale: 1, duration: .3 * speed, stagger: .055 * speed, ease: "back.out(1.6)", immediateRender: false }, .08 * speed)
+        .to(trace, { opacity: 0, duration: .18 * speed, ease: "power2.out" }, .46 * speed);
+      ScrollTrigger.create({ trigger: root.current, start: "top 82%", once: true, onEnter: () => arrival.play() });
     }, root);
     return () => ctx.revert();
-  }, []);
+  }, [reduced]);
 
   // left column follows the committed tab
   useEffect(() => {
@@ -365,15 +373,16 @@ export function Chapters() {
     const st = strip.current;
     const tab = st?.querySelector<HTMLElement>(`[data-i="${index}"]`);
     if (st && tab && st.scrollWidth > st.clientWidth) {
-      st.scrollTo({ left: tab.offsetLeft - (st.clientWidth - tab.offsetWidth) / 2, behavior: "smooth" });
+      st.scrollTo({ left: tab.offsetLeft - (st.clientWidth - tab.offsetWidth) / 2, behavior: reduced ? "auto" : "smooth" });
     }
-    if (prefersReducedMotion() || !copy.current) return;
-    gsap.fromTo(
+    if (reduced || !copy.current) return;
+    const tween = gsap.fromTo(
       copy.current.querySelectorAll("[data-m]"),
       { y: 14, opacity: 0 },
       { y: 0, opacity: 1, duration: 0.5, stagger: 0.05, ease: "power3.out", overwrite: true }
     );
-  }, [index]);
+    return () => { tween.revert(); };
+  }, [index, reduced]);
 
   return (
     <section
@@ -389,7 +398,8 @@ export function Chapters() {
     >
       <div ref={moduleRef} className="wrap flex flex-col">
         {/* header */}
-        <div className="order-0 flex items-end justify-between gap-[16px] border-b pb-[14px]" style={{ borderColor: "var(--line)" }}>
+        <div className="relative order-0 flex items-end justify-between gap-[16px] border-b pb-[14px]" style={{ borderColor: "var(--line)" }}>
+          <span aria-hidden className="svc-entry-trace pointer-events-none absolute bottom-[-1px] left-0 h-px w-full origin-left" style={{ background: "var(--accent-deep)", opacity: 0 }} />
           <div className="flex flex-col gap-[4px] min-[900px]:flex-row min-[900px]:items-baseline min-[900px]:gap-[16px]">
             <span className="mono mono-a">{intro.label}</span>
             <span className="d4 max-w-[32ch]">{intro.statement}</span>
@@ -479,14 +489,24 @@ export function Chapters() {
             data-thread-rail
             role="tablist"
             aria-label="Services"
-            className="svc-rail hide-scroll -mx-[var(--gut)] flex snap-x snap-mandatory gap-[8px] overflow-x-auto px-[var(--gut)] min-[900px]:mx-0 min-[900px]:gap-[clamp(10px,1.2vw,16px)] min-[900px]:overflow-visible min-[900px]:px-0"
+            className="svc-rail hide-scroll -mx-[var(--gut)] flex min-w-0 flex-1 snap-x snap-mandatory gap-[8px] overflow-x-auto px-[var(--gut)] min-[900px]:mx-0 min-[900px]:gap-[clamp(10px,1.2vw,16px)] min-[900px]:px-0 min-[1200px]:flex-none min-[1200px]:overflow-visible"
             onMouseLeave={hoverEnd}
+            onKeyDown={(e) => {
+              if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+              e.preventDefault();
+              const next = e.key === "Home" ? 0 : e.key === "End" ? N - 1 : (index + (e.key === "ArrowRight" ? 1 : -1) + N) % N;
+              takeControl();
+              selectFromUser(next);
+              strip.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
+            }}
           >
             {services.map((sv, i) => (
               <button
                 key={sv.slug}
                 type="button"
                 role="tab"
+                id={`svc-tab-${sv.slug}`}
+                aria-controls="services-stage"
                 data-i={i}
                 data-thread-slot="services"
                 data-active={i === index ? "1" : "0"}
@@ -505,17 +525,24 @@ export function Chapters() {
               </button>
             ))}
           </div>
-          <span className="relative hidden h-px flex-1 overflow-hidden min-[900px]:block" style={{ background: "var(--line)" }}>
+          <span aria-hidden className="relative hidden h-px flex-1 min-[1200px]:block" style={{ background: "var(--line)" }}>
             <span
               className="absolute inset-0 origin-left"
               style={{
                 background: "var(--accent-deep)",
-                transform: `scaleX(${index / (services.length - 1)})`,
-                transition: "transform .6s var(--e-out)",
+                transform: pinOn ? `scaleX(var(--svc-scroll-progress, ${index / (services.length - 1)}))` : `scaleX(${index / (services.length - 1)})`,
+                transition: pinOn || reduced ? "none" : "transform .6s var(--e-out)",
+              }}
+            />
+            <span
+              className="svc-progress-signal"
+              style={{
+                left: pinOn ? `calc(var(--svc-scroll-progress, ${index / (services.length - 1)}) * 100%)` : `${index / (services.length - 1) * 100}%`,
+                transition: pinOn || reduced ? "none" : "left .6s var(--e-out)",
               }}
             />
           </span>
-          <span className="mono hidden flex-none min-[900px]:block" aria-live="polite">
+          <span className="mono hidden flex-none min-[1200px]:block" aria-live="polite">
             {preview !== null
               ? "Previewing"
               : pinOn

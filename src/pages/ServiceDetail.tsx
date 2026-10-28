@@ -7,6 +7,7 @@ import { ServicePricing, serviceToBuildOption } from "../components/ServicePrici
 import { AutomationCompare } from "../components/AutomationCompare";
 import { Link, usePage, navigate } from "../lib/router";
 import { useReveal, useParallax } from "../lib/reveal";
+import { prefersReducedMotion } from "../lib/gsap";
 
 /**
  * Dedicated, unhurried service pages.
@@ -74,13 +75,13 @@ export function ServiceDetail({ slug }: { slug: string }) {
   const getDemoSubtitle = (serviceSlug: string) => {
     switch (serviceSlug) {
       case "video-editing":
-        return "Scrub the playhead across the 7 production stages from raw camera footage to final master delivery.";
+        return "Scrub seven editorial stages in a conceptual visual study — not client footage.";
       case "web-development":
-        return "Test the interactive build layers — from information architecture to live conversion and CRM lead dispatch.";
+        return "Explore the build layers and interact with a fictional miniature website. No booking or CRM is connected.";
       case "ai-chatbots":
-        return "Ask sample inquiries to observe grounded retrieval reasoning, tool execution, and automated escalation.";
+        return "Ask a question and see the local, rules-based response and illustrative route. No live AI or tools.";
       case "ai-automation":
-        return "Compare manual multi-step repetition against the autonomous pipeline runner and observe the eliminated hand-offs.";
+        return "Run a local example of manual and automated steps. No real data or integrations are involved.";
       default:
         return "Test the interactive model in real time.";
     }
@@ -157,7 +158,7 @@ export function ServiceDetail({ slug }: { slug: string }) {
                   data-cursor="CLICK"
                   onClick={(e) => {
                     e.preventDefault();
-                    document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" });
+                    document.getElementById("pricing")?.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth" });
                   }}
                 >
                   View Scopes & Pricing ↓

@@ -25,33 +25,13 @@ export interface PaymentProvider {
   createCheckout(req: CheckoutRequest): Promise<CheckoutResult>;
 }
 
-/**
- * Placeholder provider used until a real gateway is configured.
- * It never charges anything: it records the intent locally and resolves
- * as "successful" so the full UI flow (pending → result states) can be
- * exercised end-to-end. `configured` is false so the UI can label the
- * step honestly as a reservation rather than a live charge.
- */
+/** Fail closed until a real provider is configured. A local placeholder must
+ * never report a reservation or payment as successful. */
 const placeholderProvider: PaymentProvider = {
-  name: "Placeholder (no gateway connected)",
+  name: "Not configured",
   configured: false,
-  createCheckout(req) {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        try {
-          const log = JSON.parse(localStorage.getItem("arche:intents") || "[]");
-          log.push({ ...req, at: new Date().toISOString() });
-          localStorage.setItem("arche:intents", JSON.stringify(log));
-        } catch {
-          /* storage unavailable — fine */
-        }
-        resolve({
-          status: "successful",
-          reference: `ARC-${Date.now().toString(36).toUpperCase()}`,
-          message: "Reservation recorded. We'll send a payment link to confirm.",
-        });
-      }, 1400);
-    });
+  async createCheckout(_req) {
+    return { status: "failed", message: "Payments are not configured. Contact the studio to discuss the project." };
   },
 };
 
