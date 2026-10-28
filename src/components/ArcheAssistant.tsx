@@ -17,23 +17,15 @@ import {
  * were added later — response rendering and the visual-trigger panel
  * consume its result and never need to change.
  *
- * Choreography per exchange:
- *   user message slides in (≈200ms) → short thinking pause (~550ms)
- *   → typing indicator (~750ms) → response streams line by line
- *   → its visual trigger animates into the persistent panel as the
- *     response begins streaming (scale/fade, same technique as the
- *     Services tab switch).
- *
- * Honesty: the copy describes this as intent matching, because that is
- * what it is. The fallback admits when nothing matched and routes to
- * the team instead of pretending.
+ * Replies appear immediately: local matching does not need a simulated
+ * thinking delay. The visual panel illustrates the matched intent, while
+ * the fallback admits when nothing matched and offers a route to the team.
  */
 
 type Message =
   | { role: "user"; text: string; id: number }
   | { role: "agent"; lines: string[]; revealed: number; label: string; id: number };
 
-type Phase = "idle" | "thinking" | "typing" | "streaming";
 
 const GREETING = "Ask me where Arche could start.";
 
@@ -53,132 +45,49 @@ export function ArcheAssistant() {
     { role: "agent", lines: [GREETING], revealed: 1, label: "Arche", id: 0 },
   ]);
   const [input, setInput] = useState("");
-  const [phase, setPhase] = useState<Phase>("idle");
   const [trigger, setTrigger] = useState<VisualTrigger>("system");
+  const [matched, setMatched] = useState(true);
   const [runId, setRunId] = useState(0); // bumps per reply so the visual replays its build
   const [followUps, setFollowUps] = useState<string[]>(STARTER_CHIPS);
 
-  const timers = useRef<number[]>([]);
   const scroller = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const responseCount = useRef(0);
 
   useEffect(() => {
-    const list = timers.current;
-    return () => list.forEach((t) => window.clearTimeout(t));
-  }, []);
-
-  useEffect(() => {
-    scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
-  }, [messages, phase]);
-
-  const later = (fn: () => void, ms: number) => timers.current.push(window.setTimeout(fn, ms));
-  const busy = phase !== "idle";
+    scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: prefersReducedMotion() ? "auto" : "smooth" });
+  }, [messages]);
 
   const send = (raw: string) => {
     const q = raw.trim();
-    if (!q || busy) return;
+    if (!q) return;
     const r: Resolution = resolveIntent(q);
-
-    setMessages((m) => [...m, { role: "user", text: q, id: seq++ }]);
+    // This is local matching, not a remote model: answer immediately rather
+    // than manufacturing a typing or network delay.
+    setMessages((m) => [
+      ...m,
+      { role: "user", text: q, id: seq++ },
+      { role: "agent", lines: r.response, revealed: r.response.length, label: r.label, id: seq++ },
+    ]);
     setInput("");
-    setPhase("thinking");
-
-    responseCount.current += 1;
-    // PROMPT 32 (Delight 3): subtle typing correction once every 3-4 responses
-    const shouldCorrect = responseCount.current % 3 === 2;
-
-    const finish = () => {
-      setPhase("streaming");
-      // the visual trigger fires immediately as the response begins streaming
-      setTrigger(r.trigger);
-      setRunId((n) => n + 1);
-      rememberLastTrigger(r.trigger); // Prompt 16 → 17 handoff
-
-      let initialFirstLine = r.response[0] || "";
-      const finalFirstLine = r.response[0] || "";
-
-      if (shouldCorrect && initialFirstLine.length > 20) {
-        // Pairs of [targetWord, draftWordToBrieflyShow]
-        const pairs: [string, string][] = [
-          ["systems", "tools"],
-          ["system", "tool"],
-          ["automated", "scripted"],
-          ["fast", "quick"],
-          ["build", "make"],
-          ["tailored", "custom"],
-          ["focused", "simple"],
-        ];
-        for (const [target, draft] of pairs) {
-          const regex = new RegExp(`\\b${target}\\b`, "i");
-          if (regex.test(initialFirstLine)) {
-            initialFirstLine = initialFirstLine.replace(regex, draft);
-            break;
-          }
-        }
-      }
-
-      const initialLines = [initialFirstLine, ...r.response.slice(1)];
-
-      setMessages((m) => [
-        ...m,
-        { role: "agent", lines: initialLines, revealed: 1, label: r.label, id: seq++ },
-      ]);
-
-      // If typing correction applied, replace draft word with final word after brief pause
-      if (initialFirstLine !== finalFirstLine) {
-        later(() => {
-          setMessages((m) => {
-            const next = [...m];
-            const last = next[next.length - 1];
-            if (last.role !== "agent") return m;
-            const updatedLines = [...last.lines];
-            updatedLines[0] = finalFirstLine;
-            next[next.length - 1] = { ...last, lines: updatedLines };
-            return next;
-          });
-        }, 220);
-      }
-
-      r.response.slice(1).forEach((_, i) =>
-        later(() => {
-          setMessages((m) => {
-            const next = [...m];
-            const last = next[next.length - 1];
-            if (last.role !== "agent") return m;
-            next[next.length - 1] = { ...last, revealed: last.revealed + 1 };
-            return next;
-          });
-          if (i === r.response.length - 2) {
-            setFollowUps(r.followUps);
-            setPhase("idle");
-          }
-        }, 420 * (i + 1))
-      );
-    };
-
-    if (prefersReducedMotion()) {
-      finish();
-      return;
-    }
-
-    // thinking pause, then typing indicator, then the reply streams
-    later(() => setPhase("typing"), 550);
-    later(finish, 550 + 750);
+    setTrigger(r.trigger);
+    setMatched(Boolean(r.intent));
+    setRunId((n) => n + 1);
+    setFollowUps(r.followUps);
+    rememberLastTrigger(r.trigger);
   };
 
   const reset = () => {
-    timers.current.forEach((t) => window.clearTimeout(t));
-    timers.current = [];
     setMessages([{ role: "agent", lines: [GREETING], revealed: 1, label: "Arche", id: 0 }]);
-    setPhase("idle");
+    setInput("");
     setTrigger("system");
+    setMatched(true);
+    setRunId((n) => n + 1);
     setFollowUps(STARTER_CHIPS);
     inputRef.current?.focus();
   };
 
   return (
-    <section className="w-full py-[clamp(70px,9vw,140px)]">
+    <section id="ask-arche" className="w-full py-[clamp(70px,9vw,140px)]">
       <div className="wrap">
         <div className="mb-[clamp(26px,3.4vw,52px)] flex flex-col gap-[12px]">
           <p className="mono mono-a" data-r="meta">
@@ -204,20 +113,11 @@ export function ArcheAssistant() {
             <div className="flex items-center justify-between border-b px-[16px] py-[12px]" style={{ borderColor: "var(--line)" }}>
               <div className="flex items-center gap-[9px]">
                 <span
-                  className={`block h-[7px] w-[7px] rounded-full ${phase === "thinking" || phase === "typing" ? "demo-pulse" : ""}`}
+                  className="block h-[7px] w-[7px] rounded-full"
                   style={{ background: "var(--accent-deep)" }}
                 />
                 <span className="mono mono-fg">Arche assistant</span>
-                <span className="mono">
-                  ·{" "}
-                  {phase === "thinking"
-                    ? "Thinking"
-                    : phase === "typing"
-                      ? "Composing"
-                      : phase === "streaming"
-                        ? "Responding"
-                        : "Ready"}
-                </span>
+                <span className="mono">· Ready</span>
               </div>
               <button className="mono lnk" onClick={reset}>
                 Reset
@@ -268,22 +168,7 @@ export function ArcheAssistant() {
                 )
               )}
 
-              {phase === "typing" && (
-                <div className="flex items-center gap-[8px] pl-[4px]">
-                  <span className="flex gap-[4px]">
-                    {[0, 1, 2].map((i) => (
-                      <span
-                        key={i}
-                        className="type-dot h-[5px] w-[5px] rounded-full"
-                        style={{ background: "var(--accent-deep)", animationDelay: `${i * 140}ms` }}
-                      />
-                    ))}
-                  </span>
-                  <span className="mono" style={{ color: "var(--faint)" }}>
-                    typing
-                  </span>
-                </div>
-              )}
+
             </div>
 
             <div className="border-t p-[16px]" style={{ borderColor: "var(--line)" }}>
@@ -292,8 +177,6 @@ export function ArcheAssistant() {
                   <button
                     key={p}
                     className="chip"
-                    disabled={busy}
-                    style={{ opacity: busy ? 0.45 : 1 }}
                     onClick={() => send(p)}
                   >
                     {p}
@@ -320,7 +203,7 @@ export function ArcheAssistant() {
                 </label>
                 <button
                   className="btn flex-none"
-                  disabled={!input.trim() || busy}
+                  disabled={!input.trim()}
                   data-cursor="START"
                   data-magnetic
                 >
@@ -338,7 +221,7 @@ export function ArcheAssistant() {
 
           {/* persistent visual trigger panel */}
           <div className="lg:col-span-5" data-r="meta" data-r-delay="100">
-            <TriggerPanel trigger={trigger} runId={runId} busy={phase !== "idle"} />
+            <TriggerPanel trigger={trigger} runId={runId} busy={false} matched={matched} />
           </div>
         </div>
       </div>
@@ -352,14 +235,15 @@ export function ArcheAssistant() {
    the outgoing layer settles (scale .96, fade), the incoming arrives
    from scale 1.04. All layers stay mounted; only emphasis moves.
    ================================================================ */
-function TriggerPanel({ trigger, runId, busy }: { trigger: VisualTrigger; runId: number; busy: boolean }) {
+function TriggerPanel({ trigger, runId, busy, matched }: { trigger: VisualTrigger; runId: number; busy: boolean; matched: boolean }) {
   /* PROMPT 40 — only the matched intent's visual is mounted, keyed per reply,
      so every answer replays that visual's build-in. No skeleton state exists. */
   return (
     <div
       className="overflow-hidden rounded-[7px] border"
       style={{ borderColor: "var(--line)", background: "var(--card)" }}
-      aria-hidden
+      role="region"
+      aria-label="Illustrative system view"
     >
       <div className="flex items-center justify-between border-b px-[16px] py-[12px]" style={{ borderColor: "var(--line)" }}>
         <div className="flex items-center gap-[9px]">
@@ -379,9 +263,9 @@ function TriggerPanel({ trigger, runId, busy }: { trigger: VisualTrigger; runId:
 
       <div className="border-t px-[16px] py-[10px]" style={{ borderColor: "var(--line)" }}>
         <p className="mono swap-fade" key={`${trigger}-cap`} style={{ color: "var(--faint)" }}>
-          {trigger === "contact"
-            ? "No script matched — this is where a human takes over."
-            : "The conversation drives this view."}
+          {trigger === "contact" && !matched
+            ? "No intent matched — contact the team directly."
+            : "Illustrative view · no live actions or connected tools."}
         </p>
       </div>
     </div>
@@ -435,6 +319,7 @@ const WEB_PHASES = ["IDEA", "STRUCTURE", "INTERFACE", "LIVE"] as const;
 function MiniWeb() {
   const [ph, setPh] = useState(0);
   useEffect(() => {
+    if (prefersReducedMotion()) { setPh(3); return; }
     const ids = [1, 2, 3].map((n) => window.setTimeout(() => setPh(n), n * 750));
     return () => ids.forEach((t) => window.clearTimeout(t));
   }, []);
@@ -496,11 +381,11 @@ function MiniWeb() {
 
 /* ---------- AGENT — QUESTION → REASONING → ACTION (AgentDemo language) ---------- */
 function MiniAgent() {
-  const steps = ["QUESTION", "REASONING", "ACTION"];
+  const steps = ["QUESTION", "MATCH", "HANDOFF"];
   return (
     <div className="absolute inset-0 flex flex-col justify-center gap-[14px] px-[22px]">
       <span className="sv-rise mono self-start rounded-[10px] rounded-bl-[2px] px-[9px] py-[5px] text-[8px]" style={{ background: "var(--bg-2)", color: "var(--fg)", border: "1px solid var(--line)", ...at(0) }}>
-        “Can I move my booking to Friday?”
+        “Can you qualify this inquiry?”
       </span>
       <div className="relative flex items-center justify-between">
         <span className="sv-grow absolute left-[8%] right-[8%] top-1/2 h-px origin-left" style={{ background: "var(--accent-deep)", ...at(350) }} />
@@ -514,7 +399,7 @@ function MiniAgent() {
         ))}
       </div>
       <span className="sv-rise mono self-end flex items-center gap-[6px] rounded-[10px] rounded-br-[2px] px-[9px] py-[5px] text-[8px]" style={{ background: "var(--accent-deep)", color: "var(--bg)", ...at(1650) }}>
-        ✓ Moved to Fri 10:00 · confirmation sent
+        Example: a handoff could be prepared
       </span>
     </div>
   );
@@ -582,7 +467,7 @@ function MiniContact() {
       <div className="sv-rise flex w-full max-w-[240px] flex-col items-start gap-[12px] rounded-[6px] border border-dashed p-[16px]" style={{ borderColor: "var(--line)", background: "var(--bg-2)" }}>
         <span className="signal-dot" />
         <p className="body-s m-0" style={{ color: "var(--fg)" }}>
-          Not matched — reach the team directly.
+          Talk to the team about the next step.
         </p>
         <Link to="/contact" className="btn btn-ghost w-full justify-center" style={{ pointerEvents: "auto" }} cursor="START">
           Start a project <span className="arw">→</span>

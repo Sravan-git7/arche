@@ -26,31 +26,22 @@ const AUTO = ["One trigger", "AI reads", "CRM", "Slack", "Task", "Response"];
 
 const clamp = (v: number) => Math.max(0, Math.min(1, v));
 
-/** Full manual load, and what is left once everything is routed. */
-const MANUAL_MINUTES = 12;
-const MANUAL_HANDOFFS = 7;
-const AUTOMATED_SECONDS = 4; // a person still sees the exceptions
-
-const fmtTime = (minutes: number) => {
-  const secs = Math.max(AUTOMATED_SECONDS, Math.round(minutes * 60));
-  return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
-};
-
-/** The live narration under the box — a pure function of routing progress. */
+/** This is a visual comparison of example steps, not a measurement. */
+const MANUAL_HANDOFFS = MANUAL.length;
 const readout = (t: number) => {
   const pct = Math.round(t * 100);
-  const gone = Math.round(MANUAL_HANDOFFS * t);
-  const sys = Math.round(AUTO.length * t);
-  if (t >= 0.995) return `100% routed — one event, ${AUTO.length} systems updated, end to end in ${AUTOMATED_SECONDS}s.`;
-  if (t <= 0.005) return `0% routed — ${MANUAL_HANDOFFS} hand-offs, carried by hand, every time.`;
-  return `${pct}% routed — ${gone} hand-off${gone === 1 ? "" : "s"} gone · ${sys} of ${AUTO.length} systems updated.`;
+  const shown = Math.round(MANUAL_HANDOFFS * (1 - t));
+  const modules = Math.round(AUTO.length * t);
+  if (t >= 0.995) return "Connected view — an illustrative route. No live systems were updated.";
+  if (t <= 0.005) return `Manual view — ${MANUAL_HANDOFFS} example hand-offs.`;
+  return `${pct}% across the comparison · ${shown} manual steps shown · ${modules} example modules revealed.`;
 };
 
 export function AutomationCompare() {
   const [p, setP] = useState(0.5); // handle position — also how much is automated
   const [touched, setTouched] = useState(false);
   const box = useRef<HTMLDivElement>(null);
-  const timeRef = useRef<HTMLSpanElement>(null);
+  const viewRef = useRef<HTMLSpanElement>(null);
   const handRef = useRef<HTMLSpanElement>(null);
   const sysRef = useRef<HTMLSpanElement>(null);
   const readRef = useRef<HTMLSpanElement>(null);
@@ -61,7 +52,7 @@ export function AutomationCompare() {
 
   /** Tweened read-outs — everything the pointer drives is written straight
       to the DOM from here, so counters/token/chips follow the hand 1:1. */
-  const vis = useRef({ minutes: MANUAL_MINUTES / 2, handoffs: MANUAL_HANDOFFS / 2, systems: AUTO.length / 2, t: 0.5 });
+  const vis = useRef({ handoffs: MANUAL_HANDOFFS / 2, systems: AUTO.length / 2, t: 0.5 });
 
   /** Measured geometry: node centres (for the token path) and each chip's
       centre as a fraction of the box width (for the dissolve band). */
@@ -86,7 +77,7 @@ export function AutomationCompare() {
   /** Write every live read-out straight to the DOM — called by the tween. */
   const paint = () => {
     const v = vis.current;
-    if (timeRef.current) timeRef.current.textContent = fmtTime(v.minutes);
+    if (viewRef.current) viewRef.current.textContent = `${Math.round(v.t * 100)}%`;
     const setTick = (el: HTMLSpanElement | null, text: string) => {
       if (!el || el.textContent === text) return;
       el.textContent = text;
@@ -115,7 +106,6 @@ export function AutomationCompare() {
 
   useEffect(() => {
     const target = {
-      minutes: MANUAL_MINUTES * (1 - automated),
       handoffs: MANUAL_HANDOFFS * (1 - automated),
       systems: automated * AUTO.length,
       t: automated,
@@ -184,15 +174,15 @@ export function AutomationCompare() {
       <div className="wrap">
         <div className="mb-[20px] flex flex-wrap items-end justify-between gap-[12px]">
           <div>
-            <p className="mono mono-a mb-[8px]">The difference, measured</p>
+            <p className="mono mono-a mb-[8px]">The same request, two views</p>
             <h3 className="d3 max-w-[22ch]" data-r="mask">
-              Drag across. Watch the hand-offs disappear.
+              Drag across. Explore the hand-offs.
             </h3>
           </div>
           <div className="flex gap-[22px]">
-            <Metric k="Handling time" vRef={timeRef} initial={fmtTime(vis.current.minutes)} hot={hot} />
-            <Metric k="Hand-offs" vRef={handRef} initial={String(Math.round(vis.current.handoffs))} hot={hot} />
-            <Metric k="Systems updated" vRef={sysRef} initial={String(Math.round(vis.current.systems))} hot={hot} />
+            <Metric k="View" vRef={viewRef} initial="50%" hot={hot} />
+            <Metric k="Manual steps shown" vRef={handRef} initial={String(Math.round(vis.current.handoffs))} hot={hot} />
+            <Metric k="Example modules" vRef={sysRef} initial={String(Math.round(vis.current.systems))} hot={hot} />
           </div>
         </div>
 
@@ -243,7 +233,7 @@ export function AutomationCompare() {
           })}
             </div>
             <p className="body-s absolute bottom-[clamp(16px,2vw,28px)] left-[clamp(16px,2vw,28px)] max-w-[34ch]">
-              One event. Every system updated. The person only sees what needs judgement.
+              An example route connects the pieces. This illustration does not update any tools.
             </p>
           </div>
 
@@ -280,7 +270,7 @@ export function AutomationCompare() {
               ))}
             </div>
             <p className="body-s absolute right-[clamp(16px,2vw,28px)] bottom-[clamp(16px,2vw,28px)] max-w-[34ch] text-right">
-              A person carries the same information between five tools, every time.
+              In this example, a person carries the same information between tools.
             </p>
           </div>
 
@@ -304,23 +294,26 @@ export function AutomationCompare() {
           <div
             role="slider"
             tabIndex={0}
-            aria-label="Route one event between the manual chain and the connected system. Drag right to automate it."
+            aria-label="Compare the example manual and connected views. Drag or use arrow keys."
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round(automated * 100)}
-            aria-valuetext={`${Math.round(automated * 100)}% routed automatically — handling time ${fmtTime(
-              MANUAL_MINUTES * (1 - automated)
-            )}, ${Math.max(0, Math.round(MANUAL_HANDOFFS * (1 - automated)))} hand-offs, ${Math.round(
-              automated * AUTO.length
-            )} of ${AUTO.length} systems updated`}
+            aria-valuetext={`${Math.round(automated * 100)}% across the illustrative comparison. No live systems are updated.`}
             className="absolute top-0 bottom-0 z-[3] w-[2px] outline-none"
             style={{ left: `${p * 100}%`, background: "var(--accent-deep)", transform: "translateX(-1px)" }}
             onKeyDown={(e) => {
+              if (e.key === "Home" || e.key === "End") {
+                e.preventDefault();
+                setTouched(true);
+                setP(e.key === "Home" ? 0 : 1);
+              }
               if (e.key === "ArrowLeft") {
+                e.preventDefault();
                 setTouched(true);
                 setP((v) => clamp(v - 0.05));
               }
               if (e.key === "ArrowRight") {
+                e.preventDefault();
                 setTouched(true);
                 setP((v) => clamp(v + 0.05));
               }
@@ -349,7 +342,7 @@ export function AutomationCompare() {
                   }}
                 >
                   <span className="mono" style={{ fontSize: 9.5, letterSpacing: ".1em" }}>
-                    DRAG RIGHT TO ROUTE THE EVENT AUTOMATICALLY
+                    DRAG TO COMPARE THE EXAMPLE VIEWS
                   </span>
                   <span className="mono" style={{ fontSize: 10, color: "var(--accent-ink)" }}>
                     →

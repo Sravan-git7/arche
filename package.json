@@ -4,11 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
-    "verify": "node scripts/verify.mjs"
+    "dev": "node node_modules/vite/bin/vite.js",
+    "build": "node node_modules/vite/bin/vite.js build",
+    "preview": "node node_modules/vite/bin/vite.js preview",
+    "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
+    "verify": "node scripts/verify.mjs",
+    "verify:motion": "node scripts/verify-motion.mjs"
   },
   "dependencies": {
     "@rollup/rollup-linux-x64-gnu": "^4.63.5",

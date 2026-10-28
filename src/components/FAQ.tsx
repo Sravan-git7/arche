@@ -34,6 +34,7 @@ function Item({
     }
     if (prefersReducedMotion()) {
       gsap.set(p, { height: open ? "auto" : 0, opacity: open ? 1 : 0 });
+      gsap.set(bar.current, { scaleX: open ? 1 : 0 });
       return;
     }
 
@@ -49,6 +50,7 @@ function Item({
       gsap.to(p, { height: 0, opacity: 0, duration: 0.42, ease: "power2.inOut" });
     }
     gsap.to(bar.current, { scaleX: open ? 1 : 0, duration: 0.5, ease: "expo.out" });
+    return () => { gsap.killTweensOf([p, i, bar.current, ...i.querySelectorAll(".faq-a")]); };
   }, [open]);
 
   return (
@@ -61,8 +63,10 @@ function Item({
       }}
     >
       <button
+        type="button"
         onClick={onToggle}
         aria-expanded={open}
+        aria-controls={`faq-panel-${n}`}
         className="group flex w-full items-start gap-[16px] border-t py-[clamp(16px,1.9vw,24px)] text-left md:gap-[36px]"
         style={{ borderColor: "var(--line)" }}
       >
@@ -85,7 +89,7 @@ function Item({
         </span>
       </button>
       <span ref={bar} className="absolute top-0 left-0 block h-px w-full origin-left" style={{ background: "var(--accent-deep)" }} />
-      <div ref={panel} className="overflow-hidden" style={{ height: 0, opacity: 0 }}>
+      <div id={`faq-panel-${n}`} ref={panel} className="overflow-hidden" aria-hidden={!open} style={{ height: 0, opacity: 0 }}>
         <div ref={inner} className="pb-[24px] md:pl-[78px]">
           <p className="faq-a body max-w-[62ch]">{a}</p>
         </div>
@@ -99,7 +103,7 @@ export function FAQ() {
   const [open, setOpen] = useState<number | null>(0);
 
   return (
-    <section className="w-full py-[clamp(70px,9vw,140px)]" style={{ background: "var(--bg-2)" }}>
+    <section id="faq" className="w-full py-[clamp(70px,9vw,140px)]" style={{ background: "var(--bg-2)" }}>
       <div className="wrap grid gap-[clamp(28px,4vw,64px)] lg:grid-cols-12">
         <div className="lg:col-span-4">
           <div className="lg:sticky lg:top-[110px]">
@@ -108,7 +112,7 @@ export function FAQ() {
               {statement}
             </h2>
             <p className="body mb-[24px] max-w-[34ch]" data-r="meta" data-r-delay="100">
-              Anything unanswered? Ask us directly — you'll hear back within a working day.
+              Anything unanswered? Ask us directly — we're happy to talk it through.
             </p>
             <Link to="/contact" className="btn" cursor="START">
               Start a project <span className="arw">→</span>

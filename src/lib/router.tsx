@@ -26,7 +26,11 @@ export function useRoute(): string {
 let navigating = false;
 
 export function navigate(to: string) {
-  if (getPath() === to || navigating) return;
+  if (getPath() === to) {
+    window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    return;
+  }
+  if (navigating) return;
   if (prefersReducedMotion()) {
     window.location.hash = `#${to}`;
     window.scrollTo(0, 0);
@@ -101,7 +105,7 @@ export function Link({
 }: LinkProps) {
   const handleClick = (e: MouseEvent<HTMLAnchorElement>) => {
     onClick?.(e);
-    if (e.defaultPrevented) return;
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || rest.target === "_blank") return;
     e.preventDefault();
     const target = e.currentTarget;
     const isBtn = target.classList.contains("btn") || target.dataset.magnetic !== undefined || (typeof children === "string" && children.toLowerCase().includes("start a project"));

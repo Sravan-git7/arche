@@ -1,5 +1,5 @@
-import { useLayoutEffect, useRef } from "react";
-import { gsap, ScrollTrigger, prefersReducedMotion } from "../lib/gsap";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { gsap, ScrollTrigger, onMotionPreferenceChange, prefersReducedMotion } from "../lib/gsap";
 
 /**
  * The recurring lime signal, carried from the hero into the Problem section.
@@ -34,10 +34,12 @@ export function BridgeDot() {
   const ref = useRef<HTMLSpanElement>(null);
   const innerDot = useRef<HTMLSpanElement>(null);
   const rewardFired = useRef(false);
+  const [reduced, setReduced] = useState(prefersReducedMotion);
+  useEffect(() => onMotionPreferenceChange(setReduced), []);
 
   useLayoutEffect(() => {
     const el = ref.current;
-    if (!el || prefersReducedMotion()) return;
+    if (!el || reduced) return;
 
     // Check if first-scroll reward was already played this session
     try {
@@ -48,6 +50,7 @@ export function BridgeDot() {
       // Storage access safety
     }
 
+    let reward: gsap.core.Timeline | null = null;
     const ctx = gsap.context(() => {
       let from = { x: 0, y: 0 };
       let to = { x: 0, y: 0 };
@@ -108,7 +111,7 @@ export function BridgeDot() {
             } catch {}
 
             const dot = innerDot.current;
-            gsap.timeline()
+            reward = gsap.timeline()
               .to(dot, { x: 4, y: -3, scale: 1.35, duration: 0.12, ease: "power1.out" })
               .to(dot, { x: -4, y: 3, duration: 0.14, ease: "power1.inOut" })
               .to(dot, { x: 2, y: -1, duration: 0.1, ease: "power1.inOut" })
@@ -120,8 +123,12 @@ export function BridgeDot() {
       });
     }, el);
 
-    return () => ctx.revert();
-  }, []);
+    return () => {
+      reward?.revert();
+      ctx.revert();
+      document.querySelector<HTMLElement>(".hp-signal")?.style.removeProperty("visibility");
+    };
+  }, [reduced]);
 
   return (
     <span

@@ -3,6 +3,7 @@ import { ServicePricing } from "../components/ServicePricing";
 import { FinalCTA } from "../components/Sections";
 import { Link, usePage } from "../lib/router";
 import { useReveal, useParallax } from "../lib/reveal";
+import { prefersReducedMotion } from "../lib/gsap";
 
 export function PricingPage() {
   usePage("Pricing & Investment — Arche");
@@ -32,6 +33,9 @@ export function PricingPage() {
             <p className="body mt-[22px] max-w-[54ch] text-[var(--muted)]" data-r="meta">
               Every project is scoped individually with fixed milestones in writing before work begins. No open-ended hourly surprises or bloated agency retainers.
             </p>
+            <p className="mono mt-[16px]" style={{ color: "var(--accent-ink)" }}>
+              Figures and commercial terms shown here should be confirmed in your written proposal.
+            </p>
           </div>
 
           {/* Quick jump pills */}
@@ -43,7 +47,7 @@ export function PricingPage() {
                 className="chip"
                 onClick={(e) => {
                   e.preventDefault();
-                  document.getElementById(s.slug)?.scrollIntoView({ behavior: "smooth" });
+                  document.getElementById(s.slug)?.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth" });
                 }}
               >
                 <span className="mono text-[10px] text-[var(--accent-ink)] mr-1">{s.n}</span>

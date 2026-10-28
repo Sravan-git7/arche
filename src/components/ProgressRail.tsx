@@ -41,7 +41,8 @@ export function ProgressRail() {
           onUpdate: (s) => {
             if (!s.isActive) return;
             const p = Math.max(0, Math.min(1, s.progress));
-            setSectionProgress(p);
+            // The visible counter only changes at whole percentages.
+            setSectionProgress(Math.round(p * 100) / 100);
             if (microBar.current) microBar.current.style.transform = `scaleX(${p})`;
             if (microDot.current) microDot.current.style.left = `${p * 100}%`;
             if (edgeBar.current) edgeBar.current.style.transform = `scaleX(${p})`;

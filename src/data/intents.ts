@@ -42,6 +42,18 @@ export type Intent = {
 
 export const INTENTS: Intent[] = [
   {
+    id: "overview",
+    label: "matched intent · Arche",
+    keywords: ["arche", "what do you do", "what does arche do", "your services"],
+    strongPhrases: ["what does arche do", "what do you do", "what is arche"],
+    response: [
+      "Arche designs and builds video, websites, AI agents and automations.",
+      "We start with the friction in a business, then connect the right pieces into a system that can keep working together.",
+    ],
+    trigger: "system",
+    followUps: ["Can you automate lead management?", "Can you connect my existing tools?", "How do I start a project?"],
+  },
+  {
     id: "web",
     label: "matched intent · website",
     keywords: [
@@ -52,7 +64,7 @@ export const INTENTS: Intent[] = [
     response: [
       "We start with what the site needs to do — the action a visitor should take — then structure, design and build around that.",
       "No page builders: the front-end is hand-built, fast, and connected to the tools you already run.",
-      "Most sites ship in two to six weeks depending on scope.",
+      "The scope and timeline are agreed before the work begins.",
     ],
     trigger: "service:web",
     followUps: ["How long does a website take?", "Can you rebuild an existing site?", "I want to automate my workflow."],
@@ -66,11 +78,11 @@ export const INTENTS: Intent[] = [
       "data entry", "copy paste", "copying", "pipeline",
       "admin", "back and forth", "manual task", "manual process", "follow up", "follow-ups",
     ],
-    strongPhrases: ["manual process", "repetitive task", "no one wants to do", "wastes hours"],
+    strongPhrases: ["manual process", "repetitive task", "no one wants to do", "wastes hours", "lead management", "automate lead", "automate leads"],
     response: [
       "Tell us the task your team repeats: what starts it, which tools it touches, and where a person has to decide.",
       "We map that path, automate the steps that don't need judgment, and leave a human fallback where it does.",
-      "First workflow is typically live in two to four weeks.",
+      "A lead workflow could connect an inquiry, qualification, a CRM update and follow-up; the details depend on your tools.",
     ],
     trigger: "service:automation",
     followUps: ["Which tools do you connect to?", "Can AI make decisions in the flow?", "What does it cost?"],
@@ -88,7 +100,7 @@ export const INTENTS: Intent[] = [
     response: [
       "An Arche agent answers from your own knowledge base, asks when it's unsure, and can trigger a real action — routing, booking, qualifying.",
       "It grounds in your content, with guardrails and a handoff to a human when confidence drops.",
-      "A first working agent usually runs in two to three weeks.",
+      "The right behaviour and integrations depend on the use case and the sources available.",
     ],
     trigger: "service:agent",
     followUps: ["Can it connect to my CRM?", "How do you prevent wrong answers?", "I need a website."],
@@ -119,8 +131,8 @@ export const INTENTS: Intent[] = [
     ],
     strongPhrases: ["how long", "how fast", "turnaround", "when can", "what's the timeline", "deadline", "asap"],
     response: [
-      "Video edits ship in days. A landing page runs about two weeks.",
-      "Full sites, automations and agents typically take two to eight weeks, scoped in writing before anything starts.",
+      "Timing depends on the work, its dependencies and the materials available.",
+      "We can discuss a timeline with you and agree it in writing as part of the scope.",
     ],
     trigger: "system",
     followUps: ["How does a project work?", "What does it cost?", "I need a website."],
@@ -150,7 +162,7 @@ export const INTENTS: Intent[] = [
     ],
     strongPhrases: ["how does a project work", "how do we start", "get started", "start a project", "how do you work", "what are the steps"],
     response: [
-      "Send a short brief — the guided form on the contact page takes a minute.",
+      "Send a short brief using the guided form on the contact page.",
       "We clarify scope, reply with a written proposal and timeline, and start after your approval.",
       "You always know what's being built and what it costs before it starts.",
     ],
@@ -194,7 +206,7 @@ export const FALLBACK: { label: string; response: string[]; trigger: VisualTrigg
   label: "no matched intent",
   response: [
     "I don't have a specific answer for that yet.",
-    "Here's how to reach the team directly — they reply to every real brief.",
+    "You can reach the team directly with the details of your question.",
   ],
   trigger: "contact",
 };
@@ -217,55 +229,52 @@ export type Resolution = {
  * short ones require a word boundary (so "airspeed" doesn't hit "speed").
  * A minimum score keeps single weak hits from masquerading as a match.
  */
-export function resolveIntent(query: string): Resolution {
-  const q = query.toLowerCase().trim();
+/** Normalize punctuation, whitespace and common typographic apostrophes once,
+ * so both demos use the same predictable, replaceable matching seam. */
+function normalize(value: string): string {
+  return value.normalize("NFKC").toLowerCase().replace(/[’‘]/g, "'")
+    .replace(/[-_/]+/g, " ").replace(/[^\p{L}\p{N}\s']/gu, " ")
+    .replace(/\s+/g, " ").trim();
+}
 
-  const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+export function resolveIntent(query: string): Resolution {
+  const q = normalize(query);
+  const padded = ` ${q} `;
+  const hasPhrase = (value: string) => {
+    const term = normalize(value);
+    if (!term) return false;
+    if (padded.includes(` ${term} `)) return true;
+    return !term.includes(" ") && term.length >= 5 && padded.includes(` ${term}s `);
+  };
   let best: Intent | null = null;
   let bestScore = 0;
   for (const intent of INTENTS) {
     let score = 0;
-    for (const p of intent.strongPhrases ?? []) {
-      if (q.includes(p)) score += 4;
-    }
-    for (const kw of intent.keywords) {
-      if (kw.length >= 6) {
-        if (q.includes(kw)) score += 2;
-      } else if (new RegExp(`\\b${escape(kw)}\\b`).test(q)) {
-        score += 1;
-      }
-    }
+    for (const phrase of intent.strongPhrases ?? []) if (hasPhrase(phrase)) score += 7;
+    for (const keyword of intent.keywords) if (hasPhrase(keyword)) score += 2;
     if (score > bestScore) {
       best = intent;
       bestScore = score;
     }
   }
-
   if (best && bestScore >= 2) {
-    return {
-      intent: best,
-      label: best.label,
-      response: best.response,
-      trigger: best.trigger,
-      followUps: best.followUps,
-    };
+    return { intent: best, label: best.label, response: best.response, trigger: best.trigger, followUps: best.followUps };
   }
-
   return {
     intent: null,
     label: FALLBACK.label,
     response: FALLBACK.response,
     trigger: FALLBACK.trigger,
-    followUps: ["I need a website.", "I want to automate my workflow.", "I need an AI agent.", "I have footage to edit."],
+    followUps: ["What does Arche do?", "Can you automate lead management?", "What kind of AI agent can you build?", "How do I start a project?"],
   };
 }
 
 /** The four starting chips — 1:1 with the four core service intents. */
 export const STARTER_CHIPS = [
-  "I need a website.",
-  "I want to automate my workflow.",
-  "I need an AI agent.",
-  "I have footage that never ships.",
+  "What does Arche do?",
+  "Can you automate lead management?",
+  "Can you connect my existing tools?",
+  "How do I start a project?",
 ];
 
 /** Persistence for the Prompt 16 → 17 handoff: Contact reads this as the seed. */

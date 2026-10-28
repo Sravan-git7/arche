@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Wordmark } from "./Wordmark";
 import { siteContent, services } from "../data/site";
 import { Link, useRoute } from "../lib/router";
-import { gsap } from "../lib/gsap";
+import { gsap, prefersReducedMotion } from "../lib/gsap";
 
 export function Header() {
   const nav = useRef<HTMLElement>(null);
+  const menuButton = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [svcOpen, setSvcOpen] = useState(false);
   // A pointer hover opens the preview drawer; a click *pins* it so the
@@ -27,7 +28,7 @@ export function Header() {
         const hide = y > 260 && y > last.current;
         gsap.to(nav.current, {
           yPercent: hide ? -110 : 0,
-          duration: 0.55,
+          duration: prefersReducedMotion() ? 0 : 0.55,
           ease: "expo.out",
           overwrite: true,
         });
@@ -62,11 +63,12 @@ export function Header() {
       if (e.key !== "Escape") return;
       setSvcOpen(false);
       setSvcPinned(false);
+      if (open) menuButton.current?.focus();
       setOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [open]);
 
   const hoverServices = () => {
     if (!svcPinned) setSvcOpen(true);
@@ -100,9 +102,10 @@ export function Header() {
           transition: "background .5s var(--e-out), border-color .5s var(--e-out)",
         }}
         onMouseLeave={leaveServices}
+        onFocusCapture={() => { if (nav.current) gsap.to(nav.current, { yPercent: 0, duration: prefersReducedMotion() ? 0 : 0.25, overwrite: true }); }}
       >
         <div className="wrap flex items-center justify-between py-[16px]">
-          <Link to="/" className="relative z-[110]">
+          <Link to="/" onClick={() => setOpen(false)} className="relative z-[110]">
             <Wordmark />
           </Link>
 
@@ -152,8 +155,10 @@ export function Header() {
 
           {/* mobile toggle */}
           <button
+            ref={menuButton}
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
+            aria-controls="mobile-navigation"
             onClick={() => setOpen((v) => !v)}
             className="relative z-[110] flex h-[38px] w-[38px] flex-col items-center justify-center gap-[6px] md:hidden"
           >
@@ -219,6 +224,9 @@ export function Header() {
 
       {/* mobile overlay */}
       <div
+        id="mobile-navigation"
+        role="navigation"
+        aria-label="Mobile navigation"
         className="fixed inset-0 z-[99] md:hidden"
         aria-hidden={!open}
         inert={!open}
@@ -271,7 +279,7 @@ export function Header() {
             ))}
           </div>
           <div className="mt-[26px] flex flex-col gap-[14px]">
-            <Link to={cta.to} className="btn w-full justify-center" data-magnetic>
+            <Link to={cta.to} onClick={() => setOpen(false)} className="btn w-full justify-center" data-magnetic>
               {cta.label} <span className="arw">→</span>
             </Link>
             <p className="mono">{siteContent.brand.discipline}</p>

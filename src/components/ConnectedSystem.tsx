@@ -24,9 +24,9 @@ const MODULES: ModuleInfo[] = [
     k: "Video",
     category: "Inbound",
     role: "Editorial video content",
-    desc: "Raw material cut into high-retention video that captures attention and drives inbound traffic.",
+    desc: "Raw material edited into content designed to capture attention.",
     startX: 0.12,
-    startY: 0.32,
+    startY: 0.37,
   },
   {
     id: "web",
@@ -34,7 +34,7 @@ const MODULES: ModuleInfo[] = [
     k: "Website",
     category: "Interface",
     role: "Conversion architecture",
-    desc: "Fast, conversion-engineered digital pages turning inbound traffic into qualified inquiries.",
+    desc: "Digital pages designed to help visitors take a clear next step.",
     startX: 0.32,
     startY: 0.72,
   },
@@ -43,10 +43,10 @@ const MODULES: ModuleInfo[] = [
     num: "03",
     k: "AI Agent",
     category: "Intelligence",
-    role: "24/7 conversational assistant",
-    desc: "Conversational intelligence grounded in your docs to answer questions and qualify leads in real time.",
+    role: "Conversational assistant",
+    desc: "A conversational interface can use approved information to answer questions and qualify inquiries.",
     startX: 0.52,
-    startY: 0.26,
+    startY: 0.20,
   },
   {
     id: "auto",
@@ -54,7 +54,7 @@ const MODULES: ModuleInfo[] = [
     k: "Automation",
     category: "Workflow",
     role: "Autonomous logic & routing",
-    desc: "Multi-step workflows routing data, syncing tools, and executing operations without manual delay.",
+    desc: "Multi-step workflows can route data and connect tools according to agreed rules.",
     startX: 0.72,
     startY: 0.74,
   },
@@ -66,7 +66,7 @@ const MODULES: ModuleInfo[] = [
     role: "Single source of truth",
     desc: "Centralized pipeline tracking customer records, deal progression, and revenue history.",
     startX: 0.90,
-    startY: 0.34,
+    startY: 0.37,
   },
 ];
 
@@ -99,15 +99,15 @@ const getSettledPos = (id: string, isNarrow: boolean): { x: number; y: number } 
     // S-curve responsive layout for mobile screens
     switch (id) {
       case "video":
-        return { x: 0.24, y: 0.16 };
+        return { x: 0.24, y: 0.20 };
       case "web":
-        return { x: 0.76, y: 0.32 };
+        return { x: 0.76, y: 0.33 };
       case "agent":
-        return { x: 0.50, y: 0.50 };
+        return { x: 0.50, y: 0.46 };
       case "auto":
-        return { x: 0.24, y: 0.68 };
+        return { x: 0.24, y: 0.59 };
       case "crm":
-        return { x: 0.76, y: 0.84 };
+        return { x: 0.76, y: 0.72 };
       default:
         return { x: 0.5, y: 0.5 };
     }
@@ -147,7 +147,7 @@ export function ConnectedSystem() {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [inspectedId, setInspectedId] = useState<string | null>(null);
   const [isPulsing, setIsPulsing] = useState(false);
-  const [signalPos, setSignalPos] = useState<{ x: number; y: number } | null>(null);
+  const signal = useRef<SVGGElement>(null);
 
   const moved = useRef(false);
   const longPressTimer = useRef<number | null>(null);
@@ -166,7 +166,12 @@ export function ConnectedSystem() {
     return () => ro.disconnect();
   }, []);
 
-  const px = (n: CNode) => ({ x: n.x * size.w, y: n.y * size.h });
+  // Keep the full draggable chip inside the canvas, even on a 320px screen.
+  // Positions, lines, hit targets and packet animation all share this mapping.
+  const px = (n: CNode) => {
+    const side = Math.min(72, size.w * 0.27);
+    return { x: Math.max(side, Math.min(size.w - side, n.x * size.w)), y: n.y * size.h };
+  };
   const byId = (id: string): CNode => nodes.find((n) => n.id === id) ?? { id, x: 0.5, y: 0.5 };
   const moduleById = (id: string): ModuleInfo => MODULES.find((m) => m.id === id)!;
 
@@ -195,47 +200,28 @@ export function ConnectedSystem() {
     } else {
       prevDoneRef.current = false;
       setIsPulsing(false);
-      setSignalPos(null);
     }
   }, [done, isNarrow]);
 
-  // Live signal flow traveling through the connected system when done
+  // A single packet travels the completed example once. Updating the SVG
+  // directly avoids re-rendering the whole interactive canvas every frame.
   useEffect(() => {
-    if (!done || prefersReducedMotion()) {
-      setSignalPos(null);
-      return;
-    }
-
-    // Sequence of points along the backbone: video -> web -> agent -> auto -> crm
-    const order = ["video", "web", "agent", "auto", "crm"];
-    const points = order.map((id) => px(byId(id)));
-
-    const state = { t: 0 };
-    const tl = gsap.timeline({ repeat: -1, repeatDelay: 0.4 });
-    tl.to(state, {
-      t: points.length - 1,
-      duration: 3.2,
-      ease: "none",
-      onUpdate: () => {
-        const seg = Math.floor(state.t);
-        const frac = state.t - seg;
-        if (seg >= points.length - 1) {
-          setSignalPos(points[points.length - 1]);
-        } else {
-          const p1 = points[seg];
-          const p2 = points[seg + 1];
-          setSignalPos({
-            x: p1.x + (p2.x - p1.x) * frac,
-            y: p1.y + (p2.y - p1.y) * frac,
-          });
-        }
-      },
-    });
-
-    return () => {
-      tl.kill();
+    const dot = signal.current;
+    if (!done || !dot) return;
+    const points = ["video", "web", "agent", "auto", "crm"].map((id) => px(byId(id)));
+    const place = (position: number) => {
+      const index = Math.min(points.length - 2, Math.floor(position));
+      const t = Math.min(1, position - index);
+      const a = points[index], b = points[index + 1];
+      dot.setAttribute("transform", `translate(${a.x + (b.x - a.x) * t} ${a.y + (b.y - a.y) * t})`);
     };
+    if (prefersReducedMotion()) { place(points.length - 1); return; }
+    const state = { t: 0 };
+    const tween = gsap.to(state, { t: points.length - 1, duration: 3.2, ease: "none", onUpdate: () => place(state.t) });
+    return () => { tween.kill(); };
   }, [done, size.w, size.h, nodes]);
+
+  useEffect(() => () => { if (longPressTimer.current) window.clearTimeout(longPressTimer.current); }, []);
 
   const tryConnect = (a: string, b: string) => {
     if (a === b || !isCompat(a, b)) return false;
@@ -292,7 +278,7 @@ export function ConnectedSystem() {
 
     setNodes((ns) => ns.map((n) => (n.id === dragId ? { ...n, x, y } : n)));
 
-    const me = { x: x * size.w, y: y * size.h };
+    const me = px({ id: dragId, x, y });
     const threshold = isNarrow ? 110 : 150;
     const cand = nodes.find(
       (n) =>
@@ -335,7 +321,7 @@ export function ConnectedSystem() {
   const activeModule = activeInspectionId ? moduleById(activeInspectionId) : null;
 
   return (
-    <section className="w-full py-[clamp(70px,9vw,140px)] border-t" style={{ background: "var(--bg-2)", borderColor: "var(--line)" }}>
+    <section id="connected-system" className="w-full py-[clamp(70px,9vw,140px)] border-t" style={{ background: "var(--bg-2)", borderColor: "var(--line)" }}>
       <div className="wrap">
         {/* Section Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-[20px] mb-[clamp(24px,3.5vw,40px)]">
@@ -345,7 +331,7 @@ export function ConnectedSystem() {
               You don’t need everything at once.
             </h2>
             <p className="body mt-[16px] max-w-[48ch]" data-r="meta">
-              Start where the friction is. Drag modules together to connect the services — or watch how individual capabilities unify into one autonomous pipeline.
+              Start where the friction is. Drag or select compatible modules to explore how individual capabilities could connect. This is a conceptual model, not a live integration.
             </p>
           </div>
 
@@ -364,7 +350,7 @@ export function ConnectedSystem() {
                 }`}
               />
               <span className="mono text-[11px]" style={{ color: done ? "var(--fg)" : "var(--muted)" }}>
-                {done ? "System connected" : `${edges.length} / ${COMPAT.length} connections`}
+                {done ? "Example system connected" : `${edges.length} / ${COMPAT.length} connections`}
               </span>
             </div>
 
@@ -431,7 +417,7 @@ export function ConnectedSystem() {
             />
             <span className="mono text-[10px] tracking-wide uppercase opacity-75" style={{ color: "var(--fg)" }}>
               {done
-                ? "Autonomous system loop · 5 modules integrated"
+                ? "Example route · 5 modules connected"
                 : picked
                 ? `Selected ${moduleById(picked).k} · Tap matching module to link`
                 : dragId
@@ -499,25 +485,8 @@ export function ConnectedSystem() {
               );
             })}
 
-            {/* Live Traveling Signal Packet when System is fully connected */}
-            {done && signalPos && (
-              <g>
-                <circle
-                  cx={signalPos.x}
-                  cy={signalPos.y}
-                  r={6}
-                  fill="var(--accent)"
-                  opacity="0.6"
-                  filter="url(#lime-glow)"
-                />
-                <circle
-                  cx={signalPos.x}
-                  cy={signalPos.y}
-                  r={3.5}
-                  fill="var(--accent-deep)"
-                />
-              </g>
-            )}
+            {/* Example packet: one trip after the model is connected. */}
+            {done && <g ref={signal}><circle r="5" fill="var(--accent)" /><circle r="2" fill="var(--accent-ink)" /></g>}
 
             {/* Dynamic Proximity Snap Line when dragging */}
             {dragId && near && (() => {
@@ -562,6 +531,8 @@ export function ConnectedSystem() {
           {/* Module Nodes */}
           {nodes.map((n) => {
             const p = px(n);
+            const tooltipWidth = Math.min(280, size.w - 24, window.innerWidth * 0.75);
+            const tooltipCenter = Math.max(tooltipWidth / 2 + 12, Math.min(size.w - tooltipWidth / 2 - 12, p.x));
             const m = moduleById(n.id);
             const isLinked = edges.some((k) => k.split("|").includes(n.id));
             const isDragging = dragId === n.id;
@@ -592,7 +563,7 @@ export function ConnectedSystem() {
                   <div
                     className="pointer-events-none absolute z-40 animate-fade-in"
                     style={{
-                      left: "50%",
+                      left: `calc(50% + ${tooltipCenter - p.x}px)`,
                       top: p.y > size.h * 0.45 ? "-12px" : "calc(100% + 12px)",
                       transform: p.y > size.h * 0.45 ? "translate(-50%, -100%)" : "translate(-50%, 0)",
                       width: "max-content",
@@ -675,6 +646,7 @@ export function ConnectedSystem() {
                   }}
                   data-cursor={isDragging ? "GRAB" : "DRAG"}
                   aria-label={`${m.k} module — ${m.desc}`}
+                  aria-pressed={isPicked}
                 >
                   {/* Status indicator dot */}
                   <span
@@ -722,18 +694,18 @@ export function ConnectedSystem() {
                 className="block h-[5px] w-[5px] rounded-full flex-shrink-0"
                 style={{ background: activeModule ? "var(--accent-deep)" : "var(--muted)" }}
               />
-              <p className="mono text-[10px] sm:text-[11px] truncate" style={{ color: "var(--fg)" }}>
+              <p className="mono text-[10px] sm:text-[11px]" style={{ color: "var(--fg)" }}>
                 {activeModule ? (
                   <>
                     <strong style={{ color: "var(--accent-ink)" }}>
                       {activeModule.num} {activeModule.k.toUpperCase()}:
                     </strong>{" "}
-                    {activeModule.desc}
+                    {activeModule.role}
                   </>
                 ) : done ? (
-                  "Full pipeline established. Signal travels from inbound video to closed CRM."
+                  "Example route. Select a module."
                 ) : (
-                  "Drag modules together or tap two modules to establish connections."
+                  "Drag or tap two modules to link."
                 )}
               </p>
             </div>
@@ -769,7 +741,7 @@ export function ConnectedSystem() {
                 </h3>
 
                 <p className="body mt-[14px] text-[var(--muted)] leading-relaxed max-w-[62ch]">
-                  Inbound video captures attention → conversion-engineered website engages visitors → 24/7 AI agent qualifies intent → automation routes structured data directly to your CRM. Every piece works independently, but connected together they run your growth as one continuous machine.
+                  In this example, video can lead people to a website, an agent can help qualify an inquiry, and automation can route it to a CRM. Actual behavior depends on the agreed scope and connected tools.
                 </p>
               </div>
 
@@ -802,7 +774,7 @@ export function ConnectedSystem() {
                   01 · INBOUND FLOW
                 </span>
                 <p className="mono text-[11px] leading-snug" style={{ color: "var(--fg)" }}>
-                  Editorial video content drives high-intent visitors directly into conversion landing pages.
+                  Editorial content can lead visitors toward a clear next step on the website.
                 </p>
               </div>
 
@@ -811,7 +783,7 @@ export function ConnectedSystem() {
                   02 · QUALIFICATION
                 </span>
                 <p className="mono text-[11px] leading-snug" style={{ color: "var(--fg)" }}>
-                  Grounded AI chatbots answer questions, capture context, and score inbound inquiries 24/7.
+                  An agent can answer questions and collect context for a human handoff.
                 </p>
               </div>
 
@@ -820,7 +792,7 @@ export function ConnectedSystem() {
                   03 · AUTONOMOUS SYNC
                 </span>
                 <p className="mono text-[11px] leading-snug" style={{ color: "var(--fg)" }}>
-                  Automations trigger tasks, update deal stages, and alert your team with zero manual handoffs.
+                  A configured workflow can prepare tasks, update records, and notify the team.
                 </p>
               </div>
             </div>

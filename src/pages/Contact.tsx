@@ -91,6 +91,12 @@ export function ContactPage() {
   const sendBtnRef = useRef<HTMLButtonElement>(null);
   const sendRectRef = useRef<DOMRect | null>(null);
   const pendingTag = useRef<TagKey | null>(null);
+  const transitionTimer = useRef<number | null>(null);
+  const sendingRef = useRef(false);
+  useEffect(() => () => {
+    if (transitionTimer.current !== null) window.clearTimeout(transitionTimer.current);
+    document.querySelectorAll(".tag-ghost").forEach((ghost) => ghost.remove());
+  }, []);
 
   // Prompt 16 → 17 handoff: the last Ask Arche trigger seeds the confirmation
   // Prompt 26 handoff: prefilled service selection from dedicated service pages
@@ -184,19 +190,23 @@ export function ContactPage() {
       setBuild(o);
       setDismissed((d) => ({ ...d, build: false }));
     }
-    window.setTimeout(() => {
+    if (transitionTimer.current !== null) window.clearTimeout(transitionTimer.current);
+    transitionTimer.current = window.setTimeout(() => {
+      transitionTimer.current = null;
       flyTag("build", el, `Building: ${o}`);
       setStep(1);
-    }, 340);
+    }, prefersReducedMotion() ? 0 : 340);
   };
 
   const chooseTimeline = (o: string, el: HTMLElement) => {
     setTimeline(o);
     setDismissed((d) => ({ ...d, timeline: false }));
-    window.setTimeout(() => {
+    if (transitionTimer.current !== null) window.clearTimeout(transitionTimer.current);
+    transitionTimer.current = window.setTimeout(() => {
+      transitionTimer.current = null;
       flyTag("timeline", el, `Timeline: ${o}`);
       setStep(3);
-    }, 340);
+    }, prefersReducedMotion() ? 0 : 340);
   };
 
   const submitChange = (el: HTMLElement | null) => {
@@ -208,6 +218,8 @@ export function ContactPage() {
   };
 
   const goBack = (target: number) => {
+    if (sendingRef.current) return;
+    if (transitionTimer.current !== null) window.clearTimeout(transitionTimer.current);
     if (target === 0) setDismissed((d) => ({ ...d, build: true }));
     if (target === 2) setDismissed((d) => ({ ...d, timeline: true }));
     if (target === 1) setDismissed((d) => ({ ...d, change: true }));
@@ -228,22 +240,14 @@ export function ContactPage() {
   });
 
   const submit = async () => {
-    if (!canSubmit || phase !== "form") return;
+    if (!canSubmit || phase !== "form" || sendingRef.current) return;
+    sendingRef.current = true;
     setPhase("sending");
-
-    // Local archive (kept from before — a per-visitor record, NOT the
-    // real pipeline; the real delivery is below).
-    try {
-      const log = JSON.parse(localStorage.getItem("arche:inquiries") || "[]");
-      log.push({ build, change, timeline, name, email, company, seed, at: new Date().toISOString() });
-      localStorage.setItem("arche:inquiries", JSON.stringify(log));
-    } catch {
-      /* fine */
-    }
 
     // The honest gate: only a genuine 2xx from the delivery endpoint
     // may lead to "REQUEST RECEIVED".
     const result = await submitInquiry(payload());
+    sendingRef.current = false;
     if (result.ok) {
       // capture the button's position before the form unmounts — the
       // signal dot flies from here into the node diagram
@@ -328,7 +332,7 @@ export function ContactPage() {
 
         {/* progress */}
         {(phase === "form" || phase === "sending") && (
-          <div className="mt-[clamp(30px,4vw,52px)] flex items-center gap-[14px]" data-r="meta">            <span className="mono">
+          <div className="mt-[clamp(30px,4vw,52px)] flex items-center gap-[14px]" data-r="meta" role="progressbar" aria-label="Project inquiry progress" aria-valuemin={1} aria-valuemax={4} aria-valuenow={step + 1}>            <span className="mono">
               0{Math.min(step + 1, 4)} / 04
             </span>
             <span className="relative h-px flex-1 overflow-hidden" style={{ background: "var(--line)" }}>
@@ -361,6 +365,7 @@ export function ContactPage() {
                   aria-label={`Edit ${t.key}`}
                   className="cursor-pointer leading-none"
                   style={{ color: "var(--faint)" }}
+                  disabled={phase === "sending"}
                   onClick={() => goBack(t.key === "build" ? 0 : t.key === "change" ? 1 : 2)}
                 >
                   ✕
@@ -381,6 +386,7 @@ export function ContactPage() {
                 <button
                   type="button"
                   className="mono lnk"
+                  disabled={phase === "sending"}
                   onClick={() => goBack(step - 1)}
                   style={{ color: "var(--muted)" }}
                 >
@@ -398,6 +404,7 @@ export function ContactPage() {
                   {BUILD_OPTIONS.map((o) => (
                     <button
                       key={o.k}
+                      aria-pressed={build === o.k}
                       onClick={(e) => chooseBuild(o.k, e.currentTarget)}
                       data-cursor="SELECT"
                       className="group flex items-baseline justify-between gap-[16px] border-b py-[18px] text-left"
@@ -477,6 +484,7 @@ export function ContactPage() {
                   {TIMELINE_OPTIONS.map((o) => (
                     <button
                       key={o.k}
+                      aria-pressed={timeline === o.k}
                       onClick={(e) => chooseTimeline(o.k, e.currentTarget)}
                       data-cursor="SELECT"
                       className="group flex items-baseline justify-between gap-[16px] border-b py-[18px] text-left"
@@ -500,7 +508,7 @@ export function ContactPage() {
             )}
 
             {step === 3 && (
-              <div>
+              <form noValidate onSubmit={(e) => { e.preventDefault(); void submit(); }}>
                 <StepTitle n="04" title={stepTitles[3]} />
                 <div className="mt-[18px] grid gap-[16px] sm:grid-cols-2">
                   <label className="flex flex-col">
@@ -508,6 +516,7 @@ export function ContactPage() {
                     <input
                       className="field"
                       value={name}
+                      disabled={phase === "sending"}
                       onChange={(e) => setName(e.target.value)}
                       onBlur={() => setTouched((t) => ({ ...t, name: true }))}
                       placeholder="Who's building this?"
@@ -526,6 +535,7 @@ export function ContactPage() {
                       className="field"
                       type="email"
                       value={email}
+                      disabled={phase === "sending"}
                       onChange={(e) => setEmail(e.target.value)}
                       onBlur={() => setTouched((t) => ({ ...t, email: true }))}
                       placeholder="you@company.com"
@@ -542,15 +552,15 @@ export function ContactPage() {
                     <span className="mono mb-[6px]">
                       Company <span style={{ color: "var(--faint)" }}>(optional)</span>
                     </span>
-                    <input className="field" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Only if you'd like to share" />
+                    <input className="field" value={company} disabled={phase === "sending"} onChange={(e) => setCompany(e.target.value)} placeholder="Only if you'd like to share" />
                   </label>
                 </div>
                 <div className="mt-[20px] flex items-center gap-[16px]">
                   <button
                     ref={sendBtnRef}
+                    type="submit"
                     className="btn"
                     disabled={!canSubmit || phase === "sending"}
-                    onClick={submit}
                     data-cursor={phase === "sending" ? undefined : "START"}
                     data-magnetic
                   >
@@ -571,7 +581,7 @@ export function ContactPage() {
                       : "Add your name and a valid email to send."}
                   </span>
                 </div>
-              </div>
+              </form>
             )}
           </div>
         ) : phase === "failed" ? (
@@ -622,8 +632,7 @@ export function ContactPage() {
               <h2 className="d3 mb-[12px]">It's in the system.</h2>
               <p className="body max-w-[44ch]" data-receive-note="">
                 Thanks {name.trim().split(" ")[0]}{build ? ` — a ${build.toLowerCase()} it is` : ""}. A
-                real reply goes to <span style={{ color: "var(--fg)" }}>{email}</span>, usually within
-                two working days, with next steps and honest scoping.
+                real reply goes to <span style={{ color: "var(--fg)" }}>{email}</span>, with next steps and honest scoping.
               </p>
               {seed && (
                 <p className="mono mt-[14px]" style={{ color: "var(--faint)" }}>

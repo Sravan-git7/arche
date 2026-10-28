@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode, type PointerEvent as RPointerEvent } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type PointerEvent as RPointerEvent, type MouseEvent as RMouseEvent } from "react";
 import { prefersReducedMotion } from "../lib/gsap";
 
 /**
@@ -30,9 +30,21 @@ const mono = "mono";
 const dim = "rgba(244,242,237,0.68)";
 const faint = "rgba(244,242,237,0.6)";
 
+const LabVisibility = createContext(true);
+
 export function Labs() {
+  const section = useRef<HTMLElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = section.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { rootMargin: "200px" });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   return (
-    <section className="w-full py-[clamp(64px,8vw,120px)] on-ink bg-[#0c0c0d] text-[#f4f2ed]">
+    <LabVisibility.Provider value={visible}>
+    <section id="labs" ref={section} data-visible={visible} className="w-full py-[clamp(64px,8vw,120px)] on-ink bg-[#0c0c0d] text-[#f4f2ed]">
       <div className="wrap">
         <div className="mb-[clamp(32px,4vw,56px)] flex flex-wrap items-end justify-between gap-[20px] border-b pb-[20px]" style={{ borderColor: "var(--line)" }}>
           <div>
@@ -46,7 +58,7 @@ export function Labs() {
             </h2>
           </div>
           <p className="body max-w-[42ch]" style={{ color: "rgba(244, 242, 237, 0.65)" }} data-r="meta">
-            Not deliverables or case studies. Small working prototypes — slide, break, type, race and build to see real system behaviour.
+            Local experiments, not client work or live infrastructure. Slide, break, type, race and build to explore how a system behaves.
           </p>
         </div>
 
@@ -69,6 +81,7 @@ export function Labs() {
         </div>
       </div>
     </section>
+    </LabVisibility.Provider>
   );
 }
 
@@ -100,12 +113,14 @@ function LabCard({ tag, title, subtitle, children }: { tag: string; title: strin
 /* tiny rAF hook: calls fn(dt seconds) every frame while `on` */
 function useFrame(fn: (dt: number) => void, on = true) {
   const ref = useRef(fn);
+  const visible = useContext(LabVisibility);
   ref.current = fn;
   useEffect(() => {
-    if (!on) return;
+    if (!on || !visible) return;
     let raf = 0;
     let last = performance.now();
     const loop = (t: number) => {
+      if (t - last < 32) { raf = requestAnimationFrame(loop); return; }
       const dt = Math.min(0.05, (t - last) / 1000);
       last = t;
       ref.current(dt);
@@ -113,7 +128,7 @@ function useFrame(fn: (dt: number) => void, on = true) {
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [on]);
+  }, [on, visible]);
 }
 
 /* ================================================================
@@ -248,6 +263,7 @@ type NodeId = "primary" | "backup";
 const RECOVER_MS = 5000;
 
 function FailoverLab() {
+  const visible = useContext(LabVisibility);
   const [down, setDown] = useState<Record<NodeId, number>>({ primary: 0, backup: 0 }); // timestamp killed, 0 = up
   const [now, setNow] = useState(performance.now());
   const [log, setLog] = useState("Traffic flowing PRIMARY → OUTPUT. Click PRIMARY to kill it.");
@@ -272,7 +288,7 @@ function FailoverLab() {
     setDown((d) => ({ ...d, [n]: t }));
     const other = n === "primary" ? "backup" : "primary";
     if (down[other]) setLog("Both nodes down — OUTPUT has no path. This is the limit of this setup.");
-    else if (n === "primary") setLog("PRIMARY killed — rerouting through BACKUP. No request dropped.");
+    else if (n === "primary") setLog("PRIMARY killed — rerouting through BACKUP. The example route now uses the backup.");
     else setLog("BACKUP killed — PRIMARY still serving. Kill it too to see the limit.");
   };
 
@@ -289,7 +305,7 @@ function FailoverLab() {
         aria-label={`${label} node — ${isDown ? "down" : "click to kill"}`}
         onClick={() => kill(id)}
         onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), kill(id))}
-        style={{ cursor: isDown ? "default" : "pointer", outline: "none" }}
+        style={{ cursor: isDown ? "default" : "pointer" }}
         className="lab-svg-node"
       >
         <circle cx={at.x} cy={at.y} r="11" fill="transparent" />
@@ -305,10 +321,10 @@ function FailoverLab() {
         {isDown && (
           <circle cx={at.x} cy={at.y} r="9" fill="none" stroke={FAULT} strokeWidth="0.6" strokeDasharray={`${(1 - left / RECOVER_MS) * 56.5} 56.5`} transform={`rotate(-90 ${at.x} ${at.y})`} opacity="0.8" />
         )}
-        <text x={at.x} y={at.y + 15.5} textAnchor="middle" className="mono" fontSize="4" fill={isDown ? FAULT : serving ? LIME : dim}>
+        <text x={at.x} y={at.y + 15.5} textAnchor="middle" className="mono" style={{ fontSize: "4px" }} fill={isDown ? FAULT : serving ? LIME : dim}>
           {label}
         </text>
-        <text x={at.x} y={at.y + 20.5} textAnchor="middle" className="mono" fontSize="3.1" fill={faint}>
+        <text x={at.x} y={at.y + 20.5} textAnchor="middle" className="mono" style={{ fontSize: "3.1px" }} fill={faint}>
           {isDown ? `recovering ${Math.ceil(left / 1000)}s` : serving ? "serving" : "standby"}
         </text>
       </g>
@@ -340,7 +356,7 @@ function FailoverLab() {
           <g key={route}>
             <path d={pathOf(route === "primary" ? P : B)} fill="none" stroke="rgba(200,241,79,.35)" strokeWidth="3" pathLength={1} className="lab-route" style={{ filter: "blur(1.2px)" }} />
             <path d={pathOf(route === "primary" ? P : B)} fill="none" stroke="rgba(240,252,210,.95)" strokeWidth="0.7" pathLength={1} className="lab-route" />
-            {!reduced() &&
+            {visible && !reduced() &&
               [0, 0.33, 0.66].map((d) => (
                 <circle key={d} r="2.4" fill="url(#fo-pl)">
                   <animateMotion dur="1.2s" begin={`${0.7 + d * 1.2}s`} repeatCount="indefinite">
@@ -356,13 +372,13 @@ function FailoverLab() {
         <g>
           {route && <circle cx={O.x} cy={O.y} r="10" fill="url(#fo-glow)" />}
           <rect x={O.x - 8} y={O.y - 6} width="16" height="12" rx="2" fill={route ? "#141416" : "rgba(255,122,102,.08)"} stroke={route ? LIME : FAULT} strokeWidth="0.8" className={route ? "" : "lab-degraded"} />
-          <text x={O.x} y={O.y + 1.3} textAnchor="middle" className="mono" fontSize="3.4" fill={route ? LIME : FAULT}>
+          <text x={O.x} y={O.y + 1.3} textAnchor="middle" className="mono" style={{ fontSize: "3.4px" }} fill={route ? LIME : FAULT}>
             {route ? "200 OK" : "NO PATH"}
           </text>
-          <text x={O.x} y={O.y + 13} textAnchor="middle" className="mono" fontSize="4" fill={route ? dim : FAULT}>
+          <text x={O.x} y={O.y + 13} textAnchor="middle" className="mono" style={{ fontSize: "4px" }} fill={route ? dim : FAULT}>
             OUTPUT
           </text>
-          <text x={O.x} y={O.y + 18} textAnchor="middle" className="mono" fontSize="3.1" fill={faint}>
+          <text x={O.x} y={O.y + 18} textAnchor="middle" className="mono" style={{ fontSize: "3.1px" }} fill={faint}>
             {route ? `via ${route}` : "degraded"}
           </text>
         </g>
@@ -401,9 +417,9 @@ function extract(t: string): Field[] {
   if (money) {
     const num = money[1] ?? money[3] ?? money[5];
     const unit = (money[2] ?? money[4] ?? money[6] ?? "").toLowerCase();
-    const cur = /\$|usd/i.test(money[0]) ? "$" : "₹";
+    const cur = /\$|usd/i.test(money[0]) ? "$" : /₹|rs\.?|inr/i.test(money[0]) ? "₹" : "";
     const n = parseFloat(num.replace(/,/g, "")) * (unit === "k" ? 1e3 : unit.startsWith("l") ? 1e5 : unit === "m" ? 1e6 : 1);
-    if (!isNaN(n) && n > 0) out.push({ k: "BUDGET", v: `${cur}${n.toLocaleString("en-IN")}` });
+    if (!isNaN(n) && n > 0) out.push({ k: "BUDGET", v: `${cur}${n.toLocaleString(cur === "₹" ? "en-IN" : "en-US")}` });
   }
   const phone = t.match(/(?:\+?\d{1,3}[\s-]?)?\d{5}[\s-]?\d{5}\b/);
   if (phone) out.push({ k: "PHONE", v: phone[0].trim() });
@@ -421,6 +437,7 @@ function LiveParserLab() {
   const fields = extract(text);
   const autoType = () => {
     window.clearInterval(typing.current);
+    if (reduced()) { setText(EXAMPLE); return; }
     let i = 0;
     setText("");
     typing.current = window.setInterval(() => {
@@ -489,7 +506,9 @@ function RaceLab() {
   const [, force] = useState(0);
   const [flashA, setFlashA] = useState(-1);
   const [flashM, setFlashM] = useState(-1);
-  const processBtn = useRef<HTMLButtonElement>(null);
+  const processButton = useRef<HTMLButtonElement>(null);
+  const startButton = useRef<HTMLButtonElement>(null);
+  const returnFocus = useRef(false);
 
   useFrame((dt) => {
     const s = st.current;
@@ -513,24 +532,29 @@ function RaceLab() {
     }
     if (s.autoDone && s.manDone) setPhase("done");
     force((n) => n + 1);
-  }, phase === "running");
+  }, phase === "running" && !reduced());
 
-  useEffect(() => {
-    if (st.current.waiting) processBtn.current?.focus({ preventScroll: true });
-  });
-
-  const start = () => {
-    st.current = { t0: performance.now(), autoPos: 0, autoDone: 0, manPos: 0, manStop: 0, manDone: 0, waiting: false, now: performance.now() };
+  const start = (event: RMouseEvent<HTMLButtonElement>) => {
+    const now = performance.now();
+    returnFocus.current = event.detail === 0;
+    st.current = reduced()
+      ? { t0: now, autoPos: 1, autoDone: 1, manPos: cpAt(0), manStop: 0, manDone: 0, waiting: true, now }
+      : { t0: now, autoPos: 0, autoDone: 0, manPos: 0, manStop: 0, manDone: 0, waiting: false, now };
     setFlashA(-1);
     setFlashM(-1);
     setPhase("running");
   };
-  const process = () => {
+  const process = (event: RMouseEvent<HTMLButtonElement>) => {
     const s = st.current;
     if (!s.waiting) return;
+    returnFocus.current = event.detail === 0;
     s.waiting = false;
     setFlashM(s.manStop);
     s.manStop += 1;
+    if (reduced()) {
+      if (s.manStop >= CPS) { s.manPos = 1; s.manDone = 1; setPhase("done"); }
+      else { s.manPos = cpAt(s.manStop); s.waiting = true; force((n) => n + 1); }
+    }
   };
 
   const s = st.current;
@@ -538,13 +562,18 @@ function RaceLab() {
   const autoT = s.autoDone || (phase === "ready" ? 0 : elapsed);
   const manT = s.manDone || (phase === "ready" ? 0 : elapsed);
   const waitingAt = s.waiting ? s.manStop : -1; // 0-based checkpoint index the manual token is stuck at
+  useEffect(() => {
+    if (!returnFocus.current) return;
+    if (waitingAt >= 0) { processButton.current?.focus(); returnFocus.current = false; }
+    else if (phase === "done") { startButton.current?.focus(); returnFocus.current = false; }
+  }, [waitingAt, phase]);
 
   const track = (label: string, pos: number, time: number, done: number, flash: number, manual: boolean) => (
     <div>
       <div className="mb-[5px] flex items-center justify-between">
         <span className={`${mono} text-[8.5px] tracking-wider`} style={{ color: manual ? "#f4f2ed" : LIME }}>{label}</span>
         <span className={`${mono} text-[10px] tabular-nums`} style={{ color: done ? (manual ? "#f4f2ed" : LIME) : dim }}>
-          {time.toFixed(2)}s{done ? " ✓" : ""}
+          {reduced() ? (done ? "DONE" : "—") : `${time.toFixed(2)}s${done ? " ✓" : ""}`}
         </span>
       </div>
       <div className="relative h-[34px]">
@@ -578,8 +607,8 @@ function RaceLab() {
         <span className="absolute right-[6px] top-[3px] h-[14px] w-px" style={{ background: "rgba(244,242,237,.35)" }} />
         {manual && waitingAt >= 0 && (
           <button
-            ref={processBtn}
             key={waitingAt}
+            ref={processButton}
             type="button"
             onClick={process}
             className={`${mono} lab-proc absolute top-[18px] -translate-x-1/2 whitespace-nowrap rounded-[3px] px-[6px] py-[2px] text-[8px] font-bold`}
@@ -592,7 +621,6 @@ function RaceLab() {
     </div>
   );
 
-  const ratio = s.autoDone && s.manDone ? s.manDone / s.autoDone : 0;
   return (
     <div className="flex flex-1 flex-col justify-between gap-[10px]">
       <div className="flex flex-col gap-[14px]">
@@ -601,16 +629,16 @@ function RaceLab() {
       </div>
       <div className="flex items-center justify-between gap-[8px]">
         <p className={`${mono} min-w-0 flex-1 text-[9px] leading-[1.5]`} style={{ color: "rgba(244,242,237,.7)" }} aria-live="polite">
-          {phase === "ready" && "Press START. Automated runs itself — you click PROCESS at every checkpoint."}
+          {phase === "ready" && "A game, not a benchmark. Press START, then click PROCESS at each checkpoint."}
           {phase === "running" && (s.waiting ? `Checkpoint ${waitingAt + 1}/${CPS} waiting on you…` : s.autoDone ? "Automated already finished. Keep clicking." : "Both running…")}
-          {phase === "done" && (
+          {phase === "done" && (reduced() ? "Example complete · five manual checkpoints. A game, not a benchmark." : (
             <>
               Automated <strong style={{ color: LIME }}>{s.autoDone.toFixed(2)}s</strong> · You <strong style={{ color: "#f4f2ed" }}>{s.manDone.toFixed(2)}s</strong>
-              {ratio > 1.05 && <span style={{ color: faint }}> — {ratio.toFixed(1)}× slower, and you were trying.</span>}
+              <span style={{ color: faint }}> · game timer, not a benchmark.</span>
             </>
-          )}
+          ))}
         </p>
-        <button type="button" onClick={start} disabled={phase === "running"} className="btn btn-ghost flex-none px-[12px] py-[6px] text-[9.5px] disabled:opacity-40">
+        <button ref={startButton} type="button" onClick={start} disabled={phase === "running"} className="btn btn-ghost flex-none px-[12px] py-[6px] text-[9.5px] disabled:opacity-40">
           {phase === "done" ? "RETRY" : "START"}
         </button>
       </div>
@@ -630,7 +658,7 @@ const MAX_BLOCKS = 5;
 const RESULTS: Record<BlockType, string[]> = {
   TRIGGER: ["Form submitted"],
   CONDITION: ["Budget > 10k? Yes", "Email valid? Yes", "New client? Yes"],
-  ACTION: ["Task created", "Reply sent", "CRM updated", "Team notified"],
+  ACTION: ["Example task", "Example reply", "Example CRM record", "Example notification"],
 };
 const BLOCK_ICON: Record<BlockType, string> = { TRIGGER: "⚡", CONDITION: "◇", ACTION: "▶" };
 
@@ -744,7 +772,8 @@ function BuildFlowLab() {
             key={t}
             type="button"
             onPointerDown={(e) => onDown(e, t)}
-            onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), place(t, blocks.length))}
+            onClick={(e) => { if (e.detail === 0) place(t, blocks.length); }}
+            disabled={blocks.length >= MAX_BLOCKS || (!!run && !done)}
             className={`${mono} lab-glow-hover cursor-grab rounded-[4px] border px-[7px] py-[4px] text-[8.5px] active:cursor-grabbing`}
             style={{ borderColor: "rgba(200,241,79,.35)", color: "#f4f2ed", background: "#141416", touchAction: "none", opacity: blocks.length >= MAX_BLOCKS ? 0.4 : 1 }}
             aria-label={`Add ${t} block`}
@@ -780,7 +809,29 @@ function BuildFlowLab() {
               )}
               <div
                 data-block={b.id}
+                role="group"
+                tabIndex={0}
+                aria-label={`${b.type} block ${i + 1} of ${blocks.length}. Use arrow keys to reorder, Delete to remove.`}
                 onPointerDown={(e) => onDown(e, b.type, b.id)}
+                onKeyDown={(e) => {
+                  if (e.target !== e.currentTarget || (!!run && !done)) return;
+                  if (e.key === "Delete" || e.key === "Backspace") {
+                    e.preventDefault();
+                    setBlocks((current) => current.filter((block) => block.id !== b.id));
+                    reset();
+                  } else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+                    e.preventDefault();
+                    const next = i + (e.key === "ArrowLeft" ? -1 : 1);
+                    if (next < 0 || next >= blocks.length) return;
+                    setBlocks((current) => {
+                      const reordered = [...current];
+                      const [item] = reordered.splice(i, 1);
+                      reordered.splice(next, 0, item);
+                      return reordered;
+                    });
+                    reset();
+                  }
+                }}
                 className="lab-block-in relative flex w-[78px] flex-none cursor-grab flex-col gap-[4px] rounded-[5px] border p-[6px]"
                 style={{
                   touchAction: "none",
@@ -799,6 +850,9 @@ function BuildFlowLab() {
                 <span className={`${mono} min-h-[22px] text-[8px] leading-[1.35]`} style={{ color: lit ? "#f4f2ed" : faint }}>
                   {lit && run ? run.results[i] : "—"}
                 </span>
+                <button type="button" className="lab-remove-block" aria-label={`Remove ${b.type} block ${i + 1}`} disabled={!!run && !done}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => { e.stopPropagation(); setBlocks((current) => current.filter((block) => block.id !== b.id)); reset(); }}>×</button>
               </div>
             </div>
           );
@@ -808,7 +862,7 @@ function BuildFlowLab() {
 
       <div className="flex items-center justify-between gap-[8px]">
         <p className={`${mono} min-w-0 min-h-[28px] flex-1 text-[9px] leading-[1.5]`} style={{ color: error ? FAULT : done ? LIME : "rgba(244,242,237,.6)" }} aria-live="polite">
-          {error ? `✕ ${error.msg}` : done ? `✓ Flow ran — ${blocks.length} step${blocks.length > 1 ? "s" : ""}, no one touched it.` : run ? "Running…" : `${blocks.length}/${MAX_BLOCKS} blocks · any order you like — RUN checks it.`}
+          {error ? `✕ ${error.msg}` : done ? `✓ Example flow complete — ${blocks.length} step${blocks.length > 1 ? "s" : ""}, local simulation.` : run ? "Running…" : `${blocks.length}/${MAX_BLOCKS} blocks · drag or use arrow keys to reorder.`}
         </p>
         <div className="flex flex-none items-center gap-[6px] max-[360px]:gap-[3px]">
           {blocks.length > 0 && (

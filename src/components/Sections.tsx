@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { siteContent, services } from "../data/site";
 import { Link } from "../lib/router";
-import { gsap, ScrollTrigger, prefersReducedMotion } from "../lib/gsap";
+import { gsap, ScrollTrigger, onMotionPreferenceChange, prefersReducedMotion } from "../lib/gsap";
 import { HeroEnvironment } from "./HeroEnvironment";
 import { whenIntroDone } from "./Intro";
 
@@ -16,8 +16,11 @@ export function Hero() {
   const statement = useRef<HTMLHeadingElement>(null);
   const rest = useRef<HTMLDivElement>(null);
 
+  const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion);
+  useEffect(() => onMotionPreferenceChange(setReducedMotion), []);
+
   useLayoutEffect(() => {
-    if (prefersReducedMotion() || !root.current) return;
+    if (reducedMotion || !root.current) return;
     let intro: gsap.core.Timeline | null = null;
     const ctx = gsap.context(() => {
       const masks = statement.current!.querySelectorAll<HTMLElement>(".hl-mask");
@@ -66,7 +69,7 @@ export function Hero() {
       cancel();
       ctx.revert();
     };
-  }, []);
+  }, [reducedMotion]);
 
   const h = siteContent.hero;
 
@@ -96,7 +99,10 @@ export function Hero() {
         </h1>
 
         <div ref={rest} className="mt-[36px] flex flex-col gap-[26px] border-t pt-[24px] md:flex-row md:items-end md:justify-between" style={{ borderColor: "var(--line)" }}>
-          <p className="body max-w-[52ch]">{h.sub}</p>
+          <div className="max-w-[52ch]">
+            <p className="mono mono-a mb-[10px]">What if everything worked together?</p>
+            <p className="body">{h.sub}</p>
+          </div>
           <div className="flex flex-none flex-wrap gap-[10px]">
             <Link to={h.ctaPrimary.to} className="btn" cursor="START" data-magnetic>
               {h.ctaPrimary.label} <span className="arw">→</span>
@@ -137,89 +143,45 @@ export function Approach() {
     { k: "Built to keep running", v: "Every engagement ends with something you can operate, measure and improve." },
   ];
   const [active, setActive] = useState(0);
+  const manualUntil = useRef(0);
+  const selectPrinciple = (index: number) => {
+    manualUntil.current = performance.now() + 1200;
+    setActive(index);
+  };
+  const [visible, setVisible] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
-  const miniRef = useRef<HTMLSpanElement>(null);
-  const handoffDone = useRef(false);
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // Scroll-driven active principle detection
+  const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion);
+  useEffect(() => onMotionPreferenceChange(setReducedMotion), []);
+
   useLayoutEffect(() => {
-    if (prefersReducedMotion()) return;
-    const buttons = document.querySelectorAll<HTMLElement>(".approach-principle");
+    if (reducedMotion) return;
+    const buttons = sectionRef.current?.querySelectorAll<HTMLElement>(".approach-principle") ?? [];
     const cleanups: (() => void)[] = [];
     buttons.forEach((btn, i) => {
       const st = ScrollTrigger.create({
         trigger: btn,
         start: "top 60%",
         end: "bottom 40%",
-        onEnter: () => setActive(i),
-        onEnterBack: () => setActive(i),
+        onEnter: () => { if (performance.now() >= manualUntil.current) setActive(i); },
+        onEnterBack: () => { if (performance.now() >= manualUntil.current) setActive(i); },
       });
       cleanups.push(() => st.kill());
     });
 
-    /*
-     * Prompt 14 → 15 handoff: the fully-built, breathing Process diagram
-     * compresses and becomes the small icon accompanying "Systems thinking".
-     * A clone flies from the diagram's last on-screen position into the icon
-     * slot; if the diagram is already off-screen (fast scroll / reduced
-     * motion fallback), the icon simply arrives compressed.
-     */
-    const st = ScrollTrigger.create({
-      trigger: sectionRef.current,
-      start: "top 62%",
-      once: true,
-      onEnter: () => {
-        if (handoffDone.current) return;
-        handoffDone.current = true;
-        const icon = miniRef.current;
-        if (!icon) return;
-        const sources = Array.from(document.querySelectorAll<HTMLElement>("[data-pv-diagram]")).filter(
-          (el) => el.offsetParent !== null
-        );
-        const src = sources[0]?.getBoundingClientRect();
-        const dst = icon.getBoundingClientRect();
-        const desktop = window.innerWidth >= 900;
-
-        const reveal = () =>
-          gsap.fromTo(
-            icon,
-            { scale: 1.5, opacity: 0, filter: "blur(3px)" },
-            { scale: 1, opacity: 1, filter: "blur(0px)", duration: 0.55, ease: "power3.out", clearProps: "filter" }
-          );
-
-        if (!prefersReducedMotion() && desktop && src && src.width > 40 && src.bottom > 0 && src.top < window.innerHeight) {
-          // fly a clone from the process diagram into the icon slot
-          const clone = document.createElement("div");
-          clone.setAttribute("aria-hidden", "true");
-          clone.style.cssText = `position:fixed;left:${src.left + src.width / 2}px;top:${
-            src.top + src.height / 2
-          }px;width:${src.width}px;height:${src.width}px;translate:-50% -50%;z-index:90;pointer-events:none;`;
-          clone.innerHTML = miniBuiltDiagramMarkup();
-          document.body.appendChild(clone);
-          gsap.to(clone, {
-            x: dst.left + dst.width / 2 - (src.left + src.width / 2),
-            y: dst.top + dst.height / 2 - (src.top + src.height / 2),
-            scale: dst.width / src.width,
-            opacity: 0.9,
-            duration: 0.85,
-            ease: "expo.inOut",
-            onComplete: () => {
-              clone.remove();
-              reveal();
-            },
-          });
-        } else {
-          reveal();
-        }
-      },
-    });
-    cleanups.push(() => st.kill());
-
     return () => cleanups.forEach((c) => c());
-  }, []);
+  }, [reducedMotion]);
 
   return (
-    <section ref={sectionRef} className="on-ink w-full py-[clamp(76px,10vw,150px)]">
+    <section id="approach" ref={sectionRef} data-visible={visible} className="on-ink w-full py-[clamp(76px,10vw,150px)]">
       <div className="wrap">
         <div className="mb-[clamp(36px,4vw,64px)] flex items-center gap-[16px]">
           <span className="mono" style={{ color: "var(--accent-ink)" }}>
@@ -247,22 +209,20 @@ export function Approach() {
                 }}
                 data-r="meta"
                 data-r-delay={i * 70}
-                onMouseEnter={() => setActive(i)}
-                onFocus={() => setActive(i)}
-                onClick={() => setActive(i)}
+                aria-pressed={active === i}
+                onMouseEnter={() => selectPrinciple(i)}
+                onFocus={() => selectPrinciple(i)}
+                onClick={() => selectPrinciple(i)}
               >
                 <span className="mono md:col-span-1" style={{ color: active === i ? "var(--accent)" : "var(--faint)" }}>0{i + 1}</span>
                 <h3 className="d4 flex items-center gap-[10px] md:col-span-3" style={{ color: active === i ? "var(--fg)" : "var(--muted)", transition: "color .35s" }}>
                   {i === 0 && (
                     /* the Process diagram, compressed — still running */
                     <span
-                      ref={miniRef}
-                      className={`pv-mini inline-block h-[24px] w-[24px] flex-none ${prefersReducedMotion() ? "opacity-100" : "opacity-0"}`}
+                      className="pv-mini inline-block h-[24px] w-[24px] flex-none"
                       aria-hidden
                     >
-                      <span className="pv-breath block h-full w-full">
-                        <MiniBuiltDiagram />
-                      </span>
+                      <MiniBuiltDiagram />
                     </span>
                   )}
                   {it.k}
@@ -273,12 +233,12 @@ export function Approach() {
 
             {/* Mobile visual preview */}
             <div className="mt-[24px] block md:hidden">
-              <ApproachVisual active={active} onSelect={setActive} />
+              <ApproachVisual active={active} onSelect={selectPrinciple} />
             </div>
           </div>
           <div className="hidden min-w-0 md:col-span-5 md:block">
             <div className="sticky top-[140px]">
-              <ApproachVisual active={active} onSelect={setActive} />
+              <ApproachVisual active={active} onSelect={selectPrinciple} />
             </div>
           </div>
         </div>
@@ -287,39 +247,12 @@ export function Approach() {
   );
 }
 
-/** Static markup string of the built diagram, for the handoff clone.
- *  Colors are hardcoded to the dark Approach scope — the clone is appended
- *  to document.body, outside the .on-ink CSS variable scope. */
-function miniBuiltDiagramMarkup(): string {
-  const dots = PV_CORNERS.map(
-    (c) => `<span style="position:absolute;left:${c.x}%;top:${c.y}%;width:7%;height:7%;translate:-50% -50%;border-radius:999px;background:#c8f14f;box-shadow:0 0 12px rgba(200,241,79,.55);"></span>`
-  ).join("");
-  const lines = PV_CORNERS.map(
-    (c) =>
-      `<line x1="${c.x}" y1="${c.y}" x2="50" y2="50" stroke="#7fae00" stroke-width="2.4" opacity="0.9"/>`
-  ).join("");
-  return `
-    <div style="width:100%;height:100%;background:#141416;border-radius:8px;position:relative;overflow:hidden;">
-      <svg viewBox="0 0 100 100" style="position:absolute;inset:0;width:100%;height:100%;" fill="none">${lines}</svg>
-      ${dots}
-      <span style="position:absolute;left:50%;top:50%;width:14%;height:14%;translate:-50% -50%;border-radius:999px;border:2px solid #7fae00;background:#141416;display:grid;place-items:center;">
-        <span style="width:38%;height:38%;border-radius:999px;background:#c8f14f;"></span>
-      </span>
-    </div>`;
-}
-
-/** The built Process diagram in miniature — lives beside "Systems thinking". */
+/** The same connected route that closes Process, compressed into a mark. */
 function MiniBuiltDiagram() {
   return (
     <svg viewBox="0 0 100 100" className="h-full w-full" fill="none" aria-hidden>
-      {PV_CORNERS.map((c, i) => (
-        <line key={i} x1={c.x} y1={c.y} x2="50" y2="50" stroke="var(--accent-deep)" strokeWidth="3" opacity="0.8" />
-      ))}
-      {PV_CORNERS.map((c, i) => (
-        <circle key={`d${i}`} cx={c.x} cy={c.y} r="6.5" fill="var(--accent)" />
-      ))}
-      <circle cx="50" cy="50" r="12" fill="var(--bg-2)" stroke="var(--accent-deep)" strokeWidth="3" />
-      <circle cx="50" cy="50" r="4.5" fill="var(--accent)" />
+      <path d="M8 66 L28 32 L50 53 L72 22 L92 42" stroke="var(--accent-deep)" strokeWidth="4" />
+      {[[8, 66], [28, 32], [50, 53], [72, 22], [92, 42]].map(([x, y]) => <circle key={`${x}-${y}`} cx={x} cy={y} r="6" fill="var(--accent)" />)}
     </svg>
   );
 }
@@ -340,9 +273,9 @@ interface ApproachVisualProps {
 export function ApproachVisual({ active, onSelect }: ApproachVisualProps) {
   const titles = [
     { num: "01", name: "Systems thinking", sub: "DISCONNECTED NODES → INTEGRATED GRAPH", status: "4 NODES · 1 HUB · LINKED" },
-    { num: "02", name: "AI where it earns", sub: "MANUAL DETOUR → DIRECT AGENT ROUTE", status: "AGENT ROUTE · VERIFIED" },
-    { num: "03", name: "Design + engineering", sub: "DESIGN LAYER → ALIGNED WITH CODE", status: "0 HANDOFFS" },
-    { num: "04", name: "Built to keep running", sub: "SHIPPED SYSTEM → CONTINUOUS UPTIME", status: "HEALTH: NOMINAL" },
+    { num: "02", name: "AI where it earns", sub: "MANUAL DETOUR → DIRECT AGENT ROUTE", status: "EXAMPLE · AGENT ROUTE" },
+    { num: "03", name: "Design + engineering", sub: "DESIGN LAYER → ALIGNED WITH CODE", status: "INTERFACE + SYSTEM · ALIGNED" },
+    { num: "04", name: "Built to keep running", sub: "BUILT SYSTEM → OPERABLE LOOP", status: "CONCEPTUAL OPERATIONAL STATE" },
   ];
 
   return (
@@ -376,6 +309,8 @@ export function ApproachVisual({ active, onSelect }: ApproachVisualProps) {
                 key={t.num}
                 type="button"
                 onClick={() => onSelect?.(idx)}
+                aria-pressed={isCur}
+                aria-label={`Show ${t.name}`}
                 className="mono text-[9px] px-[6px] py-[2px] rounded transition-all duration-200 cursor-pointer"
                 style={{
                   background: isCur ? "var(--accent)" : "rgba(244,242,237,0.06)",
@@ -481,7 +416,7 @@ const M_STATES: { nodes: MNode[]; edges: number[]; dashed?: number[]; hubLabel: 
       { x: 100, y: 70, r: 22, o: 1 },
     ],
     edges: [0, 0, 0, 0, 0.3, 0.3, 0.3, 0.3],
-    hubLabel: "99.99%",
+    hubLabel: "ON",
   },
 ];
 
@@ -541,7 +476,7 @@ function ApproachMorph({ active }: { active: number }) {
       {/* state 3 — orbit ring + orbiting signal */}
       <g style={{ opacity: on(3) ? 1 : 0, transition: `opacity .6s ${on(3) ? ".5s" : "0s"}` }}>
         <circle cx="100" cy="70" r="48" stroke="var(--accent-deep)" strokeWidth="1" className="approach-pulse-ring" style={{ transformOrigin: "100px 70px" }} />
-        <g className="animate-spin" style={{ transformOrigin: "100px 70px", animationDuration: "7s" }}>
+        <g className={on(3) ? "animate-spin" : undefined} style={{ transformOrigin: "100px 70px", animationDuration: "7s" }}>
           <circle cx="100" cy="22" r="3" fill="var(--accent)" style={{ filter: "drop-shadow(0 0 4px var(--accent))" }} />
         </g>
       </g>
@@ -599,9 +534,19 @@ export function ProcessSys() {
   const root = useRef<HTMLElement>(null);
   const p = siteContent.process;
   const [activeStep, setActiveStep] = useState(0);
+  const manualUntil = useRef(0);
+  const selectStep = (index: number) => {
+    // Focus can scroll a step into view. Let that scroll settle without
+    // allowing its ScrollTrigger callbacks to undo an explicit selection.
+    manualUntil.current = performance.now() + 1200;
+    setActiveStep(index);
+  };
+
+  const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion);
+  useEffect(() => onMotionPreferenceChange(setReducedMotion), []);
 
   useLayoutEffect(() => {
-    if (prefersReducedMotion() || !root.current) return;
+    if (reducedMotion || !root.current) return;
     const ctx = gsap.context(() => {
       gsap.fromTo(
         ".pr-fill",
@@ -623,14 +568,14 @@ export function ProcessSys() {
             trigger: step,
             start: "top 64%",
             toggleActions: "play none none reverse",
-            onEnter: () => setActiveStep(i),
-            onEnterBack: () => setActiveStep(i),
+            onEnter: () => { if (performance.now() >= manualUntil.current) setActiveStep(i); },
+            onEnterBack: () => { if (performance.now() >= manualUntil.current) setActiveStep(i); },
           },
         });
       });
     }, root);
     return () => ctx.revert();
-  }, []);
+  }, [reducedMotion]);
 
   return (
     <section id="process" ref={root} className="w-full py-[clamp(76px,10vw,150px)]">
@@ -643,30 +588,29 @@ export function ProcessSys() {
         </div>
 
         <div className="pr-list relative grid md:grid-cols-12">
-          <div className="pointer-events-none absolute top-0 bottom-0 left-[7px] w-px md:left-[calc(25%+7px)]">
+          <div className="pointer-events-none absolute top-0 bottom-0 left-[7px] w-px md:left-[calc(33.333%+7px)]">
             <span className="absolute inset-0" style={{ background: "var(--line)" }} />
             <span className="pr-fill absolute inset-0 origin-top" style={{ background: "var(--fg)" }} />
           </div>
-          <div className="hidden md:col-span-3 md:block">
+          <div className="hidden md:col-span-4 md:block">
             <div className="sticky top-[130px] pr-[36px]">
               <ProcessVisual active={activeStep} />
             </div>
           </div>
-          <div className="flex flex-col md:col-span-9">
+          <div className="flex flex-col md:col-span-8">
             {/* Mobile companion diagram — same accumulating states, scroll-driven */}
-            <div className="mb-[26px] flex justify-center md:hidden">
+            <div className="process-mobile-pin sticky top-[68px] z-[5] mb-[26px] flex justify-center pb-[8px] md:hidden" style={{ background: "var(--bg)" }}>
               <ProcessVisual active={activeStep} compact />
             </div>
             {p.steps.map((s, si) => (
-              <div
+              <button
                 key={s.n}
-                role="button"
-                tabIndex={0}
+                type="button"
                 aria-pressed={activeStep === si}
-                onClick={() => setActiveStep(si)}
-                onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), setActiveStep(si))}
+                onFocus={() => selectStep(si)}
+                onClick={() => selectStep(si)}
                 data-cursor="JUMP"
-                className="pr-step relative flex cursor-pointer gap-[22px] rounded-[4px] py-[clamp(18px,2.2vw,32px)] pl-[34px] outline-none md:pl-[42px]"
+                className="pr-step relative flex w-full cursor-pointer gap-[22px] rounded-[4px] py-[clamp(18px,2.2vw,32px)] pl-[34px] text-left md:pl-[42px]"
                 style={{ background: activeStep === si ? "var(--bg-2)" : "transparent", transition: "background .4s var(--e-out)" }}
               >
                 <span
@@ -698,7 +642,7 @@ export function ProcessSys() {
                     )}
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -707,221 +651,45 @@ export function ProcessSys() {
   );
 }
 
-/**
- * Prompt 14 — Process Accumulating Diagram (rebuilt for Prompt 24).
- *
- * Each state only ADDS to what the previous state built, and — this was the
- * fix — the built result is a pure function of the active step, so the
- * diagram at Evolve is visibly a superset of the diagram at Discover no
- * matter how the visitor got there (scroll, click, jump, scroll back):
- *
- *  0 DISCOVER  a single dim central dot, alone.
- *  1 DESIGN    the four connection lines draw out from the centre, still dim.
- *  2 BUILD     the four outer dots appear at the end of each line, one at a
- *              time with a short stagger.
- *  3 CONNECT   the four dots close into a perimeter, everything turns lime,
- *              and all five nodes pulse once together before settling lit.
- *  4 LAUNCH    a single bright pulse radiates outward from the centre to a
- *              dotted horizon ring, which stays behind as new geometry.
- *  5 EVOLVE    the built system keeps running: a slow breathing halo, a
- *              signal dot orbiting the perimeter, the horizon turning.
- *
- * Persistent layers are plain inline styles + CSS transitions (React owns
- * them, so state changes always animate and never desync). The two one-shot
- * moments are keyed CSS animations: bumping the key remounts the echo layer,
- * which restarts the animation — nothing here fights React for a transform.
- */
-const PV_CORNERS = [
-  { x: 15, y: 15 },
-  { x: 85, y: 15 },
-  { x: 15, y: 85 },
-  { x: 85, y: 85 },
+/** The process diagram accumulates real conceptual structure: sources,
+ * architecture, components, connections, operation and a feedback path. */
+const PROCESS_STATES = [
+  { title: "Find the friction", note: "People, tools and content are the starting inputs." },
+  { title: "Draw the architecture", note: "Organise those inputs around a clear purpose." },
+  { title: "Build the pieces", note: "Construct the interface, agent and workflow." },
+  { title: "Connect the pieces", note: "Make the handoffs between components explicit." },
+  { title: "Put it to work", note: "The connected system is ready to operate." },
+  { title: "Learn and improve", note: "Feedback returns to the system for the next iteration." },
 ];
-
-const PV_E = "var(--e-out)";
 
 function ProcessVisual({ active, compact = false }: { active: number; compact?: boolean }) {
   const s = Math.max(0, Math.min(5, active));
-  const prev = useRef(-1);
-  const [syncKey, setSyncKey] = useState(0);
-  const [launchKey, setLaunchKey] = useState(0);
-
-  const lines = s >= 1; // DESIGN
-  const dots = s >= 2; // BUILD
-  const lit = s >= 3; // CONNECT
-  const launched = s >= 4; // LAUNCH
-  const alive = s >= 5; // EVOLVE
-
-  /* One-shot beats, fired when those states are entered moving forward —
-     and in the right order when a click jumps past more than one. */
-  useEffect(() => {
-    const from = prev.current;
-    prev.current = s;
-    if (prefersReducedMotion()) return;
-    const ids: number[] = [];
-    let t = 240; // let the new layers draw in first
-    if (s >= 3 && from < 3) {
-      ids.push(window.setTimeout(() => setSyncKey((k) => k + 1), t));
-      t += 420;
-    }
-    if (s >= 4 && from < 4) ids.push(window.setTimeout(() => setLaunchKey((k) => k + 1), t));
-    return () => ids.forEach((id) => window.clearTimeout(id));
-  }, [s]);
-
   const stage = siteContent.process.steps[s];
-  const svgCenter = { transformBox: "view-box", transformOrigin: "50px 50px" } as const;
-  const svgSelf = { transformBox: "fill-box", transformOrigin: "center" } as const;
-
+  const detail = PROCESS_STATES[s];
+  const sources = [{ label: "PEOPLE", y: 48 }, { label: "TOOLS", y: 110 }, { label: "CONTENT", y: 172 }];
+  const outputs = [{ label: "WEB", y: 48 }, { label: "AGENT", y: 110 }, { label: "FLOW", y: 172 }];
   return (
-    <div
-      data-pv-diagram
-      data-state={s}
-      className={`pv-root relative aspect-square w-full overflow-hidden rounded-[6px] ${compact ? "max-w-[164px]" : "max-w-[230px]"}`}
-      style={{ background: "var(--bg-2)" }}
-      aria-hidden
-    >
-      <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" fill="none">
-        {/* LAUNCH+ — the horizon the pulse travelled to. It stays: new
-            geometry that the earlier states do not have. Turns once EVOLVE. */}
-        <circle
-          cx="50"
-          cy="50"
-          r="40"
-          pathLength={100}
-          strokeDasharray="1.4 3.2"
-          stroke="var(--accent-deep)"
-          strokeWidth="0.7"
-          style={{
-            opacity: launched ? 0.5 : 0,
-            transition: `opacity .6s ${PV_E}`,
-            animation: alive && !prefersReducedMotion() ? "pvSpin 26s linear infinite" : "none",
-            ...svgCenter,
-          }}
-        />
-
-        {/* CONNECT+ — the perimeter that joins the four outer dots */}
-        <rect
-          x="15"
-          y="15"
-          width="70"
-          height="70"
-          rx="9"
-          pathLength={1}
-          strokeDasharray={1}
-          strokeDashoffset={lit ? 0 : 1}
-          stroke="var(--accent-deep)"
-          strokeWidth="0.9"
-          style={{ opacity: lit ? 0.7 : 0, transition: `stroke-dashoffset 1s ${PV_E} .08s, opacity .5s ${PV_E}` }}
-        />
-
-        {/* DESIGN+ — four connection lines, drawn out from the centre */}
-        {PV_CORNERS.map((c, i) => (
-          <line
-            key={`ln-${i}`}
-            x1="50"
-            y1="50"
-            x2={c.x}
-            y2={c.y}
-            pathLength={1}
-            strokeDasharray={1}
-            strokeDashoffset={lines ? 0 : 1}
-            stroke={lit ? "var(--accent-deep)" : "var(--fg)"}
-            strokeWidth={lit ? 0.85 : 0.55}
-            style={{
-              opacity: lines ? (lit ? 0.85 : 0.3) : 0,
-              transition: `stroke-dashoffset .85s ${PV_E} ${i * 90}ms, opacity .45s ${PV_E} ${i * 90}ms, stroke .5s, stroke-width .5s`,
-            }}
-          />
-        ))}
-
-        {/* EVOLVE — the breathing halo. Slow, low amplitude, never stops. */}
-        {alive && !prefersReducedMotion() && (
-          <circle cx="50" cy="50" r="25" stroke="var(--accent-deep)" strokeWidth="0.8" className="pv-breath" style={svgCenter} />
-        )}
-
-        {/* EVOLVE — one signal, orbiting the built system */}
-        {alive && !prefersReducedMotion() && (
-          <g style={{ animation: "pvSpin 7.5s linear infinite", ...svgCenter }}>
-            <circle cx="50" cy="16" r="2.1" fill="var(--accent)" style={{ filter: "drop-shadow(0 0 3px var(--accent-deep))" }} />
-          </g>
-        )}
-
-        {/* BUILD+ — the four outer dots, one at a time */}
-        {PV_CORNERS.map((c, i) => (
-          <circle
-            key={`dot-${i}`}
-            cx={c.x}
-            cy={c.y}
-            r="3.6"
-            fill={lit ? "var(--accent)" : "var(--fg)"}
-            style={{
-              opacity: dots ? 1 : 0,
-              transform: dots ? "scale(1)" : "scale(0)",
-              transition: `transform .55s cubic-bezier(.34,1.56,.64,1) ${i * 110}ms, opacity .3s ${PV_E} ${i * 110}ms, fill .5s`,
-              filter: lit ? "drop-shadow(0 0 3px color-mix(in srgb, var(--accent-deep) 70%, transparent))" : "none",
-              ...svgSelf,
-            }}
-          />
-        ))}
-
-        {/* DISCOVER+ — the centre. Present and dim from the very first state. */}
-        <circle
-          cx="50"
-          cy="50"
-          r="9.5"
-          fill="var(--bg-2)"
-          stroke={lit ? "var(--accent-deep)" : "var(--line)"}
-          strokeWidth="1"
-          style={{
-            opacity: lines ? 1 : 0.6,
-            transition: `stroke .5s, opacity .5s, filter .5s`,
-            filter: lit ? "drop-shadow(0 0 5px color-mix(in srgb, var(--accent-deep) 45%, transparent))" : "none",
-          }}
-        />
-        <circle
-          cx="50"
-          cy="50"
-          r="3.2"
-          fill={lit ? "var(--accent)" : "var(--faint)"}
-          style={{
-            opacity: lit ? 1 : 0.6,
-            transform: launched ? "scale(1.5)" : "scale(1)",
-            transition: `transform .55s ${PV_E}, fill .5s, opacity .5s`,
-            ...svgSelf,
-          }}
-        />
-
-        {/* CONNECT — all five nodes pulse lime once, together (keyed remount) */}
-        {syncKey > 0 && lit && (
-          <g key={`sync-${syncKey}`}>
-            <circle cx="50" cy="50" r="9.5" fill="none" stroke="var(--accent)" strokeWidth="1.3" className="pv-sync-ring" style={svgCenter} />
-            {PV_CORNERS.map((c, i) => (
-              <circle key={i} cx={c.x} cy={c.y} r="3.6" fill="var(--accent)" className="pv-sync-dot" style={svgSelf} />
-            ))}
-            <circle cx="50" cy="50" r="3.2" fill="var(--accent)" className="pv-sync-dot" style={svgSelf} />
-          </g>
-        )}
-
-        {/* LAUNCH — one bright pulse radiating outward from the centre */}
-        {launchKey > 0 && (
-          <g key={`launch-${launchKey}`}>
-            <circle cx="50" cy="50" r="10" fill="none" stroke="var(--accent)" strokeWidth="2" className="pv-launch" style={svgCenter} />
-            <circle cx="50" cy="50" r="6" fill="var(--accent)" className="pv-launch-core" style={svgCenter} />
-          </g>
-        )}
+    <div data-pv-diagram data-state={s} className={`process-model ${compact ? "process-model-compact" : ""}`} role="img" aria-label={`${stage.k}: ${detail.note}`}>
+      <div className="process-model-head"><span>THE SYSTEM / {stage.n}</span><span>{stage.k.toUpperCase()}</span></div>
+      <svg viewBox="0 0 320 220" fill="none" aria-hidden="true">
+        <path className="process-model-frame" d="M8 8H312V212H8Z" stroke="currentColor" />
+        {sources.map((item) => <g key={item.label}>
+          <path pathLength="1" className="process-input-line" d={`M72 ${item.y} H100 L126 110`} stroke="currentColor" />
+          <rect className="process-source" x="16" y={item.y - 13} width="56" height="26" rx="2" />
+          <text x="44" y={item.y + 3} textAnchor="middle">{item.label}</text>
+        </g>)}
+        {outputs.map((item) => <g key={item.label}>
+          <path pathLength="1" className="process-output-line" d={`M194 110 H220 L244 ${item.y}`} stroke="currentColor" />
+          <rect className="process-output" x="244" y={item.y - 13} width="60" height="26" rx="2" />
+          <text className="process-output-text" x="274" y={item.y + 3} textAnchor="middle">{item.label}</text>
+        </g>)}
+        <rect className="process-core" x="126" y="74" width="68" height="72" rx="3" />
+        <circle className="process-core-dot" cx="160" cy="99" r="7" />
+        <text className="process-core-text" x="160" y="123" textAnchor="middle">{s === 0 ? "?" : s >= 4 ? "READY" : "SYSTEM"}</text>
+        <path className="process-feedback" d="M274 185 V202 H160 V146" stroke="currentColor" strokeDasharray="3 4" />
+        <circle className="process-feedback-dot" cx="160" cy="202" r="3" />
       </svg>
-
-      <p
-        className="mono absolute inset-x-0 bottom-[7px] text-center"
-        style={{
-          fontSize: compact ? 8 : 9,
-          letterSpacing: ".12em",
-          color: alive ? "var(--accent-ink)" : "var(--faint)",
-          transition: "color .5s",
-        }}
-      >
-        {stage.n} · {stage.k.toUpperCase()}
-      </p>
+      <div className="process-model-foot"><strong>{detail.title}</strong><p>{detail.note}</p></div>
     </div>
   );
 }
@@ -963,8 +731,11 @@ export function FinalCTA() {
   const root = useRef<HTMLElement>(null);
   const convergeCenterRef = useRef<HTMLSpanElement>(null);
 
+  const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion);
+  useEffect(() => onMotionPreferenceChange(setReducedMotion), []);
+
   useLayoutEffect(() => {
-    if (!root.current || prefersReducedMotion()) return;
+    if (!root.current || reducedMotion) return;
     const desktop = window.matchMedia("(min-width: 900px)").matches;
 
     const ctx = gsap.context(() => {
@@ -1049,10 +820,10 @@ export function FinalCTA() {
     }, root);
 
     return () => ctx.revert();
-  }, []);
+  }, [reducedMotion]);
 
   return (
-    <section ref={root} className="on-ink relative w-full overflow-hidden py-[clamp(90px,12vw,180px)]">
+    <section id="start" ref={root} className="on-ink relative w-full overflow-hidden py-[clamp(90px,12vw,180px)]">
       {/* Convergence motifs — desktop only; mobile uses the static graphic */}
       <div className="pointer-events-none absolute inset-0 hidden place-items-center lg:grid" aria-hidden>
         {FC_MOTIFS.map((m) => (
