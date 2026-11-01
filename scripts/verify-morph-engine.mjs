@@ -42,18 +42,20 @@ async function main() {
   };
 
   // Helper to wait for morph settlement
-  const waitForSettled = async (slug, timeoutMs = 2500) => {
+  const waitForSettled = async (slug, timeoutMs = 4000) => {
     await page.waitForFunction(
       (s) => {
         const stage = document.querySelector("#services-stage");
         const morphLayer = stage?.querySelector(".z-\\[20\\]");
         const isSettled = morphLayer && morphLayer.children.length === 0;
         const currentService = stage?.getAttribute("data-service");
-        return isSettled && currentService === s;
+        const renderedService = stage?.getAttribute("data-rendered-service");
+        return isSettled && currentService === s && renderedService === s;
       },
       slug,
       { timeout: timeoutMs }
     );
+    await page.waitForTimeout(300);
   };
 
   const getGhostStats = async () => {

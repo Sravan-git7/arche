@@ -7,7 +7,7 @@ import { announcePreviewDone, markPreviewPlayed } from "../lib/autoplay";
  * The full Ask Arche section owns open-ended conversation. Here the visitor
  * sees a question become a considered answer and a small business action.
  *
- * PROMPT 24 ΓÇö autoplay-first: ~1.5s after the stage first comes on screen it
+ * PROMPT 24 — autoplay-first: ~1.5s after the stage first comes on screen it
  * sends ONE of the suggested questions by itself, so the whole reply and the
  * trigger sequence play out unprompted. The other two chips stay visitor-
  * triggered, and any question asked by the visitor cancels the auto-send.
@@ -151,7 +151,7 @@ export function AgentDemo({
     });
   };
 
-  /* PROMPT 28 ΓÇö AI Chatbots: the moment this tab becomes active and is in viewport,
+  /* PROMPT 28 — AI Chatbots: the moment this tab becomes active and is in viewport,
      wait exactly 1 second, then programmatically "send" the first suggested question
      using the exact identical code path. */
   useEffect(() => {
@@ -197,7 +197,7 @@ export function AgentDemo({
             style={{ background: "var(--accent-deep)" }}
           />
           <span className="mono mono-fg">Arche agent</span>
-          <span className="mono">┬╖ {label}</span>
+          <span className="mono">· {label}</span>
         </div>
         {turns.length > 0 && !preview && (
           <button type="button" onClick={reset} className="mono lnk" data-cursor="RESET" aria-label="Reset conversation">
@@ -239,7 +239,7 @@ export function AgentDemo({
                         <span key={step} className="agent-flow-part flex items-center gap-[5px]" style={{ animationDelay: `${i * 70}ms` }}>
                           <span className="block h-[5px] w-[5px] rounded-full" style={{ background: i === item.flow.length - 1 ? "var(--accent-deep)" : "var(--faint)" }} />
                           <span className="mono whitespace-nowrap" style={{ color: i === item.flow.length - 1 ? "var(--accent-ink)" : "var(--fg)", fontSize: 8.5 }}>{step}</span>
-                          {i < item.flow.length - 1 && <span className="mono" aria-hidden style={{ color: "var(--faint)", fontSize: 8 }}>ΓåÆ</span>}
+                          {i < item.flow.length - 1 && <span className="mono" aria-hidden style={{ color: "var(--faint)", fontSize: 8 }}>→</span>}
                         </span>
                       ))}
                     </div>

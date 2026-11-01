@@ -252,7 +252,6 @@ export const siteContent = {
     links: [
       { label: "Work", to: "/work" },
       { label: "Services", to: "/services" },
-      { label: "Pricing", to: "/pricing" },
       { label: "Contact", to: "/contact" },
     ],
     cta: { label: "Start a Project", to: "/contact" },

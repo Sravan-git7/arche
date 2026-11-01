@@ -9,11 +9,11 @@ import { onPreviewDone } from "../lib/autoplay";
 import { digitRoll } from "../motion/helpers";
 
 /**
- * SERVICES ΓÇö shared shell.
+ * SERVICES — shared shell.
  *
- *  left   number ┬╖ title ┬╖ tagline ┬╖ arc chips ┬╖ Explore link   (unchanged)
+ *  left   number · title · tagline · arc chips · Explore link   (unchanged)
  *  right  a live stage frame; each tab brings its own product
- *  bottom tab rail with connecting line ΓÇö the arrival point of the
+ *  bottom tab rail with connecting line — the arrival point of the
  *         shared thread from the Problem section
  */
 const HOVER_MS = 400;
@@ -56,7 +56,7 @@ export function Chapters() {
   const [visited, setVisited] = useState<Set<string>>(() => new Set([services[0].slug]));
   const [showcaseMode, setShowcaseMode] = useState<ShowcaseMode>("AUTO");
 
-  /* ---- pinned scroll state ΓÇö desktop only ---- */
+  /* ---- pinned scroll state — desktop only ---- */
   const [pinned, setPinned] = useState(
     () => typeof window !== "undefined" && window.matchMedia("(min-width: 900px)").matches && !prefersReducedMotion()
   );
@@ -459,7 +459,7 @@ export function Chapters() {
                 className="self-start cursor-pointer bg-transparent border-0 p-0 text-left"
                 style={{ marginBottom: "clamp(12px, 1.4vw, 16px)" }}
                 onClick={() => selectFromUser((index + 1) % N)}
-                aria-label={`Service ${s.n} of ${services.length} ΓÇö show next service`}
+                aria-label={`Service ${s.n} of ${services.length} — show next service`}
                 data-cursor="NEXT"
               >
                 <span className="relative block select-none" style={{ fontSize: "clamp(46px,5vw,78px)", lineHeight: 1 }}>
@@ -526,7 +526,7 @@ export function Chapters() {
                     </span>
                     {k < s.arc.length - 1 && (
                       <span className="mono select-none" style={{ color: "var(--faint)", lineHeight: 1 }} aria-hidden>
-                        ΓåÆ
+                        →
                       </span>
                     )}
                   </span>
@@ -552,7 +552,7 @@ export function Chapters() {
                   }
                 }}
               >
-                Explore {s.title} <span className="arw">ΓåÆ</span>
+                Explore {s.title} <span className="arw">→</span>
               </Link>
             </div>
           </div>
@@ -569,7 +569,7 @@ export function Chapters() {
           </div>
         </div>
 
-        {/* tab rail ΓÇö the shared thread's arrival point */}
+        {/* tab rail — the shared thread's arrival point */}
         <div
           className="order-1 flex items-center gap-[clamp(10px,1.2vw,16px)] pt-[14px] min-[900px]:order-3 min-[900px]:border-t"
           style={{ borderColor: "var(--line)" }}
@@ -636,8 +636,8 @@ export function Chapters() {
             {preview !== null
               ? "Previewing"
               : showcaseMode === "AUTO"
-                ? `Showcase ┬╖ ${s.n} / ${String(N).padStart(2, "0")} ┬╖ auto`
-                : `Service ${s.n} / ${String(N).padStart(2, "0")} ┬╖ locked`}
+                ? `Showcase · ${s.n} / ${String(N).padStart(2, "0")} · auto`
+                : `Service ${s.n} / ${String(N).padStart(2, "0")} · locked`}
           </span>
         </div>
       </div>

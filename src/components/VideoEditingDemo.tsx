@@ -14,7 +14,7 @@ import { announcePreviewDone, markPreviewPlayed } from "../lib/autoplay";
  * property, so the head and the played part of the waveform move every
  * frame without re-rendering React); the stage it sits in is the discrete
  * value derived from it. On first view it scrubs the whole RAW -> EXPORT
- * range once, slowly (~4.6s), then hands control to the visitor ΓÇö any
+ * range once, slowly (~4.6s), then hands control to the visitor — any
  * pointer input kills the auto pass immediately and for good.
  */
 
@@ -125,7 +125,7 @@ export function VideoEditingDemo({
     []
   );
 
-  /* PROMPT 28 ΓÇö Video Editing: auto-scrub sequence across RAW ΓåÆ EXPORT plays on view */
+  /* PROMPT 28 — Video Editing: auto-scrub sequence across RAW → EXPORT plays on view */
   useEffect(() => {
     if (autoStarted.current || !active || preview) return;
     const id = window.setTimeout(() => {
@@ -171,7 +171,7 @@ export function VideoEditingDemo({
     applyPos((clientX - rect.left) / rect.width);
   };
 
-  /** PLAY / PAUSE ΓÇö a visitor-triggered pass over the same range. */
+  /** PLAY / PAUSE — a visitor-triggered pass over the same range. */
   const toggleAutoPlay = () => {
     if (preview) return;
     takeOver();
@@ -194,7 +194,7 @@ export function VideoEditingDemo({
         <div className="flex min-w-0 items-center gap-[8px]">
           <span className="block h-[6px] w-[6px] flex-none rounded-full" style={{ background: "var(--accent-deep)" }} />
           <span className="mono mono-fg whitespace-nowrap">STAGE: {currentStage.label}</span>
-          <span className="mono hidden truncate text-[10px] opacity-60 sm:inline">┬╖ {currentStage.name}</span>
+          <span className="mono hidden truncate text-[10px] opacity-60 sm:inline">· {currentStage.name}</span>
         </div>
         <div className="flex items-center gap-[12px]">
           <span className="mono text-[10px] opacity-50">
@@ -213,7 +213,7 @@ export function VideoEditingDemo({
             aria-label={isPlaying ? "Pause auto scrub" : "Auto play preview"}
             data-cursor="CLICK"
           >
-            {isPlaying ? "Γ¥ÜΓ¥Ü PAUSE" : "Γû╢ PLAY"}
+            {isPlaying ? "⏸⏸ PAUSE" : "▶ PLAY"}
           </button>
         </div>
       </div>
@@ -239,10 +239,10 @@ export function VideoEditingDemo({
         >
           <div className="flex justify-between items-start font-mono text-[9px] text-[#8e8e93]">
             <span>REC [RAW LOG]</span>
-            <span className="text-red-500 animate-pulse">ΓùÅ 24 FPS</span>
+            <span className="text-red-500 animate-pulse">● 24 FPS</span>
           </div>
           <div className="my-auto text-center font-mono text-[11px] text-[#71717a] tracking-widest uppercase">
-            [ RAW SOURCE TAKES ┬╖ 4K PRORES ]
+            [ RAW SOURCE TAKES · 4K PRORES ]
           </div>
           <div className="font-mono text-[9px] text-[#71717a]">TC 00:14:22:08</div>
         </div>
@@ -327,7 +327,7 @@ export function VideoEditingDemo({
           </div>
           <div className="my-auto text-center">
             <span className="inline-block rounded bg-black/85 px-[10px] py-[4px] font-sans text-[13px] font-medium tracking-tight text-white border border-white/10 shadow-lg">
-              ΓÇ£Systems that turn ideas into <span style={{ color: "var(--accent)" }}>leverage</span>.ΓÇ¥
+              “Systems that turn ideas into <span style={{ color: "var(--accent)" }}>leverage</span>.”
             </span>
           </div>
           <div className="font-mono text-[9px] text-[#71717a]">FORMAT: WORD-BY-WORD POP</div>
@@ -371,7 +371,7 @@ export function VideoEditingDemo({
           </div>
           <div className="my-auto flex flex-col items-center gap-[8px]">
             <div className="flex h-[36px] w-[36px] items-center justify-center rounded-full bg-[#c8f14f] text-[#0c0c0d] font-bold text-[18px]">
-              Γ£ô
+              ✓
             </div>
             <span className="font-mono text-[11px] tracking-widest text-white uppercase">
               MASTER READY FOR RELEASE
@@ -555,7 +555,7 @@ export function VideoEditingDemo({
                 }}
               >
                 {st.label}
-                {i < STAGES.length - 1 && <span className="mx-[4px] text-[var(--line)]">ΓåÆ</span>}
+                {i < STAGES.length - 1 && <span className="mx-[4px] text-[var(--line)]">→</span>}
               </button>
             );
           })}

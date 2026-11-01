@@ -3,31 +3,37 @@ import { Link } from "../lib/router";
 import { prefersReducedMotion } from "../lib/gsap";
 import {
   STARTER_CHIPS,
+  processDiscoveryTurn,
+  INITIAL_DISCOVERY_STATE,
   rememberLastTrigger,
-  resolveIntent,
-  type Resolution,
+  type DiscoveryState,
+  type DiscoveryResult,
+  type ProjectBrief,
   type VisualTrigger,
 } from "../data/intents";
 
 /**
- * PROMPT 16 — Ask Arche (scripted assistant + live visual trigger).
+ * Service Discovery Assistant for Arche.
  *
- * Architecture: the conversation logic lives in src/data/intents.ts.
- * `resolveIntent` is the ONLY piece that would change if a real LLM call
- * were added later — response rendering and the visual-trigger panel
- * consume its result and never need to change.
- *
- * Replies appear immediately: local matching does not need a simulated
- * thinking delay. The visual panel illustrates the matched intent, while
- * the fallback admits when nothing matched and offers a route to the team.
+ * Guides visitors through structured requirement scoping for Web Development,
+ * AI Automation, Autonomous Agents, and Video Editing. Formulates actionable
+ * project briefs that link directly into the Contact scoping workflow.
  */
+
+type Phase = "idle" | "thinking" | "typing";
 
 type Message =
   | { role: "user"; text: string; id: number }
-  | { role: "agent"; lines: string[]; revealed: number; label: string; id: number };
+  | {
+      role: "agent";
+      lines: string[];
+      revealed: number;
+      label: string;
+      id: number;
+      brief?: ProjectBrief | null;
+    };
 
-
-const GREETING = "Ask me where Arche could start.";
+const GREETING = "I'm the Arche discovery assistant. What is your team looking to build or solve?";
 
 const TRIGGER_NAMES: Record<VisualTrigger, string> = {
   "service:video": "Video system",
@@ -42,47 +48,92 @@ let seq = 1;
 
 export function ArcheAssistant() {
   const [messages, setMessages] = useState<Message[]>([
-    { role: "agent", lines: [GREETING], revealed: 1, label: "Arche", id: 0 },
+    { role: "agent", lines: [GREETING], revealed: 1, label: "Arche · Discovery", id: 0 },
   ]);
   const [input, setInput] = useState("");
+  const [phase, setPhase] = useState<Phase>("idle");
   const [trigger, setTrigger] = useState<VisualTrigger>("system");
   const [matched, setMatched] = useState(true);
   const [runId, setRunId] = useState(0); // bumps per reply so the visual replays its build
   const [followUps, setFollowUps] = useState<string[]>(STARTER_CHIPS);
+  const [discoveryState, setDiscoveryState] = useState<DiscoveryState>(INITIAL_DISCOVERY_STATE);
 
+  const timers = useRef<number[]>([]);
   const scroller = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    return () => {
+      timers.current.forEach((t) => window.clearTimeout(t));
+    };
+  }, []);
+
+  useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: prefersReducedMotion() ? "auto" : "smooth" });
-  }, [messages]);
+  }, [messages, phase]);
 
   const send = (raw: string) => {
     const q = raw.trim();
     if (!q) return;
-    const r: Resolution = resolveIntent(q);
-    // This is local matching, not a remote model: answer immediately rather
-    // than manufacturing a typing or network delay.
-    setMessages((m) => [
-      ...m,
-      { role: "user", text: q, id: seq++ },
-      { role: "agent", lines: r.response, revealed: r.response.length, label: r.label, id: seq++ },
+    timers.current.forEach((t) => window.clearTimeout(t));
+    timers.current = [];
+
+    const userMsgId = seq++;
+    const res: DiscoveryResult = processDiscoveryTurn(q, discoveryState);
+
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", text: q, id: userMsgId },
+      {
+        role: "agent",
+        lines: res.lines,
+        revealed: res.lines.length,
+        label: res.label,
+        id: seq++,
+        brief: res.brief,
+      },
     ]);
     setInput("");
-    setTrigger(r.trigger);
-    setMatched(Boolean(r.intent));
+    setDiscoveryState(res.nextState);
+    setTrigger(res.trigger);
+    setMatched(res.label !== "Arche · Unmatched Inquiry" && res.label !== "no matched intent");
     setRunId((n) => n + 1);
-    setFollowUps(r.followUps);
-    rememberLastTrigger(r.trigger);
+    setFollowUps(res.followUps);
+    rememberLastTrigger(res.trigger);
+    if (res.brief) {
+      try {
+        sessionStorage.setItem("arche:discovery_brief", JSON.stringify(res.brief));
+      } catch {
+        /* storage safety */
+      }
+    }
+
+    if (prefersReducedMotion()) {
+      setPhase("idle");
+      return;
+    }
+
+    // Natural visual feedback: brief composing state settling back to ready
+    setPhase("typing");
+    const t = window.setTimeout(() => {
+      setPhase("idle");
+    }, 400);
+    timers.current.push(t);
   };
 
   const reset = () => {
-    setMessages([{ role: "agent", lines: [GREETING], revealed: 1, label: "Arche", id: 0 }]);
+    timers.current.forEach((t) => window.clearTimeout(t));
+    timers.current = [];
+    setMessages([
+      { role: "agent", lines: [GREETING], revealed: 1, label: "Arche · Discovery", id: 0 },
+    ]);
     setInput("");
+    setPhase("idle");
     setTrigger("system");
     setMatched(true);
     setRunId((n) => n + 1);
     setFollowUps(STARTER_CHIPS);
+    setDiscoveryState(INITIAL_DISCOVERY_STATE);
     inputRef.current?.focus();
   };
 
@@ -94,12 +145,11 @@ export function ArcheAssistant() {
             Ask Arche
           </p>
           <h2 className="d2 max-w-[16ch]" data-r="mask">
-            Ask the system where to start.
+            Discover the right service for your business.
           </h2>
-          <p className="body max-w-[52ch]" data-r="meta" data-r-delay="120">
-            A scripted assistant: your question is matched against known intents — there is no
-            model behind it, and it won't pretend otherwise. Each answer drives the system view
-            beside it. It's the same matching logic a real agent would replace.
+          <p className="body max-w-[54ch]" data-r="meta" data-r-delay="120">
+            A guided discovery assistant: choose a starting request or describe your operational bottleneck in free text.
+            The assistant shapes your requirement into a scoped project brief and connects it to the right engineering pipeline.
           </p>
         </div>
 
@@ -113,11 +163,18 @@ export function ArcheAssistant() {
             <div className="flex items-center justify-between border-b px-[16px] py-[12px]" style={{ borderColor: "var(--line)" }}>
               <div className="flex items-center gap-[9px]">
                 <span
-                  className="block h-[7px] w-[7px] rounded-full"
+                  className={`block h-[7px] w-[7px] rounded-full ${phase === "thinking" || phase === "typing" ? "demo-pulse" : ""}`}
                   style={{ background: "var(--accent-deep)" }}
                 />
-                <span className="mono mono-fg">Arche assistant</span>
-                <span className="mono">· Ready</span>
+                <span className="mono mono-fg">Arche discovery assistant</span>
+                <span className="mono">
+                  ·{" "}
+                  {phase === "thinking"
+                    ? "Thinking"
+                    : phase === "typing"
+                      ? "Composing"
+                      : "Ready"}
+                </span>
               </div>
               <button className="mono lnk" onClick={reset}>
                 Reset
@@ -127,7 +184,7 @@ export function ArcheAssistant() {
             <div
               ref={scroller}
               data-lenis-prevent="true"
-              className="min-h-[340px] max-h-[430px] space-y-[14px] overflow-y-auto p-[16px]"
+              className="min-h-[340px] max-h-[440px] space-y-[14px] overflow-y-auto p-[16px]"
               aria-live="polite"
             >
               {messages.map((m) =>
@@ -146,7 +203,7 @@ export function ArcheAssistant() {
                   </div>
                 ) : (
                   <div key={m.id} className="flex justify-start">
-                    <div className="max-w-[90%]">
+                    <div className="max-w-[92%]">
                       <p className="mono mb-[6px]" style={{ color: "var(--accent-ink)" }}>
                         ● {m.label}
                       </p>
@@ -164,12 +221,69 @@ export function ArcheAssistant() {
                           </p>
                         ))}
                       </div>
+
+                      {/* Structured project brief card when available */}
+                      {m.brief && (
+                        <div
+                          className="mt-[10px] rounded-[6px] border p-[14px]"
+                          style={{
+                            background: "var(--bg)",
+                            borderColor: "var(--accent-deep)",
+                            boxShadow: "0 0 16px -6px color-mix(in srgb, var(--accent) 30%, transparent)",
+                          }}
+                        >
+                          <div className="mb-[8px] flex items-center justify-between">
+                            <span className="mono text-[10px] text-[var(--accent-ink)] font-semibold flex items-center gap-[6px]">
+                              <span className="h-[5px] w-[5px] rounded-full" style={{ background: "var(--accent-deep)" }} />
+                              PROJECT DISCOVERY BRIEF
+                            </span>
+                            <span className="mono text-[9px]" style={{ color: "var(--faint)" }}>
+                              {m.brief.timeline}
+                            </span>
+                          </div>
+                          <div className="space-y-[4px] text-[12px]">
+                            <p className="m-0 font-medium" style={{ color: "var(--fg)" }}>
+                              {m.brief.service}
+                            </p>
+                            <p className="m-0 mono text-[11px]" style={{ color: "var(--muted)" }}>
+                              {m.brief.scope}
+                            </p>
+                            <p className="m-0 text-[11px]" style={{ color: "var(--faint)" }}>
+                              {m.brief.details}
+                            </p>
+                          </div>
+                          <div className="mt-[12px] pt-[10px] border-t" style={{ borderColor: "var(--line)" }}>
+                            <Link
+                              to={`/contact?seed=${m.brief.seed}&scope=${encodeURIComponent(m.brief.scope)}`}
+                              className="btn w-full justify-center text-[12px]"
+                              data-cursor="START"
+                            >
+                              Start project with this brief <span className="arw">→</span>
+                            </Link>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
               )}
 
-
+              {phase === "typing" && (
+                <div className="flex items-center gap-[8px] pl-[4px]">
+                  <span className="flex gap-[4px]">
+                    {[0, 1, 2].map((i) => (
+                      <span
+                        key={i}
+                        className="type-dot h-[5px] w-[5px] rounded-full"
+                        style={{ background: "var(--accent-deep)", animationDelay: `${i * 140}ms` }}
+                      />
+                    ))}
+                  </span>
+                  <span className="mono" style={{ color: "var(--faint)" }}>
+                    thinking
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="border-t p-[16px]" style={{ borderColor: "var(--line)" }}>
@@ -178,6 +292,8 @@ export function ArcheAssistant() {
                   <button
                     key={p}
                     className="chip"
+                    disabled={phase !== "idle"}
+                    style={{ opacity: phase !== "idle" ? 0.45 : 1 }}
                     onClick={() => send(p)}
                   >
                     {p}
@@ -197,14 +313,15 @@ export function ArcheAssistant() {
                     ref={inputRef}
                     className="field"
                     value={input}
+                    disabled={phase !== "idle"}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder="Describe what is slowing the business down…"
+                    placeholder="Describe your requirement (e.g. I need a website, automate our CRM)..."
                     data-cursor="ASK"
                   />
                 </label>
                 <button
                   className="btn flex-none"
-                  disabled={!input.trim()}
+                  disabled={!input.trim() || phase !== "idle"}
                   data-cursor="START"
                   data-magnetic
                 >
@@ -212,9 +329,9 @@ export function ArcheAssistant() {
                 </button>
               </form>
               <p className="mono mt-[12px]" style={{ color: "var(--faint)" }}>
-                Intent-matched demo —{" "}
+                Guided discovery demonstration —{" "}
                 <Link to="/contact" className="lnk mono-fg" style={{ color: "var(--fg)" }}>
-                  start a real project →
+                  start a project brief directly →
                 </Link>
               </p>
             </div>
@@ -222,7 +339,7 @@ export function ArcheAssistant() {
 
           {/* persistent visual trigger panel */}
           <div className="lg:col-span-5" data-r="meta" data-r-delay="100">
-            <TriggerPanel trigger={trigger} runId={runId} busy={false} matched={matched} />
+            <TriggerPanel trigger={trigger} runId={runId} busy={phase !== "idle"} matched={matched} />
           </div>
         </div>
       </div>
@@ -264,9 +381,11 @@ function TriggerPanel({ trigger, runId, busy, matched }: { trigger: VisualTrigge
 
       <div className="border-t px-[16px] py-[10px]" style={{ borderColor: "var(--line)" }}>
         <p className="mono swap-fade" key={`${trigger}-cap`} style={{ color: "var(--faint)" }}>
-          {trigger === "contact" && !matched
-            ? "No intent matched — contact the team directly."
-            : "Illustrative view · no live actions or connected tools."}
+          {trigger === "contact"
+            ? matched
+              ? "Project brief ready — connect directly with the engineering team."
+              : "No intent matched — contact the team directly."
+            : "The discovery conversation shapes this system architecture view."}
         </p>
       </div>
     </div>

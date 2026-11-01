@@ -6,7 +6,7 @@ const PHASES = ["IDEA", "STRUCTURE", "INTERFACE", "LIVE"] as const;
 const SLUG = "web-development";
 
 /**
- * PROMPT 28 ΓÇö Web Development demo: IDEA ΓåÆ STRUCTURE ΓåÆ INTERFACE ΓåÆ LIVE.
+ * PROMPT 28 — Web Development demo: IDEA → STRUCTURE → INTERFACE → LIVE.
  *
  * The build sequence automatically plays on view, then hands control to the visitor at LIVE.
  */
@@ -29,14 +29,14 @@ export function WebDevDemo({
   useEffect(() => () => clearTimers(), []);
 
   /*
-   * PROMPT 33 ΓÇö reliability fix. The build sequence is a pure function of
-   * (active, preview): entering the tab always plays IDEA ΓåÆ LIVE from the
+   * PROMPT 33 — reliability fix. The build sequence is a pure function of
+   * (active, preview): entering the tab always plays IDEA → LIVE from the
    * top, leaving it always stops and resets. There is deliberately NO
-   * one-shot "started" flag ΓÇö the previous version committed the flag
+   * one-shot "started" flag — the previous version committed the flag
    * synchronously before the timers could be cancelled, so any effect
    * re-run or re-entry after the first attempt (StrictMode's double
-   * mount, the tab being committed before the section was visible, and ΓÇö
-   * under the pinned scroll model ΓÇö every re-entry of this service's
+   * mount, the tab being committed before the section was visible, and —
+   * under the pinned scroll model — every re-entry of this service's
    * range) found the flag already set and never initialised the timers.
    * Re-deriving from (active, preview) makes the start idempotent, so the
    * sequence restarts reliably every time this range/tab is (re)entered.
@@ -213,7 +213,7 @@ function Core({ phase, preview = false }: { phase: number; preview?: boolean }) 
             </div>
           </div>
 
-          {/* action row ΓÇö structured early, interactive only when LIVE */}
+          {/* action row — structured early, interactive only when LIVE */}
           <div className={`wd-part flex flex-none flex-wrap items-center justify-between gap-x-[14px] gap-y-[6px] ${live && !preview ? "" : "pointer-events-none"}`}>
             <button
               type="button"
@@ -225,7 +225,7 @@ function Core({ phase, preview = false }: { phase: number; preview?: boolean }) 
               data-cursor={live && !preview ? "BOOK" : undefined}
             >
               Book a visit
-              <span aria-hidden>ΓåÆ</span>
+              <span aria-hidden>→</span>
             </button>
             <label
               data-slab="s1"
@@ -245,7 +245,7 @@ function Core({ phase, preview = false }: { phase: number; preview?: boolean }) 
             </label>
           </div>
 
-          {/* confirmation sheet ΓÇö inside the mini-site */}
+          {/* confirmation sheet — inside the mini-site */}
           <div className="absolute inset-x-0 bottom-0 flex flex-col justify-end" style={{ pointerEvents: bookingOpen ? "auto" : "none" }} aria-hidden={!bookingOpen}>
             <div
               className="mx-[4%] border border-[var(--line)] rounded-[4px] bg-[var(--card)] p-[11px]"
@@ -263,9 +263,9 @@ function Core({ phase, preview = false }: { phase: number; preview?: boolean }) 
                   Not now
                 </button>
               </div>
-              <p className="m-0 mt-[7px] text-[clamp(14px,1.35vw,19px)] leading-[1.25] tracking-[-0.04em]">Friday ┬╖ 3 PM ΓÇö one quiet room.</p>
+              <p className="m-0 mt-[7px] text-[clamp(14px,1.35vw,19px)] leading-[1.25] tracking-[-0.04em]">Friday · 3 PM — one quiet room.</p>
               <button type="button" className="wd-book mt-[9px] self-start" onClick={() => book(name)} data-cursor="CONFIRM" onMouseDown={(e) => e.stopPropagation()}>
-                Confirm visit ┬╖ 3 PM
+                Confirm visit · 3 PM
               </button>
             </div>
           </div>
@@ -281,16 +281,16 @@ function Core({ phase, preview = false }: { phase: number; preview?: boolean }) 
             letterSpacing: booked ? ".16em" : ".14em",
           }}
         >
-          {booked ? `VISIT CONFIRMED ┬╖ FRI 3 PM${booked ? ` ┬╖ ${booked}` : ""}` : live ? "Live ┬╖ this interface responds" : PHASES[phase]}
+          {booked ? `VISIT CONFIRMED · FRI 3 PM${booked ? ` · ${booked}` : ""}` : live ? "Live · this interface responds" : PHASES[phase]}
         </p>
         {live && page !== "visit" && (
           <button type="button" className="mono lnk" onClick={() => setPage("visit")}>
-            See details ΓåÆ
+            See details →
           </button>
         )}
       </div>
 
-      {/* LIVE affordance ΓÇö a pulsing cursor hand: this is yours to look around */}
+      {/* LIVE affordance — a pulsing cursor hand: this is yours to look around */}
       {live && !preview && hint && (
         <div
           data-slab="s6"
@@ -313,7 +313,7 @@ function Core({ phase, preview = false }: { phase: number; preview?: boolean }) 
             </svg>
           </span>
           <span className="mono" style={{ color: "var(--accent-ink)" }}>
-            Live ΓÇö look around
+            Live — look around
           </span>
           <span className="body-s truncate" style={{ color: "var(--muted)" }}>
             switch the tabs, or book a visit. It responds.
@@ -331,7 +331,7 @@ function Core({ phase, preview = false }: { phase: number; preview?: boolean }) 
           <span className="demo-in body-s ml-auto text-right" style={{ color: "var(--faint)" }} aria-live="off">
             {page === "work" && "Three rooms redesigned after hours."}
             {page === "studio" && "Small interface pieces, rebuilt daily."}
-            {page === "visit" && "Quiet space. Friday 3 PM ┬╖ Ana will guide you."}
+            {page === "visit" && "Quiet space. Friday 3 PM · Ana will guide you."}
           </span>
         </div>
       )}

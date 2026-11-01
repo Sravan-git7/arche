@@ -269,13 +269,26 @@ export function resolveIntent(query: string): Resolution {
   };
 }
 
-/** The four starting chips — 1:1 with the four core service intents. */
+/** The starter chips for service discovery */
 export const STARTER_CHIPS = [
-  "What does Arche do?",
-  "Can you automate lead management?",
-  "Can you connect my existing tools?",
-  "How do I start a project?",
+  "I need a website.",
+  "I want to automate my business.",
+  "I need an AI chatbot.",
+  "I need an AI agent.",
+  "I need video editing.",
+  "I want to connect my existing tools.",
+  "I'm not sure what I need.",
 ];
+
+export {
+  processDiscoveryTurn,
+  INITIAL_DISCOVERY_STATE,
+  type DiscoveryState,
+  type DiscoveryResult,
+  type ProjectBrief,
+  type DiscoveryDomain,
+  type DiscoveryStep,
+} from "./discovery";
 
 /** Persistence for the Prompt 16 → 17 handoff: Contact reads this as the seed. */
 const LAST_TRIGGER_KEY = "arche:lastTrigger";

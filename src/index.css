@@ -2370,3 +2370,52 @@ img {
   border-radius: 6px;
   background: var(--bg);
 }
+
+/* ---------- Preserved Engineering Improvements: Problem Compact Nodes & Morph Film ---------- */
+.pf-compact-anchor {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+.pf-compact-node {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 9px;
+  border: 1px solid var(--accent-deep);
+  border-radius: 99px;
+  background: var(--bg);
+  color: var(--accent-ink);
+  white-space: nowrap;
+  font: 8px var(--font-mono);
+  letter-spacing: .08em;
+}
+.pf-compact-node i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-deep);
+}
+
+/* Service transition film layer */
+.svc-film-snapshot, .svc-film-trace { pointer-events: none; }
+.svc-film-snapshot *, .svc-film-snapshot *::before, .svc-film-snapshot *::after { transition: none !important; animation: none !important; }
+.svc-film-trace { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 5; overflow: visible; }
+.svc-progress-signal { position: absolute; top: 50%; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-deep); transform: translate(-50%,-50%); pointer-events: none; }
+
+#labs[data-visible="false"] *,
+#approach[data-visible="false"] * {
+  animation-play-state: paused !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .svc-film-snapshot, .svc-film-trace { display: none !important; }
+  .fc-motif, .fc-converge-point { display: none !important; }
+}
+

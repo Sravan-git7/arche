@@ -180,14 +180,14 @@ function Copy({
 
 export function ProblemSystem() {
   const [desktop, setDesktop] = useState(
-    () => typeof window !== "undefined" && window.matchMedia("(min-width: 900px) and (min-height: 760px)").matches
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 900px) and (min-height: 520px)").matches
   );
   const [inspect, setInspect] = useState<CardId | null>(null);
   const [reduced, setReduced] = useState(prefersReducedMotion);
   useEffect(() => onMotionPreferenceChange(setReduced), []);
 
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 900px) and (min-height: 760px)");
+    const mq = window.matchMedia("(min-width: 900px) and (min-height: 520px)");
     const on = () => setDesktop(mq.matches);
     mq.addEventListener("change", on);
     return () => mq.removeEventListener("change", on);
@@ -251,6 +251,8 @@ function ProblemPinned({ inspect, onInspect, reduced }: ProblemProps) {
     const crmValB = cardCrm.querySelector<HTMLElement>(".pf-crm-val-b");
     const emailValA = cardEmail.querySelector<HTMLElement>(".pf-email-val-a");
     const emailValB = cardEmail.querySelector<HTMLElement>(".pf-email-val-b");
+    const sheetValA = cardSheet.querySelector<HTMLElement>(".pf-sheet-val-a");
+    const sheetValB = cardSheet.querySelector<HTMLElement>(".pf-sheet-val-b");
     const sheetTag = cardSheet.querySelector<HTMLElement>(".pf-tag");
     const crmTag = cardCrm.querySelector<HTMLElement>(".pf-tag");
 
@@ -337,6 +339,9 @@ function ProblemPinned({ inspect, onInspect, reduced }: ProblemProps) {
       gsap.set(cardEls, { y: 0 });
       gsap.set(pulseRings, { scale: 1, opacity: 0 });
       if (crmValA) gsap.set(crmValA, { opacity: 1 });
+      if (crmValB) gsap.set(crmValB, { opacity: 0 });
+      if (sheetValA) gsap.set(sheetValA, { y: 0, opacity: 1 });
+      if (sheetValB) gsap.set(sheetValB, { y: 0, opacity: 0 });
     };
 
     startIdle();
@@ -486,6 +491,10 @@ function ProblemPinned({ inspect, onInspect, reduced }: ProblemProps) {
       // Sheet activates
       masterTl.set(cardSheet, { attr: { "data-flip": "1" } }, 0.50);
       if (sheetTag) masterTl.to(sheetTag, { color: "var(--accent-ink)", duration: 0.06 }, 0.52);
+      if (sheetValA && sheetValB) {
+        masterTl.to(sheetValA, { y: -14, opacity: 0, duration: 0.04, ease: "power2.in" }, 0.52);
+        masterTl.fromTo(sheetValB, { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.04, ease: "power2.out" }, 0.54);
+      }
       masterTl.to(
         cardSheet,
         {
@@ -776,6 +785,11 @@ function ProblemPinned({ inspect, onInspect, reduced }: ProblemProps) {
                       <>
                         <span className="pf-crm-val-a block absolute inset-0">{c.a}</span>
                         <span className="pf-crm-val-b block absolute inset-0 opacity-0">{c.b}</span>
+                      </>
+                    ) : c.id === "sheet" ? (
+                      <>
+                        <span className="pf-sheet-val-a block absolute inset-0">{c.a}</span>
+                        <span className="pf-sheet-val-b block absolute inset-0 opacity-0">{c.b}</span>
                       </>
                     ) : (
                       <span className="block">{c.a}</span>

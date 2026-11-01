@@ -3,14 +3,14 @@ import { gsap, prefersReducedMotion } from "../lib/gsap";
 import { announcePreviewDone, markPreviewPlayed } from "../lib/autoplay";
 
 /**
- * AI AUTOMATION ΓÇö the same job, done two ways.
+ * AI AUTOMATION — the same job, done two ways.
  *
  * MANUAL     a person works through six steps. Measured, uneven, effortful:
  *            each step has its own reach time, its own hesitation mid-task,
  *            and the cursor lands slightly differently every time.
  * AUTOMATED  the six list rows physically collapse into one AI node. One
  *            lime signal ("NEW LEAD") enters, the node fires, and the signal
- *            splits into four paths that land 80ms apart ΓÇö identical easing
+ *            splits into four paths that land 80ms apart — identical easing
  *            on every path, so the motion reads as precise and causal.
  *
  * The rows, the result cards and the signal are the SAME elements in both
@@ -18,8 +18,8 @@ import { announcePreviewDone, markPreviewPlayed } from "../lib/autoplay";
  * repeat visits); only geometry is measured at run time. The DONE time is
  * the real elapsed time of the run, never hardcoded.
  *
- * PROMPT 24 ΓÇö autoplay-first: the first time this stage is on screen it runs
- * MANUAL once at normal pace, beats ~0.9s, then runs AUTOMATED once ΓÇö no RUN
+ * PROMPT 24 — autoplay-first: the first time this stage is on screen it runs
+ * MANUAL once at normal pace, beats ~0.9s, then runs AUTOMATED once — no RUN
  * click needed, and the comparison line at the bottom fills itself in. Any
  * click on RUN or the MANUAL/AUTOMATED toggle cancels the chain and hands
  * control over for good; both stay fully usable afterwards.
@@ -37,14 +37,14 @@ const STEPS = ["Email arrives", "Copy the details", "Update the sheet", "Open th
 
 const CARDS = [
   { k: "Inbox", tip: "Inbox: marked read, tagged Lead" },
-  { k: "Sheet", tip: "Sheet: new row ΓÇö name, company, source" },
+  { k: "Sheet", tip: "Sheet: new row — name, company, source" },
   { k: "CRM", tip: "CRM: contact created, owner assigned" },
   { k: "Slack", tip: "Slack: #sales notified with a summary" },
 ];
 
 /* ---- precomputed timelines (seconds) ------------------------------------ */
 
-/** Manual: 1.1ΓÇô1.6s per step with deliberate variance; ~9.7s total. */
+/** Manual: 1.1–1.6s per step with deliberate variance; ~9.7s total. */
 const MANUAL = {
   steps: [1.24, 1.12, 1.48, 1.18, 1.36, 1.15], // whole step, including the reach
   reach: [0.46, 0.38, 0.52, 0.41, 0.49, 0.36], // cursor travel before work starts
@@ -56,7 +56,7 @@ const MANUAL = {
 
 /** Automated: fast, exact, identical easing on every path; ~1.7s job. */
 const AUTO = {
-  collapse: 0.4, // six rows ΓåÆ one node
+  collapse: 0.4, // six rows → one node
   nodeIn: 0.3,
   enter: 0.55, // NEW LEAD travels to the node (constant velocity)
   absorb: 0.3, // node fires
@@ -108,7 +108,7 @@ export function AutomationDemo({
   const [chainOn, setChainOn] = useState(false); // unattended first-view preview
   const [displayMult, setDisplayMult] = useState(1);
 
-  /** Next run-completion hook ΓÇö the autoplay chain lives here. */
+  /** Next run-completion hook — the autoplay chain lives here. */
   const chain = useRef<((m: Mode) => void) | null>(null);
   const chainTimer = useRef(0);
   const autoStarted = useRef(false);
@@ -119,7 +119,7 @@ export function AutomationDemo({
     if (el.dataset.state !== s) el.dataset.state = s;
   };
 
-  // PROMPT 32 (Delight 5) ΓÇö Multiplier counts up from 1├ù to final value over ~1s
+  // PROMPT 32 (Delight 5) — Multiplier counts up from 1× to final value over ~1s
   useEffect(() => {
     if (results.manual && results.auto) {
       const target = Math.max(1, Math.round(results.manual / results.auto));
@@ -187,7 +187,7 @@ export function AutomationDemo({
     cb?.(m);
   };
 
-  /* ---- morph: list Γçä node -------------------------------------------------- */
+  /* ---- morph: list ⇄ node -------------------------------------------------- */
 
   const collapseTo = (t: gsap.core.Timeline, instant = false) => {
     const pane = q(".au-pane");
@@ -259,7 +259,7 @@ export function AutomationDemo({
       t.call(() => setState(rows[i], "active"), undefined, at)
         .to(hand, { x: target.x, y: target.y, duration: reach, ease: "power2.inOut" }, at)
         .to(hand, { scale: 0.84, duration: 0.09, yoyo: true, repeat: 1, ease: "power1.inOut" }, at + reach)
-        // the person gets partway, pauses, then finishes ΓÇö never one even sweep
+        // the person gets partway, pauses, then finishes — never one even sweep
         .to(fills[i], { scaleX: MANUAL.split[i], duration: work * 0.5, ease: "sine.inOut" }, at + reach)
         .to(fills[i], { scaleX: 1, duration: work * (0.5 - MANUAL.hold[i]), ease: "power2.out" }, at + reach + work * (0.5 + MANUAL.hold[i]))
         .call(() => setState(rows[i], "complete"), undefined, at + d);
@@ -327,7 +327,7 @@ export function AutomationDemo({
     t.call(startClock);
     let pos = t.duration();
 
-    // NEW LEAD enters at constant velocity ΓÇö machine precision
+    // NEW LEAD enters at constant velocity — machine precision
     const e = { p: 0 };
     t.set(enterP, { opacity: 1, strokeDasharray: eL, strokeDashoffset: eL }, pos)
       .set(lead, { opacity: 1 }, pos)
@@ -424,6 +424,7 @@ export function AutomationDemo({
 
   /** A visitor-initiated run: cancels any unattended preview chain. */
   const userRun = (m: Mode) => {
+    autoStarted.current = true;
     chain.current = null;
     if (chainTimer.current) window.clearTimeout(chainTimer.current);
     setChainOn(false);
@@ -436,7 +437,7 @@ export function AutomationDemo({
   };
 
   /*
-   * PROMPT 28 ΓÇö AI Automation autoplay: the moment this tab becomes active and is in viewport,
+   * PROMPT 28 — AI Automation autoplay: the moment this tab becomes active and is in viewport,
    * auto-trigger the MANUAL run, wait for it to complete, wait 1 second, then auto-trigger
    * the AUTOMATED run without requiring the RUN button to be clicked.
    */
@@ -477,11 +478,11 @@ export function AutomationDemo({
 
   /* ---- render ----------------------------------------------------------------- */
 
-  const idleText = mode === "manual" ? "Six steps ┬╖ one person ┬╖ every time" : "One event ┬╖ no one touches it";
+  const idleText = mode === "manual" ? "Six steps · one person · every time" : "One event · no one touches it";
   const doneText =
     ran === "manual"
-      ? `Done ┬╖ ${fmt(results.manual ?? NOMINAL.manual)} ┬╖ 6 steps by hand`
-      : `Done ┬╖ ${fmt(results.auto ?? NOMINAL.auto)} ┬╖ person free`;
+      ? `Done · ${fmt(results.manual ?? NOMINAL.manual)} · 6 steps by hand`
+      : `Done · ${fmt(results.auto ?? NOMINAL.auto)} · person free`;
   const both = results.manual !== undefined && results.auto !== undefined;
 
   return (
@@ -504,14 +505,14 @@ export function AutomationDemo({
           disabled={phase === "running"}
           data-cursor={phase === "running" ? undefined : "RUN"}
         >
-          <span aria-hidden>Γû╢</span> {phase === "running" ? "Running" : phase === "done" ? "Run again" : "Run"}
+          <span aria-hidden>▶</span> {phase === "running" ? "Running" : phase === "done" ? "Run again" : "Run"}
         </button>
       </div>
 
       {/* work area */}
       <div className="grid flex-1 items-center gap-[14px] min-[900px]:grid-cols-[1.25fr_0.9fr] min-[900px]:gap-[clamp(28px,4vw,56px)]">
         <div>
-          <p data-slab="s1" className="mono mb-[8px]">{mode === "manual" ? "You ┬╖ 6 steps" : "System ┬╖ 1 event"}</p>
+          <p data-slab="s1" className="mono mb-[8px]">{mode === "manual" ? "You · 6 steps" : "System · 1 event"}</p>
           <div className="au-pane relative">
             <div className="flex flex-col gap-[6px]">
               {STEPS.map((s, i) => (
@@ -532,7 +533,7 @@ export function AutomationDemo({
             >
               <span className="au-ring" />
               <span className="au-core">AI</span>
-              <span className="au-cap mono">reads ┬╖ decides ┬╖ routes</span>
+              <span className="au-cap mono">reads · decides · routes</span>
             </div>
           </div>
         </div>
@@ -548,7 +549,7 @@ export function AutomationDemo({
                 </div>
                 <span className="au-flip" aria-live="polite">
                   <span>Waiting</span>
-                  <span>UpdatingΓÇª</span>
+                  <span>Updating…</span>
                   <span>Updated</span>
                 </span>
                 <span role="tooltip" id={`au-tip-${i}`} className="au-tip">
@@ -567,10 +568,10 @@ export function AutomationDemo({
             <>
               {chainOn && (
                 <span style={{ color: "var(--accent-ink)" }}>
-                  Auto-preview ┬╖ {mode === "manual" ? "manual" : "automated"} run ┬╖{" "}
+                  Auto-preview · {mode === "manual" ? "manual" : "automated"} run ·{" "}
                 </span>
               )}
-              Running ┬╖ <span ref={clock}>0.0s</span>
+              Running · <span ref={clock}>0.0s</span>
             </>
           ) : phase === "done" ? (
             doneText
@@ -580,7 +581,7 @@ export function AutomationDemo({
         </span>
         {both ? (
           <span className="mono mono-fg flex items-center gap-[4px]">
-            <span>SIMULATED ┬╖ Manual {fmt(results.manual!)} ΓåÆ Automated {fmt(results.auto!)} ┬╖</span>
+            <span>SIMULATED · Manual {fmt(results.manual!)} → Automated {fmt(results.auto!)} ·</span>
             <strong
               className="text-[var(--accent)] font-bold transition-transform duration-200"
               style={{
@@ -588,7 +589,7 @@ export function AutomationDemo({
                 transform: displayMult === Math.round(results.manual! / results.auto!) ? "scale(1.08)" : "scale(1)",
               }}
             >
-              {displayMult}├ù faster
+              {displayMult}× faster
             </strong>
           </span>
         ) : (
