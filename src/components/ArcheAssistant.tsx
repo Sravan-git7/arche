@@ -126,6 +126,7 @@ export function ArcheAssistant() {
 
             <div
               ref={scroller}
+              data-lenis-prevent="true"
               className="min-h-[340px] max-h-[430px] space-y-[14px] overflow-y-auto p-[16px]"
               aria-live="polite"
             >

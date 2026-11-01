@@ -3,6 +3,7 @@ import { Wordmark } from "./Wordmark";
 import { siteContent, services } from "../data/site";
 import { Link, useRoute } from "../lib/router";
 import { gsap, prefersReducedMotion } from "../lib/gsap";
+import { isIntroActive } from "./Intro";
 
 export function Header() {
   const nav = useRef<HTMLElement>(null);
@@ -18,7 +19,30 @@ export function Header() {
   const last = useRef(0);
   const route = useRoute();
 
-  // The nav is a fixed anchor: it appears instantly, fully formed (no load animation).
+  // The nav fades in at t2.4 during intro; appears instantly if intro was already shown
+  useEffect(() => {
+    if (!nav.current) return;
+    if (!isIntroActive()) {
+      gsap.set(nav.current, { opacity: 1 });
+      return;
+    }
+
+    gsap.set(nav.current, { opacity: 0 });
+
+    const onNavReveal = () => {
+      if (nav.current) {
+        gsap.to(nav.current, { opacity: 1, duration: 0.6, ease: "power2.out" });
+      }
+    };
+
+    window.addEventListener("arche:nav-reveal-start", onNavReveal, { once: true });
+    const failsafe = window.setTimeout(onNavReveal, 3200);
+
+    return () => {
+      window.removeEventListener("arche:nav-reveal-start", onNavReveal);
+      window.clearTimeout(failsafe);
+    };
+  }, []);
 
   useEffect(() => {
     const onScroll = () => {
@@ -237,7 +261,7 @@ export function Header() {
           transition: "clip-path .7s var(--e-inout)",
         }}
       >
-        <div className="wrap flex h-full flex-col justify-between overflow-y-auto pt-[96px] pb-[30px]">
+        <div data-lenis-prevent="true" className="wrap flex h-full flex-col justify-between overflow-y-auto pt-[96px] pb-[30px]">
           <div className="flex flex-col">
             {links
               .filter((l) => l.label !== "Services")

@@ -1,9 +1,38 @@
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { prefersReducedMotion, EASE, DUR, STAGGER, SCROLL, onMotionPreferenceChange, constrainedDevice, hasFinePointer, duration } from "./motion";
+import {
+  gsap,
+  ScrollTrigger,
+  SplitText,
+  Flip,
+  DrawSVGPlugin,
+  MotionPathPlugin,
+} from "../motion/gsap";
+import {
+  prefersReducedMotion,
+  EASE,
+  DUR,
+  STAGGER,
+  SCROLL,
+  onMotionPreferenceChange,
+  constrainedDevice,
+  hasFinePointer,
+  duration,
+} from "./motion";
 
-if (typeof window !== "undefined") {
-  gsap.registerPlugin(ScrollTrigger);
-}
-
-export { gsap, ScrollTrigger, prefersReducedMotion, EASE, DUR, STAGGER, SCROLL, onMotionPreferenceChange, constrainedDevice, hasFinePointer, duration };
+export {
+  gsap,
+  ScrollTrigger,
+  SplitText,
+  Flip,
+  DrawSVGPlugin,
+  MotionPathPlugin,
+  prefersReducedMotion,
+  EASE,
+  DUR,
+  STAGGER,
+  SCROLL,
+  onMotionPreferenceChange,
+  constrainedDevice,
+  hasFinePointer,
+  duration,
+};
+export default gsap;

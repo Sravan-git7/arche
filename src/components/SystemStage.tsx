@@ -1,13 +1,14 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactElement } from "react";
+import { useEffect, useRef, useState, type ReactElement } from "react";
 import { services } from "../data/site";
 import { SCENES } from "./Scenes";
 import { TRY } from "./Demos";
-import { onMotionPreferenceChange, prefersReducedMotion } from "../lib/gsap";
-import { captureServiceFilm, playServiceFilm, type ServiceFilmCapture, type ServiceFilmControl } from "../lib/serviceMotion";
+
 import { AutomationDemo } from "./AutomationDemo";
 import { AgentDemo } from "./AgentDemo";
 import { WebDevDemo } from "./WebDevDemo";
 import { VideoEditingDemo } from "./VideoEditingDemo";
+import { ServiceTransitionLayer } from "./ServiceTransitionLayer";
+
 
 /**
  * Services stage — a frame that hosts a live product per tab.
@@ -99,75 +100,40 @@ export function ServiceStage({
   previewSlug,
   active,
   visited,
+  onSelect,
+  onStageSettled,
 }: {
   slug: string;
   previewSlug: string | null;
   active: boolean;
   visited: ReadonlySet<string>;
+  onSelect?: (i: number) => void;
+  onStageSettled?: (slug: string) => void;
 }) {
   const target = previewSlug ?? slug;
   const [shown, setShown] = useState(target);
   const [mode, setMode] = useState<DemoMode>("watch");
-  const shell = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
-  const shownRef = useRef(target);
-  const pending = useRef<ServiceFilmCapture | null>(null);
-  const film = useRef<ServiceFilmControl | null>(null);
-
-  const cancelFilm = () => {
-    pending.current?.dispose();
-    pending.current = null;
-    const current = film.current;
-    film.current = null;
-    current?.cancel();
-  };
-
-  // Capture before React replaces the outgoing demo, then commit the latest
-  // target in the same layout pass. Off-screen and reduced-motion changes
-  // resolve immediately without a temporary snapshot.
-  useLayoutEffect(() => {
-    if (target === shownRef.current) return;
-    cancelFilm();
-    if (active && !prefersReducedMotion() && document.visibilityState === "visible" && shell.current && layer.current) {
-      pending.current = captureServiceFilm(shell.current, layer.current, shownRef.current, target);
-    }
-    shownRef.current = target;
-    setShown(target);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [target]);
-
-  useLayoutEffect(() => {
-    const capture = pending.current;
-    pending.current = null;
-    if (!capture) return;
-    if (!layer.current || !active || prefersReducedMotion()) { capture.dispose(); return; }
-    let control: ServiceFilmControl | null = null;
-    try {
-      control = playServiceFilm(capture, layer.current, () => {
-        if (film.current === control) film.current = null;
-      });
-      film.current = control;
-    } catch {
-      // A failed visual effect must never strand the controls or content.
-      capture.dispose();
-      if (layer.current) layer.current.style.removeProperty("opacity");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shown]);
-
   useEffect(() => {
-    if (!active) cancelFilm();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
-  useEffect(() => onMotionPreferenceChange((reduced) => { if (reduced) cancelFilm(); }), []);
-  useEffect(() => () => cancelFilm(), []);
-
+    setShown(target);
+  }, [target]);
   const isPreview = previewSlug !== null && shown === previewSlug;
   const showToggle = !isPreview && !SELF_CONTROLLED.has(shown);
-  const Stage = STAGES[shown];
-  // First view of this tab while the section is on screen → demonstrate itself.
-  const hand = HANDOFF[shown];
-  const sv = services.find((x) => x.slug === shown)!;
+  const hand = HANDOFF[shown] ?? { inn: "INPUT", out: "OUTPUT" };
+  const sv = services.find((x) => x.slug === shown) ?? services[0];
+
+  const renderStage = (s: string, stageActive: boolean) => {
+    const Component = STAGES[s];
+    if (!Component) return <div />;
+    const isThisPreview = previewSlug !== null && s === previewSlug;
+    return (
+      <Component
+        active={active && stageActive}
+        mode={isThisPreview ? "watch" : mode}
+        preview={isThisPreview}
+      />
+    );
+  };
 
   return (
     <div
@@ -204,18 +170,21 @@ export function ServiceStage({
           pinned (Prompt 33) the module must fit the viewport on short
           screens, so the height reads --svc-stage-h (set on the section). */}
       <div
-        ref={shell}
-        className="relative"
-        onPointerDownCapture={() => film.current?.finish()}
-        onFocusCapture={() => film.current?.finish()}
+        ref={layer}
+        className="relative flex flex-col justify-center min-[900px]:h-[var(--svc-stage-h,440px)] min-[900px]:overflow-hidden"
+        style={{ minHeight: 320, transformOrigin: "50% 50%" }}
       >
-        <div
-          ref={layer}
-          className="relative flex flex-col justify-center min-[900px]:h-[var(--svc-stage-h,440px)] min-[900px]:overflow-hidden"
-          style={{ minHeight: 320, transformOrigin: "50% 50%" }}
-        >
-          <Stage key={shown} active={active} mode={isPreview ? "watch" : mode} preview={isPreview} />
-        </div>
+        <ServiceTransitionLayer
+          currentSlug={shown}
+          targetSlug={target}
+          stageContainerRef={layer}
+          renderStage={renderStage}
+          onTransitionComplete={(settledSlug) => {
+            setShown(settledSlug);
+            onStageSettled?.(settledSlug);
+          }}
+          isAutoplayReady={active}
+        />
       </div>
 
       {/* memory rail — services the visitor has opened stay lit */}
@@ -224,21 +193,33 @@ export function ServiceStage({
           const current = s.slug === shown;
           const lit = visited.has(s.slug) || current;
           return (
-            <span key={s.slug} className="flex items-center gap-[10px]">
-              <span className="flex items-center gap-[8px]">
+            <span key={s.slug} data-rail-tab={s.slug} className="flex items-center gap-[10px]">
+              <button
+                type="button"
+                onClick={() => onSelect?.(i)}
+                className="flex items-center gap-[8px] cursor-pointer bg-transparent border-0 p-0 text-left"
+                aria-label={`Select ${s.title}`}
+              >
                 <span
-                  className="block h-[7px] w-[7px] rounded-full"
+                  data-rail-dot={s.slug}
+                  {...(i === 0 ? { "data-signal": "rail-1" } : {})}
+                  className="relative block h-[7px] w-[7px] rounded-full"
                   style={{
                     background: current ? "var(--accent-deep)" : lit ? "var(--fg)" : "transparent",
                     border: `1px ${current && isPreview ? "dashed" : "solid"} ${lit ? "var(--accent-deep)" : "var(--line)"}`,
                     boxShadow: current ? "0 0 0 4px color-mix(in srgb, var(--accent-deep) 22%, transparent)" : "none",
                     transition: "all 0.4s var(--e-out)",
                   }}
-                />
-                <span className="mono max-[1199px]:hidden" style={{ color: current ? "var(--accent-ink)" : lit ? "var(--fg)" : "var(--faint)" }}>
+                >
+                  <span
+                    className="rail-pulse-ring pointer-events-none absolute inset-[-4px] rounded-full"
+                    style={{ border: "1.5px solid var(--accent)", opacity: 0 }}
+                  />
+                </span>
+                <span className="mono max-[899px]:hidden" style={{ color: current ? "var(--accent-ink)" : lit ? "var(--fg)" : "var(--faint)" }}>
                   {s.short}
                 </span>
-              </span>
+              </button>
               {i < services.length - 1 && (
                 <span className="block h-px w-[18px]" style={{ background: visited.has(services[i + 1].slug) ? "var(--accent-deep)" : "var(--line)", transition: "background 0.4s" }} />
               )}

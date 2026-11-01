@@ -18,7 +18,7 @@ import { services } from "../data/site";
  */
 
 /** Must match ProblemSystem's morph thresholds. */
-const MORPH_IN = 0.86;
+const MORPH_IN = 1.0;
 
 /** Seconds for the eased fan-out when not scrubbing (reduced-motion fallback). */
 const FAN_MS = 700;
@@ -77,7 +77,7 @@ export function SystemThread() {
         if (rail.dataset.handoff !== next) rail.dataset.handoff = next;
       }
 
-      // Visible from the problem's compact-diagram state until arrival.
+      // Visible from the problem's compact-diagram hand-off until arrival.
       const on = !arrived && (problemP >= MORPH_IN || blend > 0.001);
       el.style.opacity = on ? "1" : "0";
       if (!on) return;

@@ -3,13 +3,13 @@ import { Hero, Approach, ProcessSys, FinalCTA } from "../components/Sections";
 import { Chapters } from "../components/Chapters";
 import { WorkIndex } from "../components/WorkIndex";
 import { FAQ } from "../components/FAQ";
-import { ConnectedSystem } from "../components/ConnectedSystem";
 import { ArcheAssistant } from "../components/ArcheAssistant";
 import { ProblemSystem } from "../components/ProblemSystem";
 import { Architecture3D } from "../components/Architecture3D";
-import { Labs } from "../components/Labs";
 import { ProgressRail } from "../components/ProgressRail";
 import { BridgeDot } from "../components/BridgeDot";
+import { SystemThread } from "../components/SystemThread";
+import { ServiceHandoff } from "../components/ServiceHandoff";
 import { Link, usePage } from "../lib/router";
 import { useReveal, useParallax } from "../lib/reveal";
 import { resetPreviews } from "../lib/autoplay";
@@ -20,10 +20,9 @@ import { resetPreviews } from "../lib/autoplay";
  *
  *  Hero          spatial scene, pointer depth, focus-pull headline   (L4)
  *  Problem       pinned: idle tools → fan-out → one diagram          (L3)
- *  Services      pinned: scroll one unit per service, autoplay each      (L3)
- *  System        3D architecture, entry paths, build-it-yourself     (L4)
+ *  Services      pinned: scroll one unit per service, autoplay each  (L3)
+ *  System        3D architecture, spatial camera rail                (L4)
  *  Work          pointer-reactive frames, expand-to-route            (L2)
- *  Labs          playground of working prototypes                    (L2)
  *  Process       click any stage, the system changes                 (L2)
  *  Approach      dark pause, principles demonstrate themselves       (L2)
  *  Ask Arche     conversation drives a live system                   (L3)
@@ -40,7 +39,7 @@ export function Home() {
 
   return (
     <>
-      <div data-chapter="Hero">
+      <div data-chapter="Hero" id="hero-aperture-wrap" className="relative w-full">
         <Hero />
       </div>
       {/* Hero → Problem → Services is one continuous run: the receding planes
@@ -53,7 +52,6 @@ export function Home() {
       </div>
       <div data-chapter="System">
         <Architecture3D />
-        <ConnectedSystem />
       </div>
       <div data-chapter="Work">
         <section className="w-full py-[clamp(56px,7vw,110px)]">
@@ -76,9 +74,6 @@ export function Home() {
           </div>
         </section>
       </div>
-      <div data-chapter="Labs">
-        <Labs />
-      </div>
       <div data-chapter="Process">
         <ProcessSys />
       </div>
@@ -96,6 +91,8 @@ export function Home() {
       </div>
       <ProgressRail />
       <BridgeDot />
+      <SystemThread />
+      <ServiceHandoff />
     </>
   );
 }

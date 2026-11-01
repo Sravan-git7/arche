@@ -8,7 +8,7 @@ import { ServicesIndex, WorkPage } from "./pages/Misc";
 import { PricingPage } from "./pages/PricingPage";
 import { ContactPage } from "./pages/Contact";
 import { RouteWipe, useRoute } from "./lib/router";
-import { useLenis } from "./lib/useLenis";
+import { SmoothScroll } from "./motion/SmoothScroll";
 import { useMagnetic } from "./lib/interact";
 
 /**
@@ -25,7 +25,6 @@ import { useMagnetic } from "./lib/interact";
  * reveal grammar is booted per page so ScrollTriggers rebuild cleanly.
  */
 export default function App() {
-  useLenis();
   useMagnetic();
   const route = useRoute();
 
@@ -37,7 +36,7 @@ export default function App() {
   else if (route === "/contact") page = <ContactPage />;
 
   return (
-    <>
+    <SmoothScroll>
       <a
         className="skip-link"
         href="#main"
@@ -59,6 +58,6 @@ export default function App() {
         {page}
       </main>
       <Footer />
-    </>
+    </SmoothScroll>
   );
 }

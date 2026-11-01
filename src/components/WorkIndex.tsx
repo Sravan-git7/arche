@@ -104,6 +104,7 @@ export function ProjectRow({ p, i, isLast = false }: { p: Project; i: number; is
   }, [isLast]);
 
   // 3. Desktop Pointer Drift (image content shifts at half pointer speed under fixed overlay)
+  // + Cursor glow spotlight tracked via CSS custom props
   const onPointerMove = (e: React.PointerEvent) => {
     if (!imgRef.current || !frameRef.current || !hasFinePointer() || prefersReducedMotion()) return;
     if (!qx.current) {
@@ -115,11 +116,21 @@ export function ProjectRow({ p, i, isLast = false }: { p: Project; i: number; is
     const ny = (e.clientY - b.top) / b.height - 0.5;
     qx.current(-nx * 34);
     qy.current!(-ny * 24);
+    // Glow spotlight: track pointer position as percentages
+    const px = ((e.clientX - b.left) / b.width) * 100;
+    const py = ((e.clientY - b.top) / b.height) * 100;
+    frameRef.current.style.setProperty("--glow-x", `${px}%`);
+    frameRef.current.style.setProperty("--glow-y", `${py}%`);
   };
 
   const onPointerLeave = () => {
     qx.current?.(0);
     qy.current?.(0);
+    // Reset glow
+    if (frameRef.current) {
+      frameRef.current.style.setProperty("--glow-x", "50%");
+      frameRef.current.style.setProperty("--glow-y", "50%");
+    }
   };
 
   const toggleExpand = (e: React.MouseEvent) => {
@@ -147,7 +158,16 @@ export function ProjectRow({ p, i, isLast = false }: { p: Project; i: number; is
           aria-expanded={expanded}
           aria-label={`${expanded ? "Close" : "Open"} ${p.name} details`}
           data-cursor={expanded ? "CLOSE" : "VIEW"}
+          style={{ "--glow-x": "50%", "--glow-y": "50%" } as React.CSSProperties}
         >
+          {/* Cursor spotlight glow */}
+          <div
+            className="project-glow pointer-events-none absolute inset-0 z-[3] opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+            style={{
+              background: "radial-gradient(circle 180px at var(--glow-x) var(--glow-y), color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%)",
+            }}
+            aria-hidden
+          />
           <div style={{ aspectRatio: RATIO[p.ratio], borderRadius: 6, overflow: "hidden" }}>
             <img
               ref={imgRef}

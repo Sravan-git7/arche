@@ -1,34 +1,52 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { siteContent } from "../data/site";
 import { gsap, ScrollTrigger, onMotionPreferenceChange, prefersReducedMotion } from "../lib/gsap";
+import { emitThread } from "../lib/threadBus";
 
 /**
- * PROBLEM — one of the site's two pinned sequences.
+ * PROBLEM — scroll-scrubbed storyboard where four disconnected tools become one system.
  *
- * Desktop (pinned, fully scroll-linked):
- *   0.00–0.25  establishing: four tools idle on unsynced rhythms; the hero's
- *              lime signal drifts in and settles on the Website card
- *   0.25–0.55  Website activates (steady beat) and draws a line to Email
- *   0.55–0.80  Email reads; the system fans out — Email → Sheet and
- *              Website → CRM draw at the same time
- *   0.80–1.00  all four share one beat, CRM gets an owner, and the cluster
- *              compresses into the compact diagram that opens Services
- *
- * Mobile: not pinned. Cards stack; each resolves as it reaches the middle
- * third of the viewport.
+ * Storyboard by progress p (0 to 1), pinned for 260vh, scrub 0.6:
+ * - p 0.00 to 0.12 — IDLE:
+ *   Four cards idle independently: translateY ±3px loops with durations 3.1s, 4.3s, 3.7s, 5.0s;
+ *   each card's status dot pulses (ring scale 1 to 1.6, opacity 0.6 to 0) with periods 1.6s, 2.2s, 1.9s, 2.7s;
+ *   CRM text "No owner" flickers between opacity 0.55 and 1 every 2.3s.
+ *   Loops stop and reset when p > 0.12, and resume when scrubbing back.
+ * - p 0.12 to 0.30:
+ *   Signal lands on WEBSITE card's status dot; card border tweens to lime;
+ *   paragraph and headline lines reveal.
+ * - p 0.30 to 0.42:
+ *   Line draws (DrawSVG) from WEBSITE to EMAIL; EMAIL's value "Unread · 12m" changes to "Read"
+ *   with masked text swap (0.3s). Counter rolls 0 -> 1.
+ * - p 0.42 to 0.62:
+ *   Two lines draw simultaneously: EMAIL to SHEET and WEBSITE to CRM (fan-out).
+ *   SHEET and CRM status tags change from gray to lime; CRM value swaps to "Assigned".
+ *   Counter rolls 1 -> 2 -> 3.
+ * - p 0.62 to 0.80:
+ *   Counter shows "4 TOOLS · 3 CONNECTIONS"; "CONNECTED" tag turns lime and flashes once.
+ *   All four status dots pulse twice in unison (scale 1 to 1.8, 0.5s).
+ *   Headline line B ("They have a connection problem.") tweens to ink, and a lime 4px underline
+ *   draws under "connection".
+ * - p 0.80 to 1.00:
+ *   Four cards scale to 0.6 and fade to opacity 0 toward panel center;
+ *   four status dots stay and glide to horizontal line at panel vertical center,
+ *   connected by drawn lime line ("Website → AI Agent → Qualified Lead → CRM").
+ *   Hold last 10% for reading.
  */
 type CardId = "web" | "email" | "sheet" | "crm";
+
 type Card = {
   id: CardId;
   k: string;
   a: string;
   b?: string;
   tag: string;
+  targetLabel: string;
   x: number; // stage units (160 × 110)
   y: number;
   rx: number; // compact-diagram x
-  dur: number; // idle pulse rhythm — deliberately not shared
-  delay: number;
+  idleDur: number;
+  pulsePeriod: number;
 };
 
 const W = 160;
@@ -36,14 +54,12 @@ const H = 110;
 const ROW_Y = 58;
 
 const CARDS: Card[] = [
-  { id: "web", k: "Website", a: "New inquiry", tag: "Inquiry", x: 33, y: 24, rx: 20, dur: 1.7, delay: -0.3 },
-  { id: "email", k: "Email", a: "Unread · 12m", b: "Read", tag: "Inbox", x: 127, y: 24, rx: 60, dur: 2.6, delay: -1.1 },
-  { id: "sheet", k: "Spreadsheet", a: "Row pending", b: "Lead logged", tag: "Manual entry", x: 127, y: 86, rx: 100, dur: 1.25, delay: -0.6 },
-  { id: "crm", k: "CRM", a: "No owner", b: "Assigned", tag: "Pipeline", x: 33, y: 86, rx: 140, dur: 3.1, delay: -2.0 },
+  { id: "web", k: "Website", a: "New inquiry", tag: "Captured", targetLabel: "Website", x: 33, y: 24, rx: 20, idleDur: 3.1, pulsePeriod: 1.6 },
+  { id: "email", k: "Email", a: "Unread · 12m", b: "Read", tag: "Sent", targetLabel: "AI Agent", x: 127, y: 24, rx: 60, idleDur: 4.3, pulsePeriod: 2.2 },
+  { id: "sheet", k: "Sheet", a: "Row pending", tag: "Logged", targetLabel: "Qualified Lead", x: 127, y: 86, rx: 100, idleDur: 5.0, pulsePeriod: 2.7 },
+  { id: "crm", k: "CRM", a: "No owner", b: "Assigned", tag: "Assigned", targetLabel: "CRM", x: 33, y: 86, rx: 140, idleDur: 3.7, pulsePeriod: 1.9 },
 ];
 
-/** What each tool is for, what breaks when it stands alone, and what it
- *  becomes inside a connected workflow. Conceptual — no client system. */
 const CARD_DETAIL: Record<CardId, { role: string; friction: string; resolved: string }> = {
   web: {
     role: "Entry point — captures intent.",
@@ -67,114 +83,14 @@ const CARD_DETAIL: Record<CardId, { role: string; friction: string; resolved: st
   },
 };
 
-// Website → Email, then the fan-out: Email → Sheet and Website → CRM
+// Connection paths between card edges
 const FAN = ["M58 24 H102", "M127 36 V74", "M33 36 V74"];
 const ROW = `M${CARDS[0].rx} ${ROW_Y} H${CARDS[3].rx}`;
 
-/* scroll thresholds */
-const T = {
-  signalIn: [0, 0.22],
-  webOn: 0.25,
-  lineA: [0.27, 0.53],
-  emailRead: 0.55,
-  fan: [0.56, 0.78],
-  sheetDone: 0.78,
-  allSync: 0.8,
-  crmOwned: 0.84,
-  morph: [0.86, 0.97],
-  row: [0.9, 0.98],
-} as const;
-
-const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
-const seg = (p: number, r: readonly [number, number]) => clamp01((p - r[0]) / (r[1] - r[0]));
-const inOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-
-/**
- * Linear-then-ease-out: constant draw speed, then a slight deceleration on
- * arrival. Linear up to t=0.7, then a quadratic ease-out whose starting
- * slope matches the linear part (y at the knee = 2a / (1 + a)).
- */
-const KNEE = 0.7;
-const Y_KNEE = (2 * KNEE) / (1 + KNEE);
-const drawEase = (t: number) =>
-  t <= KNEE ? (t / KNEE) * Y_KNEE : Y_KNEE + (1 - Y_KNEE) * (1 - Math.pow(1 - (t - KNEE) / (1 - KNEE), 2));
-
-const setFlag = (el: HTMLElement | null, key: string, on: boolean) => {
-  if (!el) return;
-  const v = on ? "1" : "0";
-  if (el.dataset[key] !== v) el.dataset[key] = v;
-};
-
-const relTo = (n: HTMLElement, root: HTMLElement) => {
-  let x = 0;
-  let y = 0;
-  let c: HTMLElement | null = n;
-  while (c && c !== root) {
-    x += c.offsetLeft;
-    y += c.offsetTop;
-    c = c.offsetParent as HTMLElement | null;
-  }
-  return { x, y };
-};
-
-function Copy() {
-  const w = siteContent.whatWeDo;
-  return (
-    <div className="flex flex-col gap-[20px]">
-      <p className="mono mono-a">{w.label}</p>
-      <h2 className="d2" data-r="mask">
-        {w.lineA}
-      </h2>
-      <h2 className="d2" data-r="mask" style={{ color: "var(--faint)" }}>
-        {w.lineB}
-      </h2>
-      <p className="body max-w-[46ch]" data-r="meta" data-r-delay="140">
-        {w.body}
-      </p>
-    </div>
-  );
-}
-
-function PulseDot({ c, bridge }: { c: Card; bridge?: boolean }) {
-  return (
-    <span
-      className="pf-dot"
-      style={{ "--pf-dur": `${c.dur}s`, "--pf-delay": `${c.delay}s` } as CSSProperties}
-      {...(bridge ? { "data-bridge-target": "", "data-bridge-mode": "flow" } : {})}
-    >
-      <span className="pf-dot-idle" />
-      <span className="pf-dot-sync" />
-    </span>
-  );
-}
-
-function CardBody({ c, bridge }: { c: Card; bridge?: boolean }) {
-  return (
-    <>
-      <div className="flex items-center justify-between gap-[10px]">
-        <span className="mono mono-fg">{c.k}</span>
-        <PulseDot c={c} bridge={bridge} />
-      </div>
-      <span className="pf-flip mt-[8px] text-[clamp(13px,1.1vw,15px)] tracking-[-.02em]">
-        <span className="pf-a">{c.a}</span>
-        {c.b && <span className="pf-b">{c.b}</span>}
-      </span>
-      <span className="pf-tag mono mt-[6px] block" style={{ fontSize: 9 }}>
-        {c.tag}
-      </span>
-      <span className="pf-card-mark" data-kind={c.id} aria-hidden="true"><i /><i /><i /></span>
-    </>
-  );
-}
 
 type InspectProps = { inspect: CardId | null; onInspect: (id: CardId | null) => void };
 type ProblemProps = InspectProps & { reduced: boolean };
 
-/**
- * Inspecting one tool does not interrupt the scroll choreography: it adds a
- * quiet readout underneath the diagram. With nothing selected it states the
- * target chain so the visitor always knows where the sequence is heading.
- */
 function Inspector({ inspect, onInspect }: InspectProps) {
   const c = inspect ? CARDS.find((x) => x.id === inspect) : null;
   const d = inspect ? CARD_DETAIL[inspect] : null;
@@ -215,6 +131,53 @@ function Inspector({ inspect, onInspect }: InspectProps) {
   );
 }
 
+function Copy({
+  connectionUnderlineRef,
+  lineBRef,
+  headlineRef,
+  bodyRef,
+}: {
+  connectionUnderlineRef?: React.RefObject<HTMLSpanElement | null>;
+  lineBRef?: React.RefObject<HTMLHeadingElement | null>;
+  headlineRef?: React.RefObject<HTMLHeadingElement | null>;
+  bodyRef?: React.RefObject<HTMLParagraphElement | null>;
+}) {
+  const w = siteContent.whatWeDo;
+  return (
+    <div className="flex flex-col gap-[20px]">
+      <p className="mono mono-a">{w.label}</p>
+      <h2 ref={headlineRef} className="d2" data-r="mask">
+        {w.lineA}
+      </h2>
+      <h2
+        ref={lineBRef}
+        className="d2 transition-colors duration-200"
+        data-r="mask"
+        style={{ color: "var(--faint)" }}
+      >
+        They have a{" "}
+        <span className="relative inline-block">
+          connection
+          <span
+            ref={connectionUnderlineRef}
+            className="pointer-events-none absolute bottom-0 left-0 h-[4px] w-full origin-left"
+            style={{
+              background: "var(--accent)",
+              transform: "scaleX(0)",
+              transformOrigin: "left center",
+            }}
+            aria-hidden="true"
+          />
+        </span>{" "}
+        problem.
+      </h2>
+      <p ref={bodyRef} className="body max-w-[46ch]" data-r="meta">
+        {w.body}
+      </p>
+    </div>
+  );
+}
+
 export function ProblemSystem() {
   const [desktop, setDesktop] = useState(
     () => typeof window !== "undefined" && window.matchMedia("(min-width: 900px) and (min-height: 760px)").matches
@@ -243,140 +206,443 @@ export function ProblemSystem() {
 }
 
 /* ================================================================== */
-/* Desktop — pinned, scroll-linked                                      */
+/* Desktop — pinned for 260vh, scrubbed 0.6                           */
 /* ================================================================== */
 function ProblemPinned({ inspect, onInspect, reduced }: ProblemProps) {
   const root = useRef<HTMLElement>(null);
   const stage = useRef<HTMLDivElement>(null);
-  const status = useRef<HTMLSpanElement>(null);
-  const state = useRef<HTMLSpanElement>(null);
+  const counterCol = useRef<HTMLSpanElement>(null);
+  const counterUnit = useRef<HTMLSpanElement>(null);
+  const stateRef = useRef<HTMLSpanElement>(null);
+  const headlineRef = useRef<HTMLHeadingElement>(null);
+  const lineBRef = useRef<HTMLHeadingElement>(null);
+  const connectionUnderlineRef = useRef<HTMLSpanElement>(null);
+  const bodyRef = useRef<HTMLParagraphElement>(null);
 
   useLayoutEffect(() => {
     const sec = root.current;
     const st = stage.current;
     if (!sec || !st) return;
 
-    const cards = CARDS.map((c) => st.querySelector<HTMLElement>(`[data-card="${c.id}"]`)!);
-    const slots = Array.from(st.querySelectorAll<HTMLElement>("[data-thread-slot]"));
-    const fan = Array.from(st.querySelectorAll<SVGPathElement>(".pf-fan"));
-    const fanGroup = st.querySelector<SVGGElement>(".pf-fan-g")!;
-    const packets = Array.from(st.querySelectorAll<SVGCircleElement>(".pf-packet"));
-    const row = st.querySelector<SVGPathElement>(".pf-row")!;
-    const signal = st.querySelector<HTMLElement>(".pf-signal")!;
-    const webDot = cards[0].querySelector<HTMLElement>(".pf-dot")!;
-
-    let u = 1;
-    let landing = { x: 0, y: 0 };
-    let target = { x: 0, y: 0 };
-    let lastStatus = "";
-
-    const measure = () => {
-      u = st.clientWidth / W;
-      landing = { x: signal.offsetLeft + signal.offsetWidth / 2, y: signal.offsetTop + signal.offsetHeight / 2 };
-      const card = cards[0];
-      const d = relTo(webDot, card);
-      // cards are anchored at their centre via translate(-50%,-50%); offsets ignore transforms
-      target = {
-        x: card.offsetLeft - card.offsetWidth / 2 + d.x + webDot.offsetWidth / 2,
-        y: card.offsetTop - card.offsetHeight / 2 + d.y + webDot.offsetHeight / 2,
-      };
-    };
-
-    const render = (p: number) => {
-      // 1 — the carried signal settles on Website, then merges into it
-      const s = inOut(seg(p, T.signalIn));
-      const merge = seg(p, [T.webOn, T.webOn + 0.05]);
-      signal.style.transform = `translate(${(target.x - landing.x) * s}px, ${(target.y - landing.y) * s}px) scale(${1 - merge * 0.5})`;
-      signal.style.opacity = p <= 0 ? "0" : String(1 - merge);
-
-      // 2/3 — stroke draws (never all at once)
-      fan[0].style.strokeDashoffset = String(1 - drawEase(seg(p, T.lineA)));
-      fan[1].style.strokeDashoffset = String(1 - drawEase(seg(p, T.fan)));
-      fan[2].style.strokeDashoffset = String(1 - drawEase(seg(p, T.fan)));
-      // The request travels along the actual paths, not between arbitrary nodes.
-      [T.lineA, T.fan, T.fan].forEach((range, i) => {
-        const progress = drawEase(seg(p, range));
-        const point = fan[i].getPointAtLength(fan[i].getTotalLength() * progress);
-        packets[i].setAttribute("cx", String(point.x));
-        packets[i].setAttribute("cy", String(point.y));
-        packets[i].setAttribute("opacity", progress > 0.02 && progress < 0.98 ? "1" : "0");
-      });
-
-      // state flips
-      const [web, email, sheet, crm] = cards;
-      setFlag(web, "sync", p >= T.webOn);
-      setFlag(web, "done", p >= T.webOn);
-      setFlag(email, "flip", p >= T.emailRead);
-      setFlag(email, "done", p >= T.emailRead);
-      setFlag(sheet, "done", p >= T.sheetDone);
-      setFlag(sheet, "flip", p >= T.sheetDone);
-      setFlag(crm, "flip", p >= T.crmOwned);
-      setFlag(crm, "done", p >= T.crmOwned);
-      [email, sheet, crm].forEach((c) => setFlag(c, "sync", p >= T.allSync));
-
-      // 4 — compress into the compact diagram. The shared thread nodes are
-      // positioned by <SystemThread/>; these slots are their anchors and
-      // travel with the cards so the hand-off is pixel-exact.
-      const m = inOut(seg(p, T.morph));
-      const cardFade = seg(p, [T.morph[0], T.morph[0] + 0.06]);
-      CARDS.forEach((c, i) => {
-        const dx = (c.rx - c.x) * u * m;
-        const dy = (ROW_Y - c.y) * u * m;
-        cards[i].style.transform = `translate(-50%,-50%) translate(${dx}px,${dy}px) scale(${1 - 0.6 * m})`;
-        cards[i].style.opacity = String(1 - cardFade);
-        const slot = slots[i];
-        if (slot) {
-          slot.style.transform = `translate(${dx}px,${dy}px)`;
-          slot.style.opacity = String(seg(p, [0.88, 0.96]));
-        }
-      });
-      fanGroup.style.opacity = String(1 - seg(p, [T.morph[0], T.morph[0] + 0.07]));
-      row.style.strokeDashoffset = String(1 - drawEase(seg(p, T.row)));
-
-      // status line
-      const conn = p >= T.sheetDone ? 3 : p >= T.lineA[1] ? 1 : 0;
-      const next = p >= T.row[0] ? "one system|Connected" : `${conn} connection${conn === 1 ? "" : "s"}|${conn === 0 ? "Disconnected" : conn === 3 ? "Connected" : "Connecting"}`;
-      if (next !== lastStatus) {
-        lastStatus = next;
-        const [a, b] = next.split("|");
-        if (status.current) status.current.textContent = `4 tools · ${a}`;
-        if (state.current) {
-          state.current.textContent = b;
-          state.current.style.color = b === "Disconnected" ? "var(--faint)" : "var(--accent-deep)";
-        }
-      }
-    };
-
-    if (reduced) {
-      measure();
-      render(T.crmOwned + 0.01); // resolved state, no pin, no morph
+    const reduce = reduced || prefersReducedMotion();
+    if (reduce) {
       return;
     }
 
-    const ctx = gsap.context(() => {
-      ScrollTrigger.create({
-        id: "problem-pin",
-        trigger: sec,
-        start: "top top",
-        end: () => `+=${Math.round(window.innerHeight * 2.1)}`,
-        pin: true,
-        anticipatePin: 1,
-        invalidateOnRefresh: true,
-        onRefresh: (self) => {
-          measure();
-          render(self.progress);
-        },
-        onUpdate: (self) => render(self.progress),
+    const cardWeb = st.querySelector<HTMLElement>('[data-card="web"]')!;
+    const cardEmail = st.querySelector<HTMLElement>('[data-card="email"]')!;
+    const cardSheet = st.querySelector<HTMLElement>('[data-card="sheet"]')!;
+    const cardCrm = st.querySelector<HTMLElement>('[data-card="crm"]')!;
+    const cardEls = [cardWeb, cardEmail, cardSheet, cardCrm];
+
+    const fanLines = Array.from(st.querySelectorAll<SVGPathElement>(".pf-fan"));
+    const fanGroup = st.querySelector<SVGGElement>(".pf-fan-g")!;
+    const rowLine = st.querySelector<SVGPathElement>(".pf-row")!;
+    const slots = Array.from(st.querySelectorAll<HTMLElement>("[data-thread-slot]"));
+
+    const dotWeb = cardWeb.querySelector<HTMLElement>(".pf-dot")!;
+    const dotEmail = cardEmail.querySelector<HTMLElement>(".pf-dot")!;
+    const dotSheet = cardSheet.querySelector<HTMLElement>(".pf-dot")!;
+    const dotCrm = cardCrm.querySelector<HTMLElement>(".pf-dot")!;
+
+    const pulseRings = Array.from(st.querySelectorAll<HTMLElement>(".pf-pulse-ring"));
+    const unisonRings = Array.from(st.querySelectorAll<HTMLElement>(".pf-unison-ring"));
+    const crmValA = cardCrm.querySelector<HTMLElement>(".pf-crm-val-a");
+    const crmValB = cardCrm.querySelector<HTMLElement>(".pf-crm-val-b");
+    const emailValA = cardEmail.querySelector<HTMLElement>(".pf-email-val-a");
+    const emailValB = cardEmail.querySelector<HTMLElement>(".pf-email-val-b");
+    const sheetTag = cardSheet.querySelector<HTMLElement>(".pf-tag");
+    const crmTag = cardCrm.querySelector<HTMLElement>(".pf-tag");
+
+    const targetRowLabels = Array.from(st.querySelectorAll<HTMLElement>(".pf-target-label"));
+    const morphNodes = Array.from(st.querySelectorAll<HTMLElement>(".pf-morph-node"));
+
+    // Set initial states
+    gsap.set(fanLines, { drawSVG: "0%" });
+    gsap.set(rowLine, { drawSVG: "0%" });
+    gsap.set(pulseRings, { scale: 1, opacity: 0 });
+    gsap.set(unisonRings, { scale: 1, opacity: 0 });
+    gsap.set(connectionUnderlineRef.current, { scaleX: 0 });
+    gsap.set(targetRowLabels, { opacity: 0, y: 6 });
+    gsap.set(morphNodes, { opacity: 0 });
+
+    let idleTweens: gsap.core.Tween[] = [];
+    let idleActive = false;
+
+    // Start idle animations (p 0.00 to 0.12)
+    const startIdle = () => {
+      if (idleActive) return;
+      idleActive = true;
+      idleTweens = [];
+
+      // 1. Independent translateY ±3px loops: 3.1s, 4.3s, 5.0s, 3.7s
+      const cardDurations = [3.1, 4.3, 5.0, 3.7];
+      cardEls.forEach((cardEl, i) => {
+        idleTweens.push(
+          gsap.fromTo(
+            cardEl,
+            { y: -3 },
+            {
+              y: 3,
+              duration: cardDurations[i] / 2,
+              ease: "sine.inOut",
+              yoyo: true,
+              repeat: -1,
+            }
+          )
+        );
       });
+
+      // 2. Unsynced status dot pulse rings (scale 1 to 1.6, opacity 0.6 to 0)
+      const ringPeriods = [1.6, 2.2, 2.7, 1.9];
+      pulseRings.forEach((ring, i) => {
+        idleTweens.push(
+          gsap.fromTo(
+            ring,
+            { scale: 1, opacity: 0.6 },
+            {
+              scale: 1.6,
+              opacity: 0,
+              duration: ringPeriods[i],
+              ease: "power2.out",
+              repeat: -1,
+            }
+          )
+        );
+      });
+
+      // 3. CRM "No owner" flickers between 0.55 and 1 every 2.3s
+      if (crmValA) {
+        idleTweens.push(
+          gsap.fromTo(
+            crmValA,
+            { opacity: 1 },
+            {
+              opacity: 0.55,
+              duration: 1.15,
+              ease: "sine.inOut",
+              yoyo: true,
+              repeat: -1,
+            }
+          )
+        );
+      }
+    };
+
+    const stopIdle = () => {
+      if (!idleActive) return;
+      idleActive = false;
+      idleTweens.forEach((tw) => tw.kill());
+      idleTweens = [];
+      gsap.set(cardEls, { y: 0 });
+      gsap.set(pulseRings, { scale: 1, opacity: 0 });
+      if (crmValA) gsap.set(crmValA, { opacity: 1 });
+    };
+
+    startIdle();
+
+    const ctx = gsap.context(() => {
+      const masterTl = gsap.timeline({
+        scrollTrigger: {
+          id: "problem-pin",
+          trigger: sec,
+          start: "top top",
+          end: () => `+=${Math.round(window.innerHeight * 2.6)}`,
+          pin: true,
+          anticipatePin: 1,
+          scrub: 0.6,
+          invalidateOnRefresh: true,
+          onUpdate: (self) => {
+            const p = self.progress;
+            if (p <= 0.12) {
+              startIdle();
+            } else {
+              stopIdle();
+            }
+
+            // Update status text units
+            if (counterUnit.current) {
+              counterUnit.current.textContent = p >= 0.38 && p < 0.50 ? " connection" : " connections";
+            }
+            if (stateRef.current) {
+              if (p < 0.62) {
+                stateRef.current.textContent = "Disconnected";
+                stateRef.current.style.color = "var(--faint)";
+              } else if (p >= 0.85) {
+                stateRef.current.textContent = "one system";
+                stateRef.current.style.color = "var(--accent-ink)";
+              } else {
+                stateRef.current.textContent = "Connected";
+                stateRef.current.style.color = "var(--accent-ink)";
+              }
+            }
+          },
+        },
+      });
+
+      // Storyboard timeline mapping directly to progress [0, 1]:
+
+      // -------------------------------------------------------------
+      // p 0.12 to 0.30: Signal lands on WEBSITE; border tweens to lime;
+      // headline & paragraph revealed
+      // -------------------------------------------------------------
+      masterTl.to(
+        cardWeb,
+        {
+          borderColor: "var(--accent)",
+          boxShadow: "0 0 16px -4px color-mix(in srgb, var(--accent) 35%, transparent)",
+          duration: 0.10,
+          ease: "power2.out",
+        },
+        0.18
+      );
+      masterTl.to(
+        dotWeb,
+        {
+          backgroundColor: "var(--accent)",
+          boxShadow: "0 0 12px 2px color-mix(in srgb, var(--accent) 70%, transparent)",
+          duration: 0.10,
+        },
+        0.18
+      );
+
+      // Headline and paragraph reveal
+      if (headlineRef.current && bodyRef.current) {
+        masterTl.fromTo(
+          [headlineRef.current, bodyRef.current],
+          { opacity: 0.5, y: 10 },
+          { opacity: 1, y: 0, duration: 0.12, ease: "power2.out" },
+          0.12
+        );
+      }
+
+      // -------------------------------------------------------------
+      // p 0.30 to 0.42: Line draws from WEBSITE to EMAIL;
+      // EMAIL's value "Unread · 12m" changes to "Read" (masked swap);
+      // counter rolls 0 -> 1
+      // -------------------------------------------------------------
+      masterTl.fromTo(
+        fanLines[0],
+        { drawSVG: "0%" },
+        { drawSVG: "100%", duration: 0.12, ease: "power2.inOut" },
+        0.30
+      );
+
+      if (emailValA && emailValB) {
+        masterTl.to(emailValA, { y: -10, opacity: 0, duration: 0.05, ease: "power2.in" }, 0.34);
+        masterTl.fromTo(emailValB, { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.05, ease: "power2.out" }, 0.37);
+      }
+
+      masterTl.to(
+        cardEmail,
+        {
+          borderColor: "var(--accent)",
+          boxShadow: "0 0 16px -4px color-mix(in srgb, var(--accent) 35%, transparent)",
+          duration: 0.08,
+          ease: "power2.out",
+        },
+        0.38
+      );
+      masterTl.to(
+        dotEmail,
+        {
+          backgroundColor: "var(--accent)",
+          boxShadow: "0 0 12px 2px color-mix(in srgb, var(--accent) 70%, transparent)",
+          duration: 0.08,
+        },
+        0.38
+      );
+
+      // Counter roll 0 -> 1
+      if (counterCol.current) {
+        masterTl.to(counterCol.current, { y: "-1.2em", duration: 0.04, ease: "power2.inOut" }, 0.38);
+      }
+
+      // -------------------------------------------------------------
+      // p 0.42 to 0.62: Two lines draw at the same time:
+      // EMAIL to SHEET and WEBSITE to CRM (fan-out);
+      // SHEET and CRM status tags change from gray to lime;
+      // CRM value swaps to "Assigned";
+      // counter rolls 1 -> 2 -> 3
+      // -------------------------------------------------------------
+      masterTl.fromTo(
+        fanLines[1],
+        { drawSVG: "0%" },
+        { drawSVG: "100%", duration: 0.18, ease: "power2.inOut" },
+        0.42
+      );
+      masterTl.fromTo(
+        fanLines[2],
+        { drawSVG: "0%" },
+        { drawSVG: "100%", duration: 0.18, ease: "power2.inOut" },
+        0.42
+      );
+
+      // Counter roll 1 -> 2
+      if (counterCol.current) {
+        masterTl.to(counterCol.current, { y: "-2.4em", duration: 0.04, ease: "power2.inOut" }, 0.50);
+      }
+
+      // Sheet activates
+      masterTl.set(cardSheet, { attr: { "data-flip": "1" } }, 0.50);
+      if (sheetTag) masterTl.to(sheetTag, { color: "var(--accent-ink)", duration: 0.06 }, 0.52);
+      masterTl.to(
+        cardSheet,
+        {
+          borderColor: "var(--accent)",
+          boxShadow: "0 0 16px -4px color-mix(in srgb, var(--accent) 35%, transparent)",
+          duration: 0.08,
+          ease: "power2.out",
+        },
+        0.52
+      );
+      masterTl.to(
+        dotSheet,
+        {
+          backgroundColor: "var(--accent)",
+          boxShadow: "0 0 12px 2px color-mix(in srgb, var(--accent) 70%, transparent)",
+          duration: 0.08,
+        },
+        0.52
+      );
+
+      // CRM activates & value swaps "No owner" -> "Assigned"
+      if (crmValA && crmValB) {
+        masterTl.to(crmValA, { y: -14, opacity: 0, duration: 0.04, ease: "power2.in" }, 0.52);
+        masterTl.fromTo(crmValB, { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.04, ease: "power2.out" }, 0.54);
+      }
+      if (crmTag) masterTl.to(crmTag, { color: "var(--accent-ink)", duration: 0.06 }, 0.56);
+      masterTl.to(
+        cardCrm,
+        {
+          borderColor: "var(--accent)",
+          boxShadow: "0 0 16px -4px color-mix(in srgb, var(--accent) 35%, transparent)",
+          duration: 0.08,
+          ease: "power2.out",
+        },
+        0.56
+      );
+      masterTl.to(
+        dotCrm,
+        {
+          backgroundColor: "var(--accent)",
+          boxShadow: "0 0 12px 2px color-mix(in srgb, var(--accent) 70%, transparent)",
+          duration: 0.08,
+        },
+        0.56
+      );
+
+      // Counter roll 2 -> 3
+      if (counterCol.current) {
+        masterTl.to(counterCol.current, { y: "-3.6em", duration: 0.04, ease: "power2.inOut" }, 0.60);
+      }
+
+      // -------------------------------------------------------------
+      // p 0.62 to 0.80: "CONNECTED" tag turns lime and flashes once;
+      // All four status dots pulse twice in unison;
+      // Headline line B tweens to ink color and lime underline draws under "connection"
+      // -------------------------------------------------------------
+      if (stateRef.current) {
+        masterTl.to(stateRef.current, { scale: 1.2, opacity: 0.4, duration: 0.03, ease: "power1.in" }, 0.62);
+        masterTl.to(stateRef.current, { scale: 1, opacity: 1, duration: 0.04, ease: "power1.out" }, 0.65);
+      }
+
+      // Unison pulses (scale 1 to 1.8, opacity 0.8 to 0)
+      masterTl.fromTo(
+        unisonRings,
+        { scale: 1, opacity: 0.8 },
+        { scale: 1.8, opacity: 0, duration: 0.05, ease: "power2.out" },
+        0.65
+      );
+      masterTl.fromTo(
+        unisonRings,
+        { scale: 1, opacity: 0.8 },
+        { scale: 1.8, opacity: 0, duration: 0.05, ease: "power2.out" },
+        0.72
+      );
+
+      // Headline line B color & underline
+      if (lineBRef.current) {
+        masterTl.to(lineBRef.current, { color: "var(--fg)", duration: 0.10, ease: "power2.out" }, 0.64);
+      }
+      if (connectionUnderlineRef.current) {
+        masterTl.to(connectionUnderlineRef.current, { scaleX: 1, duration: 0.12, ease: "power2.out" }, 0.66);
+      }
+
+      // -------------------------------------------------------------
+      // p 0.80 to 1.00: Four cards scale to 0.6 and fade to opacity 0 toward center;
+      // Four status dots glide to horizontal row at ROW_Y = 58;
+      // Row line draws; target state strip labels appear;
+      // Hold last 10% (0.90 to 1.00) for reading
+      // -------------------------------------------------------------
+      // Cards scale & fade toward center
+      masterTl.to(
+        cardEls,
+        {
+          scale: 0.6,
+          opacity: 0,
+          duration: 0.08,
+          ease: "power2.inOut",
+        },
+        0.80
+      );
+      masterTl.to(fanGroup, { opacity: 0, duration: 0.06 }, 0.80);
+
+      // Morph nodes appear and glide from initial card positions to target row
+      masterTl.fromTo(
+        morphNodes,
+        { opacity: 0 },
+        { opacity: 1, duration: 0.03 },
+        0.80
+      );
+
+      // Move morph nodes from card positions to (rx, ROW_Y)
+      CARDS.forEach((c, i) => {
+        const node = morphNodes[i];
+        if (node) {
+          masterTl.fromTo(
+            node,
+            { left: `${(c.x / W) * 100}%`, top: `${(c.y / H) * 100}%` },
+            { left: `${(c.rx / W) * 100}%`, top: `${(ROW_Y / H) * 100}%`, duration: 0.08, ease: "power2.inOut" },
+            0.80
+          );
+        }
+        const slot = slots[i];
+        if (slot) {
+          masterTl.fromTo(
+            slot,
+            { left: `${(c.x / W) * 100}%`, top: `${(c.y / H) * 100}%` },
+            { left: `${(c.rx / W) * 100}%`, top: `${(ROW_Y / H) * 100}%`, duration: 0.08, ease: "power2.inOut" },
+            0.80
+          );
+        }
+      });
+
+      // Row connecting line draws
+      masterTl.fromTo(
+        rowLine,
+        { drawSVG: "0%" },
+        { drawSVG: "100%", duration: 0.06, ease: "power2.inOut" },
+        0.83
+      );
+
+      // Target row labels fade in
+      masterTl.fromTo(
+        targetRowLabels,
+        { opacity: 0, y: 6 },
+        { opacity: 1, y: 0, duration: 0.05, ease: "power2.out", stagger: 0.015 },
+        0.85
+      );
+
+      // Notify shared system thread
+      masterTl.call(() => emitThread(), [], 0.88);
+
+      // Hold last 10 percent (0.90 to 1.00) static
+      masterTl.to({}, { duration: 0.10 }, 0.90);
     }, sec);
 
-    measure();
-    render(0);
-    // the bridge dot reads this pin's start — make it re-measure
-    const raf = requestAnimationFrame(() => ScrollTrigger.refresh());
-
     return () => {
-      cancelAnimationFrame(raf);
+      stopIdle();
       ctx.revert();
     };
   }, [reduced]);
@@ -385,36 +651,87 @@ function ProblemPinned({ inspect, onInspect, reduced }: ProblemProps) {
     <section ref={root} id="problem" data-bridge-root className="relative flex h-[100svh] w-full items-center pt-[72px]">
       <div className="wrap grid w-full grid-cols-12 items-center gap-[clamp(28px,4vw,72px)]">
         <div className="col-span-5">
-          <Copy />
+          <Copy
+            connectionUnderlineRef={connectionUnderlineRef}
+            lineBRef={lineBRef}
+            headlineRef={headlineRef}
+            bodyRef={bodyRef}
+          />
         </div>
 
         <div className="col-span-7">
           <div className="ml-auto" style={{ maxWidth: "calc((100svh - 230px) * 16 / 11)" }}>
             <div className="mb-[12px] flex items-center justify-between">
-              <span ref={status} className="mono">4 tools · 0 connections</span>
-              <span ref={state} className="mono">Disconnected</span>
+              <div className="mono flex items-center gap-[0.5ch]">
+                <span>4 tools ·</span>
+                <span
+                  className="inline-block overflow-hidden relative"
+                  style={{ height: "1.2em", width: "1ch", verticalAlign: "top" }}
+                >
+                  <span
+                    ref={counterCol}
+                    className="inline-flex flex-col text-center"
+                    style={{ willChange: "transform" }}
+                  >
+                    <span style={{ height: "1.2em", lineHeight: "1.2em" }}>0</span>
+                    <span style={{ height: "1.2em", lineHeight: "1.2em" }}>1</span>
+                    <span style={{ height: "1.2em", lineHeight: "1.2em" }}>2</span>
+                    <span style={{ height: "1.2em", lineHeight: "1.2em" }}>3</span>
+                  </span>
+                </span>
+                <span ref={counterUnit}>connections</span>
+              </div>
+              <span
+                ref={stateRef}
+                className="mono transition-colors"
+                style={{ color: "var(--faint)" }}
+              >
+                Disconnected
+              </span>
             </div>
 
-            <div ref={stage} className="pf-beat relative w-full rounded-[6px]" style={{ aspectRatio: "16 / 11", background: "var(--bg-2)" }}>
-              <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 h-full w-full" aria-hidden>
+            <div
+              ref={stage}
+              className="pf-beat relative w-full rounded-[6px]"
+              style={{ aspectRatio: "16 / 11", background: "var(--bg-2)" }}
+            >
+              <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 h-full w-full pointer-events-none" aria-hidden>
                 <g className="pf-fan-g">
                   {FAN.map((d, i) => (
-                    <path key={i} className="pf-fan" d={d} pathLength={1} strokeDasharray="1" style={{ strokeDashoffset: 1 }} stroke="var(--accent-deep)" strokeWidth=".5" fill="none" strokeLinecap="round" />
+                    <path
+                      key={i}
+                      className="pf-fan"
+                      d={d}
+                      stroke="var(--accent)"
+                      strokeWidth="1.2"
+                      fill="none"
+                      strokeLinecap="round"
+                    />
                   ))}
                   {FAN.map((_, i) => <circle key={`packet-${i}`} className="pf-packet" r="1.1" fill="var(--accent-deep)" opacity="0" />)}
                 </g>
-                <path id="problem-diagram-line" className="pf-row" d={ROW} pathLength={1} strokeDasharray="1" style={{ strokeDashoffset: 1 }} stroke="var(--accent-deep)" strokeWidth=".45" fill="none" />
+                <path
+                  id="problem-diagram-line"
+                  className="pf-row"
+                  d={ROW}
+                  stroke="var(--accent)"
+                  strokeWidth="1.2"
+                  fill="none"
+                  strokeLinecap="round"
+                />
               </svg>
 
+              {/* Four Cards */}
               {CARDS.map((c) => (
                 <div
                   key={c.id}
                   data-card={c.id}
-                  data-sync="0"
-                  data-flip="0"
-                  data-done="0"
                   className="pf-card pf-inspect absolute flex w-[31%] flex-col rounded-[5px] border p-[clamp(9px,1vw,13px)]"
-                  style={{ left: `${(c.x / W) * 100}%`, top: `${(c.y / H) * 100}%`, transform: "translate(-50%,-50%)" }}
+                  style={{
+                    left: `${(c.x / W) * 100}%`,
+                    top: `${(c.y / H) * 100}%`,
+                    transform: "translate(-50%,-50%)",
+                  }}
                   role="button"
                   tabIndex={0}
                   aria-label={`Inspect the ${c.k} tool`}
@@ -428,30 +745,98 @@ function ProblemPinned({ inspect, onInspect, reduced }: ProblemProps) {
                     }
                   }}
                 >
-                  <CardBody c={c} />
+                  <div className="flex items-center justify-between gap-[10px]">
+                    <span className="mono mono-fg">{c.k}</span>
+                    <span
+                      className="pf-dot relative block flex-none"
+                      style={{ width: 8, height: 8 }}
+                      {...(c.id === "web" ? { "data-signal": "problem-website" } : {})}
+                    >
+                      <span className="absolute inset-0 rounded-full" style={{ background: "var(--faint)" }} />
+                      {/* Pulse ring for idle pulse */}
+                      <span
+                        className="pf-pulse-ring pointer-events-none absolute inset-[-3px] rounded-full"
+                        style={{ border: "1px solid var(--accent)", opacity: 0 }}
+                      />
+                      {/* Unison pulse ring */}
+                      <span
+                        className="pf-unison-ring pointer-events-none absolute inset-[-4px] rounded-full"
+                        style={{ background: "var(--accent)", opacity: 0 }}
+                      />
+                    </span>
+                  </div>
+
+                  <span className="pf-flip mt-[8px] text-[clamp(13px,1.1vw,15px)] tracking-[-.02em] relative overflow-hidden h-[1.3em] block">
+                    {c.id === "email" ? (
+                      <>
+                        <span className="pf-email-val-a block absolute inset-0">{c.a}</span>
+                        <span className="pf-email-val-b block absolute inset-0 opacity-0">{c.b}</span>
+                      </>
+                    ) : c.id === "crm" ? (
+                      <>
+                        <span className="pf-crm-val-a block absolute inset-0">{c.a}</span>
+                        <span className="pf-crm-val-b block absolute inset-0 opacity-0">{c.b}</span>
+                      </>
+                    ) : (
+                      <span className="block">{c.a}</span>
+                    )}
+                  </span>
+
+                  <span className="pf-tag mono mt-[6px] block transition-colors duration-200" style={{ fontSize: 9 }}>
+                    {c.tag}
+                  </span>
                 </div>
               ))}
 
-              {/* The resolved workflow becomes the same dot-and-rail language
-                  used by the following service navigation. */}
-              <div id="problem-diagram" aria-hidden>
-                {CARDS.map((c, i) => (
-                  <span key={c.id} data-thread-slot="problem" className="pf-compact-anchor"
-                    style={{ left: `${(c.x / W) * 100}%`, top: `${(c.y / H) * 100}%`, opacity: 0 }}>
-                    <span className="pf-compact-node"><i />{["WEBSITE", "AI AGENT", "QUALIFIED", "CRM"][i]}</span>
+              {/* Morph Dots & Labels (Glide to horizontal row at ROW_Y = 58) */}
+              {CARDS.map((c) => (
+                <div
+                  key={c.id}
+                  className="pf-morph-node pf-compact-anchor pointer-events-none absolute flex flex-col items-center"
+                  style={{
+                    left: `${(c.x / W) * 100}%`,
+                    top: `${(c.y / H) * 100}%`,
+                    transform: "translate(-50%,-50%)",
+                  }}
+                >
+                  <span
+                    className="pf-morph-dot signal-dot block"
+                    style={{
+                      width: 8,
+                      height: 8,
+                    }}
+                  />
+                  <span
+                    className="pf-target-label mono mt-[10px] block text-center whitespace-nowrap"
+                    style={{
+                      fontSize: 10,
+                      color: "var(--accent-ink)",
+                    }}
+                  >
+                    {c.targetLabel}
                   </span>
+                </div>
+              ))}
+
+              {/* Invisible anchor slots for SystemThread */}
+              <div id="problem-diagram" aria-hidden>
+                {CARDS.map((c) => (
+                  <span
+                    key={c.id}
+                    data-thread-slot="problem"
+                    data-cmp={c.k}
+                    className="pointer-events-none absolute block"
+                    style={{
+                      left: `${(c.rx / W) * 100}%`,
+                      top: `${(ROW_Y / H) * 100}%`,
+                      width: 0,
+                      height: 0,
+                    }}
+                  />
                 ))}
               </div>
-
-              <span
-                className="pf-signal signal-dot absolute z-[4]"
-                data-bridge-target=""
-                data-bridge-mode="pin"
-                data-bridge-pin="problem-pin"
-                style={{ left: "50%", top: "50%", marginLeft: -3, marginTop: -3, opacity: 0 }}
-                aria-hidden
-              />
             </div>
+
             <Inspector inspect={inspect} onInspect={onInspect} />
           </div>
         </div>
@@ -473,9 +858,9 @@ function ProblemStacked({ inspect, onInspect, reduced }: ProblemProps) {
     if (!sec) return;
     const items = Array.from(sec.querySelectorAll<HTMLElement>(".pfm-item"));
     const resolve = (el: HTMLElement, on: boolean) => {
-      setFlag(el, "done", on);
-      setFlag(el, "sync", on);
-      setFlag(el, "flip", on);
+      el.dataset.done = on ? "1" : "0";
+      el.dataset.sync = on ? "1" : "0";
+      el.dataset.flip = on ? "1" : "0";
     };
 
     if (reduced) {
@@ -486,7 +871,6 @@ function ProblemStacked({ inspect, onInspect, reduced }: ProblemProps) {
 
     const ctx = gsap.context(() => {
       items.forEach((el, i) => {
-        // Website resolves when the carried signal lands on it (viewport centre)
         const trigger = i === 0 ? el.querySelector<HTMLElement>(".pf-dot")! : el;
         ScrollTrigger.create({
           trigger,
@@ -527,7 +911,23 @@ function ProblemStacked({ inspect, onInspect, reduced }: ProblemProps) {
                     }
                   }}
                 >
-                  <CardBody c={c} bridge={i === 0} />
+                  <div className="flex items-center justify-between gap-[10px]">
+                    <span className="mono mono-fg">{c.k}</span>
+                    <span
+                      className="pf-dot relative block flex-none"
+                      style={{ width: 8, height: 8 }}
+                      {...(i === 0 ? { "data-signal": "problem-website" } : {})}
+                    >
+                      <span className="absolute inset-0 rounded-full" style={{ background: "var(--faint)" }} />
+                    </span>
+                  </div>
+                  <span className="pf-flip mt-[8px] text-[clamp(13px,1.1vw,15px)] tracking-[-.02em]">
+                    <span className="pf-a">{c.a}</span>
+                    {c.b && <span className="pf-b">{c.b}</span>}
+                  </span>
+                  <span className="pf-tag mono mt-[6px] block" style={{ fontSize: 9 }}>
+                    {c.tag}
+                  </span>
                 </div>
               </div>
             );

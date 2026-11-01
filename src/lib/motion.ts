@@ -34,13 +34,59 @@ export const EASE = {
 
 /** Duration bands, in seconds. */
 export const DUR = {
-  micro: 0.18, // press / focus / toggle feedback
-  fast: 0.32, // hover responses, small swaps
-  base: 0.55, // standard element transition
+  micro: 0.14, // 140ms micro feedback
+  short: 0.24, // 240ms short transition
+  base: 0.48, // 480ms base element transition
+  hop: 0.8, // 800ms generic tab hop
+  serviceTransition: 1.1, // 1100ms signature service transition
   slow: 0.85, // grouped transitions
   reveal: 1.05, // editorial type masks
   material: 1.3, // clip-path / image wipes
   cinematic: 1.6, // pinned sequence beats only
+  ambient: 6.0, // 6000ms ambient cycle
+} as const;
+
+/** Millisecond constants matching Section 1 shared tokens */
+export const SHARED_TOKENS = {
+  micro: 140,
+  short: 240,
+  base: 480,
+  hop: 800,
+  serviceTransition: 1100,
+  ambient: 6000,
+} as const;
+
+/** Motion grammar definitions per service form (Section 1) */
+export const GRAMMAR = {
+  video: {
+    name: "CUT",
+    cssEase: "cubic-bezier(.9, 0, .1, 1)",
+    gsapEase: "power4.inOut",
+    durationMs: 180,
+    heldBeats: true,
+  },
+  web: {
+    name: "SETTLE",
+    cssEase: "cubic-bezier(.16, 1, .3, 1)",
+    gsapEase: "back.out(1.15)", // ~4% overshoot spring
+    spring: { stiffness: 170, damping: 20 },
+    durationMs: 550,
+  },
+  automation: {
+    name: "ROUTE",
+    cssEase: "cubic-bezier(.45, 0, .15, 1)",
+    gsapEase: "power3.inOut",
+    signalSpeedPxPerSec: 900,
+    durationMs: 450,
+  },
+  agent: {
+    name: "SPEAK",
+    cssEase: "cubic-bezier(.25, .1, .25, 1)",
+    gsapEase: "power2.out",
+    staggerMs: 100,
+    jitterMs: 30,
+    durationMs: 480,
+  },
 } as const;
 
 /** Stagger steps, in seconds. */
@@ -62,6 +108,8 @@ export type MotionTokens = {
   EASE: typeof EASE;
   DUR: typeof DUR;
   STAGGER: typeof STAGGER;
+  SHARED_TOKENS: typeof SHARED_TOKENS;
+  GRAMMAR: typeof GRAMMAR;
 };
 
 /** Single source of truth for the OS-level motion preference. */

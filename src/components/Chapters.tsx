@@ -2,49 +2,45 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { services, siteContent } from "../data/site";
 import { ServiceStage } from "./SystemStage";
 import { Link } from "../lib/router";
-import { gsap, ScrollTrigger, onMotionPreferenceChange, prefersReducedMotion } from "../lib/gsap";
+import { gsap, ScrollTrigger, prefersReducedMotion, onMotionPreferenceChange } from "../lib/gsap";
 import { emitThread } from "../lib/threadBus";
 import { hasFinePointer } from "../lib/interact";
-import { getLenis } from "../lib/useLenis";
-import { DONE_BEAT_MS, IDLE_ADVANCE_MS, holdFor, onPreviewDone, previewPlayed } from "../lib/autoplay";
+import { onPreviewDone } from "../lib/autoplay";
+import { digitRoll } from "../motion/helpers";
 
 /**
- * SERVICES — shared shell.
+ * SERVICES ΓÇö shared shell.
  *
- *  left   number · title · tagline · arc chips · Explore link   (unchanged)
+ *  left   number ┬╖ title ┬╖ tagline ┬╖ arc chips ┬╖ Explore link   (unchanged)
  *  right  a live stage frame; each tab brings its own product
- *  bottom tab rail with connecting line — the arrival point of the
+ *  bottom tab rail with connecting line ΓÇö the arrival point of the
  *         shared thread from the Problem section
- *
- * PROMPT 33 — desktop: a lightly pinned, scroll-driven sequence (the site's
- * third, alongside Problem→Connected System and the System Model). The
- * module pins for one scroll "unit" per service — roughly four viewport
- * heights in total — and scroll progress maps 1:1 to the fixed order
- * Video Editing → Web Development → AI Chatbots → AI Automation. Crossing a
- * 25% threshold commits that tab (and its service-specific handoff) and
- * re-triggers its autoplay from the top; the tab bar + progress line stay
- * visible and follow the scroll position. Clicking a tab jumps the scroll
- * to that service's range, so manual and scroll control stay in sync.
- * Release happens below AI Automation's range (and back upward, in
- * reverse) into the next / previous homepage section.
- *
- * Mobile (<900px) and reduced motion: no pin — the existing swipeable-tabs
- * pattern with its idle tour is kept as-is.
- *
- * PROMPT 24 — autoplay-first (non-pinned path). Each tab runs its own
- * first-view preview (owned by the stage), and if nothing in this section
- * has been touched ~6s after it enters the viewport the tabs advance on
- * their own, once around, then hold. Any interaction ends the tour.
  */
 const HOVER_MS = 400;
 
 const N = services.length;
 
-/** Pin length: one "unit" (~one viewport) per service — 4x a normal section. */
-const pinDistance = () => Math.round(window.innerHeight * N * 0.7);
+/** Pin length: 340vh (85vh per service across 4 services). */
+const pinDistance = () => Math.round(window.innerHeight * 3.4);
 
-/** Which service owns a given pin progress (fixed order, 25% units). */
-const indexAt = (p: number) => Math.max(0, Math.min(N - 1, Math.floor(p * N + 1e-6)));
+export type ShowcaseMode = "AUTO" | "MANUAL";
+
+export const SHOWCASE_CONFIG = {
+  /** Dwell time after a demo's showcase completes before advancing (ms) */
+  dwellAfterShowcaseMs: 1800,
+  /** Dwell time when prefersReducedMotion is enabled (ms) */
+  reducedMotionDwellMs: 4000,
+  /**
+   * Safety timeout per service in case a preview signal is delayed or already marked played.
+   * Generous enough for full showcase + margin.
+   */
+  safetyTimeoutMs: {
+    "video-editing": 7500,
+    "web-development": 7000,
+    "ai-chatbots": 7500,
+    "ai-automation": 13000,
+  } as Record<string, number>,
+} as const;
 
 export function Chapters() {
   const root = useRef<HTMLElement>(null);
@@ -55,112 +51,238 @@ export function Chapters() {
   const firstIndex = useRef(true);
 
   const [index, setIndex] = useState(0);
-  const [reduced, setReduced] = useState(prefersReducedMotion);
   const [preview, setPreview] = useState<number | null>(null);
   const [inView, setInView] = useState(false);
-  const [touring, setTouring] = useState(false);
   const [visited, setVisited] = useState<Set<string>>(() => new Set([services[0].slug]));
+  const [showcaseMode, setShowcaseMode] = useState<ShowcaseMode>("AUTO");
 
-  /* ---- pinned scroll state (Prompt 33) — desktop only ---- */
+  /* ---- pinned scroll state ΓÇö desktop only ---- */
   const [pinned, setPinned] = useState(
-    () => typeof window !== "undefined" && window.matchMedia("(min-width: 900px) and (min-height: 760px)").matches && !prefersReducedMotion()
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 900px)").matches && !prefersReducedMotion()
   );
-  const [pinOn, setPinOn] = useState(false); // inside the pinned range right now
+  const [pinOn, setPinOn] = useState(false);
   const pinSt = useRef<ScrollTrigger | null>(null);
-  const jumpUntil = useRef(0); // until-then, scroll→tab sync is suspended (a tab jump is in flight)
+  const prevIndexRef = useRef(0);
+
+  const numeralFillRef = useRef<HTMLSpanElement>(null);
+  const counterNumRef = useRef<HTMLSpanElement>(null);
+  const progressLineRef = useRef<HTMLSpanElement>(null);
+  const headerStatementRef = useRef<HTMLSpanElement>(null);
+
+  // Demo autoplay is event-synchronized with morph completion (single source of truth)
+  const [demoActive, setDemoActive] = useState(true);
 
   const indexRef = useRef(0);
   indexRef.current = index;
+  const targetIndexRef = useRef(0);
   const pinnedRef = useRef(pinned);
   pinnedRef.current = pinned;
+  const showcaseModeRef = useRef<ShowcaseMode>("AUTO");
+  showcaseModeRef.current = showcaseMode;
+  const advanceTimerRef = useRef<number>(0);
+  const previewDoneUnsubRef = useRef<(() => void) | null>(null);
+  const inViewRef = useRef(false);
+  inViewRef.current = inView;
 
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 900px) and (min-height: 760px)");
+    const mq = window.matchMedia("(min-width: 900px)");
     const sync = () => setPinned(mq.matches && !prefersReducedMotion());
     mq.addEventListener("change", sync);
-    const offMotion = onMotionPreferenceChange(sync);
-    return () => { mq.removeEventListener("change", sync); offMotion(); };
+    const unsubs = onMotionPreferenceChange(sync);
+    return () => {
+      mq.removeEventListener("change", sync);
+      unsubs();
+    };
   }, []);
 
-  useEffect(() => onMotionPreferenceChange(setReduced), []);
+  const clearAdvanceTimer = () => {
+    if (advanceTimerRef.current) {
+      window.clearTimeout(advanceTimerRef.current);
+      advanceTimerRef.current = 0;
+    }
+    if (previewDoneUnsubRef.current) {
+      previewDoneUnsubRef.current();
+      previewDoneUnsubRef.current = null;
+    }
+  };
 
-  /* ---- idle tour state (Prompt 24, non-pinned path) ---- */
-  const touched = useRef(false); // visitor took control — permanently
-  const autoTimer = useRef(0);
-  const autoOff = useRef<(() => void) | null>(null);
-  const autoSteps = useRef(0); // tabs the tour has advanced through
-  const advanceRef = useRef<() => void>(() => {});
+  /** Arms automatic progression to the next service upon showcase completion + dwell */
+  const armAutoAdvance = (serviceSlug: string) => {
+    clearAdvanceTimer();
+    if (showcaseModeRef.current !== "AUTO" || !inViewRef.current) return;
+
+    const triggerNext = () => {
+      clearAdvanceTimer();
+      if (showcaseModeRef.current !== "AUTO" || !inViewRef.current) return;
+      const nextIdx = (indexRef.current + 1) % services.length;
+      transitionToService(nextIdx);
+    };
+
+    if (prefersReducedMotion()) {
+      advanceTimerRef.current = window.setTimeout(triggerNext, SHOWCASE_CONFIG.reducedMotionDwellMs);
+      return;
+    }
+
+    const safetyMs = SHOWCASE_CONFIG.safetyTimeoutMs[serviceSlug] ?? 8000;
+    advanceTimerRef.current = window.setTimeout(triggerNext, safetyMs);
+
+    previewDoneUnsubRef.current = onPreviewDone((doneSlug) => {
+      if (doneSlug !== serviceSlug) return;
+      if (showcaseModeRef.current !== "AUTO") {
+        clearAdvanceTimer();
+        return;
+      }
+      if (advanceTimerRef.current) {
+        window.clearTimeout(advanceTimerRef.current);
+      }
+      advanceTimerRef.current = window.setTimeout(triggerNext, SHOWCASE_CONFIG.dwellAfterShowcaseMs);
+    });
+  };
+
+  const handleStageSettled = (settledSlug: string) => {
+    const currentTarget = services[targetIndexRef.current]?.slug;
+    const currentIndex = services[indexRef.current]?.slug;
+    if (currentTarget === settledSlug || currentIndex === settledSlug) {
+      setDemoActive(true);
+      if (showcaseModeRef.current === "AUTO") {
+        armAutoAdvance(settledSlug);
+      }
+    }
+  };
 
   const intro = siteContent.servicesIntro;
   const s = services[index];
 
-  const clearAutoTimer = () => {
-    if (autoTimer.current) {
-      window.clearTimeout(autoTimer.current);
-      autoTimer.current = 0;
+  /** Orchestrates outgoing elements exit then incoming elements entrance */
+  const transitionToService = (newIndex: number) => {
+    if (newIndex === targetIndexRef.current && newIndex === indexRef.current) return;
+    setDemoActive(false);
+    const oldIndex = indexRef.current;
+    prevIndexRef.current = oldIndex;
+    targetIndexRef.current = newIndex;
+
+    // Active service rail dot gets one ring pulse per activation (Scale 1 -> 1.8, Opacity 0.6 -> 0, 0.7s)
+    const targetSlug = services[newIndex].slug;
+    const activeDotRing = document.querySelector<HTMLElement>(`[data-rail-dot="${targetSlug}"] .rail-pulse-ring`);
+    if (activeDotRing) {
+      gsap.fromTo(activeDotRing, { scale: 1, opacity: 0.6 }, { scale: 1.8, opacity: 0, duration: 0.7, ease: "power2.out" });
     }
-    autoOff.current?.();
-    autoOff.current = null;
+
+    if (prefersReducedMotion()) {
+      setIndex(newIndex);
+      setVisited((v) => (v.has(services[newIndex].slug) ? v : new Set(v).add(services[newIndex].slug)));
+      return;
+    }
+
+    // 1. Leaving service: outgoing elements exit (yPercent: -40, opacity: 0, duration: 0.35s, stagger: 0.04s)
+    const copyEl = copy.current;
+    if (copyEl) {
+      const outgoingEls = Array.from(copyEl.querySelectorAll(".svc-title-word, .svc-desc, .svc-tag-item, .btn"));
+      gsap.to(outgoingEls, {
+        yPercent: -40,
+        opacity: 0,
+        duration: 0.35,
+        stagger: 0.04,
+        ease: "power2.in",
+        overwrite: "auto",
+        onComplete: () => {
+          // Guard against stale closures if another transition started
+          if (targetIndexRef.current !== newIndex) return;
+
+          // 2. Commit new service state
+          setIndex(newIndex);
+          setVisited((v) => (v.has(services[newIndex].slug) ? v : new Set(v).add(services[newIndex].slug)));
+
+          // Roll counter digit
+          if (counterNumRef.current) {
+            digitRoll(counterNumRef.current, services[oldIndex].n, services[newIndex].n, {
+              duration: 0.6,
+              ease: "power2.out",
+            });
+          }
+
+          // 3. Active service entrance: incoming elements enter without overlap
+          requestAnimationFrame(() => {
+            const freshCopy = copy.current;
+            if (!freshCopy) return;
+
+            // Numeral fills with lime using clip-path wipe from bottom to top over 0.8s
+            if (numeralFillRef.current) {
+              gsap.fromTo(
+                numeralFillRef.current,
+                { clipPath: "inset(100% 0% 0% 0%)" },
+                { clipPath: "inset(0% 0% 0% 0%)", duration: 0.8, ease: "power2.out" }
+              );
+            }
+
+            // Title lines reveal through masks over 0.8s, stagger 0.08s
+            const freshWords = freshCopy.querySelectorAll(".svc-title-word");
+            gsap.fromTo(
+              freshWords,
+              { yPercent: 100, opacity: 1 },
+              { yPercent: 0, opacity: 1, duration: 0.8, stagger: 0.08, ease: "power3.out" }
+            );
+
+            // Description lines reveal
+            const freshDesc = freshCopy.querySelector(".svc-desc");
+            if (freshDesc) {
+              gsap.fromTo(
+                freshDesc,
+                { yPercent: 100, opacity: 0 },
+                { yPercent: 0, opacity: 1, duration: 0.7, ease: "power3.out" }
+              );
+            }
+
+            // Three tags rise with stagger 0.06s
+            const freshTags = freshCopy.querySelectorAll(".svc-tag-item");
+            gsap.fromTo(
+              freshTags,
+              { y: 16, opacity: 0 },
+              { y: 0, opacity: 1, duration: 0.5, stagger: 0.06, ease: "power2.out" }
+            );
+
+            // EXPLORE button fades in last
+            const freshBtn = freshCopy.querySelector(".btn");
+            if (freshBtn) {
+              gsap.fromTo(
+                freshBtn,
+                { opacity: 0, y: 8 },
+                { opacity: 1, y: 0, duration: 0.4, delay: 0.3, ease: "power2.out" }
+              );
+            }
+          });
+        },
+      });
+    } else {
+      setIndex(newIndex);
+      setVisited((v) => (v.has(services[newIndex].slug) ? v : new Set(v).add(services[newIndex].slug)));
+    }
   };
 
-  /** The visitor engaged with anything here: autoplay stops for this visit. */
-  const takeControl = () => {
-    if (touched.current) return;
-    touched.current = true;
-    clearAutoTimer();
-    setTouring(false);
-  };
+  /** Manual selection: cancels automatic progression and locks selected service indefinitely */
+  const selectFromUser = (newIndex: number) => {
+    clearAdvanceTimer();
+    setShowcaseMode("MANUAL");
+    showcaseModeRef.current = "MANUAL";
 
-  /** Tab commit shared by every entry point (scroll, click, badge, nav). */
-  const selectFromScroll = (i: number) => {
-    window.clearTimeout(hoverTimer.current);
-    setPreview(null);
-    setIndex(i);
-    setVisited((v) => (v.has(services[i].slug) ? v : new Set(v).add(services[i].slug)));
-  };
+    if (newIndex === indexRef.current && newIndex === targetIndexRef.current) {
+      return;
+    }
 
-  /**
-   * Visitor-initiated commit. When pinned, the scroll follows: jump to the
-   * middle of the target service's range (maximum margin from both 25%
-   * boundaries), and suspend scroll→tab sync while the glide runs so the
-   * two never fight. After the lock, the next scroll update re-syncs from
-   * the actual position, so a user wheel that interrupts the glide still
-   * converges.
-   */
-  const selectFromUser = (i: number) => {
-    selectFromScroll(i);
-    if (!pinnedRef.current) return;
-    const st = pinSt.current;
-    if (!st) return;
-    const y = st.start + ((i + 0.5) / N) * (st.end - st.start);
-    jumpUntil.current = performance.now() + 1500;
-    const lenis = getLenis();
-    if (lenis) lenis.scrollTo(y, { duration: 1.1 });
-    else window.scrollTo({ top: y, behavior: "smooth" });
+    transitionToService(newIndex);
   };
   const selectFromUserRef = useRef(selectFromUser);
   selectFromUserRef.current = selectFromUser;
-
-  advanceRef.current = () => {
-    clearAutoTimer();
-    autoSteps.current += 1;
-    selectFromScroll((indexRef.current + 1) % services.length);
-  };
 
   const pinOnRef = useRef(false);
   pinOnRef.current = pinOn;
 
   const hoverStart = (i: number) => {
-    // While pinned, the scroll owns the stage: a pointer parked on the
-    // rail mid-wheel must never steal a service's autoplay (that was the
-    // "demo fails to play on a portion of views" class of bug).
     if (!hasFinePointer() || i === index || pinOn) return;
     window.clearTimeout(hoverTimer.current);
     hoverTimer.current = window.setTimeout(() => {
-      if (pinOnRef.current) return; // pin engaged while this was armed
-      if (indexRef.current === i) return; // that tab got committed meanwhile
-      // Resting on another tab is engagement: the tour hands over.
-      takeControl();
+      if (pinOnRef.current) return;
+      if (indexRef.current === i) return;
       setPreview(i);
     }, HOVER_MS);
   };
@@ -172,62 +294,20 @@ export function Chapters() {
   useEffect(
     () => () => {
       window.clearTimeout(hoverTimer.current);
-      clearAutoTimer();
+      clearAdvanceTimer();
     },
     []
   );
 
   /*
-   * The idle tour itself. Re-armed for whichever tab is current, only while
-   * the section is on screen and untouched, and only until all four tabs have
-   * been shown once — then it holds on the last one and never moves again.
-   * A demo reporting "preview done" shortens the wait to a natural beat.
-   * Pinned (desktop, Prompt 33): the tour is off entirely — the scroll IS
-   * the tour, and timer-driven advances would fight the scroll position.
-   */
-  useEffect(() => {
-    if (pinned) return;
-    if (!inView || touched.current || reduced) return;
-    if (autoSteps.current >= services.length - 1) {
-      setTouring(false);
-      return;
-    }
-    const slug = services[index].slug;
-    const startedAt = performance.now();
-    setTouring(true);
-
-    const fire = () => advanceRef.current();
-    // A tab whose preview already ran (visitor scrolled away and back) just
-    // holds for the idle beat — nothing is going to report "done" again.
-    autoTimer.current = window.setTimeout(fire, previewPlayed(slug) ? IDLE_ADVANCE_MS : holdFor(slug));
-    autoOff.current = onPreviewDone((done) => {
-      if (done !== slug || !autoTimer.current) return;
-      const elapsed = performance.now() - startedAt;
-      window.clearTimeout(autoTimer.current);
-      autoTimer.current = window.setTimeout(fire, Math.max(DONE_BEAT_MS, IDLE_ADVANCE_MS - elapsed));
-    });
-
-    return () => {
-      clearAutoTimer();
-      setTouring(false);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inView, index, pinned, reduced]);
-
-  /*
-   * PROMPT 20 — nav hover-preview handoff. A nav thumbnail click either
+   * Nav hover-preview handoff. A nav thumbnail click either
    * fires the select-service event (same-page jump) or stashes the slug
-   * in sessionStorage (cross-route). Either way the tab commits here and
-   * the section scrolls into view — which, when pinned, means the scroll
-   * jump into that service's range (selectFromUser owns both halves, so
-   * they can never desync).
+   * in sessionStorage (cross-route).
    */
   useEffect(() => {
     const apply = (slug: string, andScroll: boolean) => {
       const i = services.findIndex((sv) => sv.slug === slug);
       if (i < 0) return;
-      // Choosing a service from the nav is explicit intent: no idle tour.
-      takeControl();
       selectFromUserRef.current(i);
       if (andScroll && !pinnedRef.current) {
         window.setTimeout(() => {
@@ -249,28 +329,38 @@ export function Chapters() {
     }
     if (pending) apply(pending, true);
     return () => window.removeEventListener("arche:select-service", onEv);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // stages only animate while the section is on screen
+  // Viewport observer: stages animate and autonomous progression runs while on screen
   useEffect(() => {
     const el = root.current;
     if (!el) return;
-    const io = new IntersectionObserver((e) => setInView(e[0].isIntersecting), { threshold: 0.15 });
+    const io = new IntersectionObserver(
+      (entries) => {
+        const isVisible = entries[0].isIntersecting;
+        setInView(isVisible);
+        inViewRef.current = isVisible;
+        if (isVisible) {
+          if (showcaseModeRef.current === "AUTO") {
+            armAutoAdvance(services[indexRef.current].slug);
+          }
+        } else {
+          clearAdvanceTimer();
+        }
+      },
+      { threshold: 0.15 }
+    );
     io.observe(el);
-    return () => io.disconnect();
+    return () => {
+      io.disconnect();
+      clearAdvanceTimer();
+    };
   }, []);
 
   /*
-   * PROMPT 33 — the pinned, scroll-driven sequence (desktop, motion OK).
-   *
-   * One scroll "unit" per service — pinDistance() ≈ 4 viewport heights,
-   * i.e. 4x a normal section's height. Progress maps to the fixed order
-   * Video → Web → Chatbots → Automation; each 25% crossing commits that
-   * tab (with its directional transformation) and the newly-shown demo mounts
-   * fresh with active=true, so its autoplay restarts from the top.
-   * Scrolling up applies the same mapping in reverse, and the pin simply
-   * releases at both ends into normal flow.
+   * Pinned scroll container (desktop, motion OK).
+   * Pin keeps page navigation stable and predictable.
+   * Service selection is autonomous or locked; scrolling does NOT change active service.
    */
   useLayoutEffect(() => {
     if (!pinned) {
@@ -281,8 +371,6 @@ export function Chapters() {
     const sec = root.current;
     if (!sec) return;
 
-    // Keep the whole pinned module — tab rail included — inside the
-    // viewport on short screens by shrinking only the stage.
     const fitStage = () => {
       const h = Math.min(440, Math.max(300, Math.round(window.innerHeight - 350)));
       sec.style.setProperty("--svc-stage-h", `${h}px`);
@@ -298,26 +386,10 @@ export function Chapters() {
         pin: true,
         anticipatePin: 1,
         invalidateOnRefresh: true,
-        onRefresh: (self) => {
-          fitStage();
-          sec.style.setProperty("--svc-scroll-progress", String(self.progress));
-        },
+        onRefresh: () => fitStage(),
         onToggle: (self) => setPinOn(self.isActive),
-        onUpdate: (self) => {
-          sec.style.setProperty("--svc-scroll-progress", String(self.progress));
-          // A tab-click jump is in flight: the scroll is programmatic, so
-          // don't re-derive the tab from it (no fight with Lenis, no
-          // flicker through intermediate ranges). When the lock lapses the
-          // next update re-syncs from wherever the scroll actually is.
-          if (performance.now() < jumpUntil.current) return;
-          const i = indexAt(self.progress);
-          if (i !== indexRef.current) selectFromScroll(i);
-        },
       });
-      // Landing mid-pin (reload with restored scroll): sync immediately.
       setPinOn(pinSt.current.isActive);
-      const i0 = indexAt(pinSt.current.progress);
-      if (i0 !== indexRef.current) selectFromScroll(i0);
     }, sec);
 
     let raf = 0;
@@ -334,35 +406,12 @@ export function Chapters() {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", onResize);
       ctx.revert();
-      sec.style.removeProperty("--svc-scroll-progress");
       pinSt.current = null;
       setPinOn(false);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pinned]);
 
-  // The four resolved nodes in Problem become the four service-rail dots.
-  // Only the decorative rail moves: controls and copy are never clipped or
-  // made unavailable while the section enters the viewport.
-  useLayoutEffect(() => {
-    const m = moduleRef.current;
-    if (!m || reduced) return;
-    const trace = m.querySelector<HTMLElement>(".svc-entry-trace");
-    const dots = m.querySelectorAll<HTMLElement>(".svc-tab-dot");
-    if (!trace || !dots.length) return;
-    const mobile = window.matchMedia("(max-width: 899px), (pointer: coarse)").matches;
-    const speed = mobile ? 0.7 : 1;
-    const ctx = gsap.context(() => {
-      const arrival = gsap.timeline({ paused: true })
-        .fromTo(trace, { scaleX: 0, opacity: .85 }, { scaleX: 1, opacity: .85, duration: .5 * speed, ease: "power2.inOut", immediateRender: false }, 0)
-        .fromTo(dots, { scale: .45 }, { scale: 1, duration: .3 * speed, stagger: .055 * speed, ease: "back.out(1.6)", immediateRender: false }, .08 * speed)
-        .to(trace, { opacity: 0, duration: .18 * speed, ease: "power2.out" }, .46 * speed);
-      ScrollTrigger.create({ trigger: root.current, start: "top 82%", once: true, onEnter: () => arrival.play() });
-    }, root);
-    return () => ctx.revert();
-  }, [reduced]);
-
-  // left column follows the committed tab
+  // left column follows the committed tab on mobile / unpinned
   useEffect(() => {
     emitThread();
     if (firstIndex.current) {
@@ -373,16 +422,9 @@ export function Chapters() {
     const st = strip.current;
     const tab = st?.querySelector<HTMLElement>(`[data-i="${index}"]`);
     if (st && tab && st.scrollWidth > st.clientWidth) {
-      st.scrollTo({ left: tab.offsetLeft - (st.clientWidth - tab.offsetWidth) / 2, behavior: reduced ? "auto" : "smooth" });
+      st.scrollTo({ left: tab.offsetLeft - (st.clientWidth - tab.offsetWidth) / 2, behavior: "smooth" });
     }
-    if (reduced || !copy.current) return;
-    const tween = gsap.fromTo(
-      copy.current.querySelectorAll("[data-m]"),
-      { y: 14, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.5, stagger: 0.05, ease: "power3.out", overwrite: true }
-    );
-    return () => { tween.revert(); };
-  }, [index, reduced]);
+  }, [index]);
 
   return (
     <section
@@ -390,67 +432,113 @@ export function Chapters() {
       ref={root}
       className={
         pinned
-          ? "relative w-full pt-[86px] pb-[clamp(24px,4vh,48px)]"
+          ? "relative w-full pt-[86px] pb-[clamp(24px,4vh,48px)] min-[900px]:-mt-[30vh]"
           : "relative w-full py-[clamp(56px,8vh,96px)]"
       }
-      onPointerDown={takeControl}
-      onKeyDown={takeControl}
     >
       <div ref={moduleRef} className="wrap flex flex-col">
         {/* header */}
-        <div className="relative order-0 flex items-end justify-between gap-[16px] border-b pb-[14px]" style={{ borderColor: "var(--line)" }}>
-          <span aria-hidden className="svc-entry-trace pointer-events-none absolute bottom-[-1px] left-0 h-px w-full origin-left" style={{ background: "var(--accent-deep)", opacity: 0 }} />
+        <div className="order-0 flex items-end justify-between gap-[16px] border-b pb-[14px]" style={{ borderColor: "var(--line)" }}>
           <div className="flex flex-col gap-[4px] min-[900px]:flex-row min-[900px]:items-baseline min-[900px]:gap-[16px]">
             <span className="mono mono-a">{intro.label}</span>
-            <span className="d4 max-w-[32ch]">{intro.statement}</span>
+            <span className="overflow-hidden inline-block">
+              <span ref={headerStatementRef} className="d4 max-w-[32ch] inline-block">{intro.statement}</span>
+            </span>
           </div>
-          <span className="mono flex-none">{s.n} / {String(services.length).padStart(2, "0")}</span>
+          <span className="mono flex-none"><span ref={counterNumRef} className="inline-block">{s.n}</span> / {String(services.length).padStart(2, "0")}</span>
         </div>
 
-        {/* copy + stage */}
-        <div className="order-2 grid items-center gap-[clamp(18px,2.8vw,48px)] py-[clamp(20px,3vh,32px)] min-[900px]:grid-cols-12">
-          <div ref={copy} className="flex min-w-0 flex-col gap-[14px] min-[900px]:col-span-5">
-            <div className="flex flex-col gap-[2px]">
+        {/* copy + stage: Rebalanced layout with stretched left column vertically distributed between content group and bottom CTA */}
+        <div className="order-2 grid items-start gap-[clamp(28px,3.5vw,48px)] py-[clamp(20px,3vh,32px)] min-[900px]:items-stretch min-[900px]:grid-cols-[clamp(340px,28vw,410px)_minmax(0,1fr)]">
+          <div ref={copy} className="flex min-w-0 flex-col min-[900px]:h-full min-[900px]:justify-between min-[900px]:pt-[2px] min-[900px]:pb-[12px]">
+            {/* PRIMARY GROUP 1: CONTENT GROUP (Service Number, Title, Description, Process Tags) */}
+            <div className="flex flex-col">
+              {/* Service Number */}
               <button
                 type="button"
-                className="self-start"
+                className="self-start cursor-pointer bg-transparent border-0 p-0 text-left"
+                style={{ marginBottom: "clamp(12px, 1.4vw, 16px)" }}
                 onClick={() => selectFromUser((index + 1) % N)}
-                aria-label={`Service ${s.n} of ${services.length} — show next service`}
+                aria-label={`Service ${s.n} of ${services.length} ΓÇö show next service`}
                 data-cursor="NEXT"
               >
-                <span data-m className="numeral outline-t block" style={{ fontSize: "clamp(48px,5.5vw,88px)" }}>
-                  {s.n}
+                <span className="relative block select-none" style={{ fontSize: "clamp(46px,5vw,78px)", lineHeight: 1 }}>
+                  <span className="numeral outline-t block">
+                    {s.n}
+                  </span>
+                  <span
+                    ref={numeralFillRef}
+                    className="numeral absolute inset-0 block"
+                    style={{
+                      color: "var(--accent-deep)",
+                      WebkitTextStroke: "0px transparent",
+                      clipPath: "inset(0% 0% 0% 0%)",
+                    }}
+                    aria-hidden
+                  >
+                    {s.n}
+                  </span>
                 </span>
               </button>
-              <h3 data-m className="d2" style={{ fontSize: "clamp(28px,3.5vw,54px)" }}>
-                {s.title}
-              </h3>
-            </div>
-            <p data-m className="body max-w-[38ch]">
-              {s.tagline}
-            </p>
-            <div data-m className="flex flex-wrap items-center gap-[8px]">
-              {s.arc.map((a, k) => (
-                <span key={a} className="flex items-center gap-[8px]">
-                  <span
-                    className="mono"
-                    style={{
-                      padding: "5px 11px",
-                      border: `1px solid ${k === s.arc.length - 1 ? "var(--accent-deep)" : "var(--line)"}`,
-                      borderRadius: 999,
-                      color: k === s.arc.length - 1 ? "var(--accent-ink)" : "var(--muted)",
-                    }}
-                  >
-                    {a}
+
+              {/* Service Title */}
+              <h3
+                className="d2"
+                style={{
+                  fontSize: "clamp(26px,3.2vw,48px)",
+                  lineHeight: 1.1,
+                  letterSpacing: "-0.035em",
+                  marginBottom: "clamp(18px, 1.8vw, 22px)",
+                }}
+              >
+                {s.title.split(" ").map((w, idx) => (
+                  <span key={idx} className="inline-block overflow-hidden mr-[0.28em] align-top pb-[0.05em] -mb-[0.05em]">
+                    <span className="svc-title-word inline-block">{w}</span>
                   </span>
-                  {k < s.arc.length - 1 && <span className="mono">→</span>}
-                </span>
-              ))}
+                ))}
+              </h3>
+
+              {/* Description */}
+              <div className="overflow-hidden" style={{ marginBottom: "clamp(22px, 2.2vw, 26px)" }}>
+                <p className="svc-desc body max-w-[36ch]" style={{ lineHeight: 1.55 }}>
+                  {s.tagline}
+                </p>
+              </div>
+
+              {/* Process Tags */}
+              <div
+                className="flex flex-wrap items-center gap-x-[clamp(6px,0.9vw,10px)] gap-y-[8px] mb-[clamp(24px,3vh,30px)] min-[900px]:mb-0"
+              >
+                {s.arc.map((a, k) => (
+                  <span key={a} className="svc-tag-item flex items-center gap-[clamp(6px,0.9vw,10px)] flex-none">
+                    <span
+                      className="mono"
+                      style={{
+                        padding: "5px 11px",
+                        border: `1px solid ${k === s.arc.length - 1 ? "var(--accent-deep)" : "var(--line)"}`,
+                        borderRadius: 999,
+                        color: k === s.arc.length - 1 ? "var(--accent-ink)" : "var(--muted)",
+                        lineHeight: 1,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {a}
+                    </span>
+                    {k < s.arc.length - 1 && (
+                      <span className="mono select-none" style={{ color: "var(--faint)", lineHeight: 1 }} aria-hidden>
+                        ΓåÆ
+                      </span>
+                    )}
+                  </span>
+                ))}
+              </div>
             </div>
-            <div data-m>
+
+            {/* PRIMARY GROUP 2: EXPLORE CTA */}
+            <div className="svc-btn-wrap">
               <Link
                 to={`/services/${s.slug}`}
-                className="btn btn-ghost mt-[4px]"
+                className="btn btn-ghost"
                 cursor="OPEN"
                 onNavigate={() => {
                   const stage = document.getElementById("services-stage");
@@ -464,22 +552,24 @@ export function Chapters() {
                   }
                 }}
               >
-                Explore {s.title} <span className="arw">→</span>
+                Explore {s.title} <span className="arw">ΓåÆ</span>
               </Link>
             </div>
           </div>
 
-          <div className="relative min-w-0 min-[900px]:col-span-7">
+          <div className="relative min-w-0 w-full">
             <ServiceStage
               slug={s.slug}
               previewSlug={preview !== null ? services[preview].slug : null}
-              active={inView || pinOn}
+              active={(inView || pinOn) && demoActive}
               visited={visited}
+              onSelect={selectFromUser}
+              onStageSettled={handleStageSettled}
             />
           </div>
         </div>
 
-        {/* tab rail — the shared thread's arrival point */}
+        {/* tab rail ΓÇö the shared thread's arrival point */}
         <div
           className="order-1 flex items-center gap-[clamp(10px,1.2vw,16px)] pt-[14px] min-[900px]:order-3 min-[900px]:border-t"
           style={{ borderColor: "var(--line)" }}
@@ -489,13 +579,12 @@ export function Chapters() {
             data-thread-rail
             role="tablist"
             aria-label="Services"
-            className="svc-rail hide-scroll -mx-[var(--gut)] flex min-w-0 flex-1 snap-x snap-mandatory gap-[8px] overflow-x-auto px-[var(--gut)] min-[900px]:mx-0 min-[900px]:gap-[clamp(10px,1.2vw,16px)] min-[900px]:px-0 min-[1200px]:flex-none min-[1200px]:overflow-visible"
+            className="svc-rail hide-scroll -mx-[var(--gut)] flex snap-x snap-mandatory gap-[8px] overflow-x-auto px-[var(--gut)] min-[900px]:mx-0 min-[900px]:gap-[clamp(10px,1.2vw,16px)] min-[900px]:overflow-visible min-[900px]:px-0"
             onMouseLeave={hoverEnd}
             onKeyDown={(e) => {
               if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
               e.preventDefault();
               const next = e.key === "Home" ? 0 : e.key === "End" ? N - 1 : (index + (e.key === "ArrowRight" ? 1 : -1) + N) % N;
-              takeControl();
               selectFromUser(next);
               strip.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
             }}
@@ -518,41 +607,41 @@ export function Chapters() {
                 className="svc-tab flex h-[34px] flex-none snap-center items-center justify-center min-[900px]:min-w-[clamp(126px,12.5vw,176px)]"
                 data-cursor={i === index ? undefined : "OPEN"}
               >
-                <span className="svc-tab-pill">
+                <span className="svc-tab-pill relative overflow-hidden">
+                  <span
+                    className="svc-tab-border pointer-events-none absolute inset-0 rounded-[999px] border border-[var(--accent-deep)]"
+                    style={{
+                      opacity: i === index ? 1 : 0,
+                      clipPath: i === index ? "inset(0% 0% 0% 0%)" : "inset(0% 100% 0% 0%)",
+                    }}
+                  />
                   <span className="svc-tab-dot" />
                   <span className="mono whitespace-nowrap">{sv.n} {sv.title}</span>
                 </span>
               </button>
             ))}
           </div>
-          <span aria-hidden className="relative hidden h-px flex-1 min-[1200px]:block" style={{ background: "var(--line)" }}>
+          <span className="relative hidden h-px flex-1 overflow-hidden min-[900px]:block" style={{ background: "var(--line)" }}>
             <span
+              ref={progressLineRef}
               className="absolute inset-0 origin-left"
               style={{
                 background: "var(--accent-deep)",
-                transform: pinOn ? `scaleX(var(--svc-scroll-progress, ${index / (services.length - 1)}))` : `scaleX(${index / (services.length - 1)})`,
-                transition: pinOn || reduced ? "none" : "transform .6s var(--e-out)",
-              }}
-            />
-            <span
-              className="svc-progress-signal"
-              style={{
-                left: pinOn ? `calc(var(--svc-scroll-progress, ${index / (services.length - 1)}) * 100%)` : `${index / (services.length - 1) * 100}%`,
-                transition: pinOn || reduced ? "none" : "left .6s var(--e-out)",
+                transform: `scaleX(${index / (services.length - 1)})`,
+                transition: "transform .6s var(--e-out)",
               }}
             />
           </span>
-          <span className="mono hidden flex-none min-[1200px]:block" aria-live="polite">
+          <span className="mono hidden flex-none min-[900px]:block" aria-live="polite">
             {preview !== null
               ? "Previewing"
-              : pinOn
-                ? `Scroll · ${s.n} / ${String(N).padStart(2, "0")}`
-                : touring
-                  ? "Auto-tour · click to take over"
-                  : "Select a service"}
+              : showcaseMode === "AUTO"
+                ? `Showcase ┬╖ ${s.n} / ${String(N).padStart(2, "0")} ┬╖ auto`
+                : `Service ${s.n} / ${String(N).padStart(2, "0")} ┬╖ locked`}
           </span>
         </div>
       </div>
     </section>
   );
 }
+

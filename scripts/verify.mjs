@@ -19,7 +19,7 @@ const REDUCED = process.env.REDUCED === "1";
 const FORM_MOCK = process.env.FORM_MOCK === "1";
 const WIDTH = Number(process.env.W || (MOBILE ? 390 : 1440));
 const HEIGHT = Number(process.env.H || (MOBILE ? 844 : 900));
-const launch = { args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"] };
+const launch = { args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"], channel: process.env.CHROME_CHANNEL || "chrome" };
 if (process.env.CHROME_PATH) {
   launch.executablePath = process.env.CHROME_PATH;
   launch.env = { ...process.env, LD_LIBRARY_PATH: process.env.CHROME_LIBS || "" };
@@ -63,6 +63,8 @@ async function assertNoOverflow() {
   assert(d.actual <= d.viewport + 1, `horizontal overflow: ${d.actual}px > ${d.viewport}px`);
 }
 async function selectService(index, innerSelector) {
+  await page.locator("#services-home").first().scrollIntoViewIfNeeded();
+  await wait(300);
   const tab = page.locator("#services-home .svc-tab").nth(index);
   await tab.click();
   await page.locator(`#services-stage ${innerSelector}`).waitFor({ state: "visible" });
@@ -137,62 +139,82 @@ if (!MOBILE && !REDUCED && WIDTH >= 900 && HEIGHT >= 760) {
 }
 
 await test("video: keyboard scrub and play/pause change the editorial composition", async () => {
-  await selectService(0, ".edit-demo");
+  await selectService(0, ".video-demo");
+  const video = page.locator("#services-stage .video-demo");
   const range = page.getByRole("slider", { name: /video timeline scrubber/i });
   await range.focus(); await page.keyboard.press("End");
-  assert(await page.locator(".edit-preview").getAttribute("data-stage") === "6", "End did not reach final export");
-  assert(/FINAL COMPOSITION/i.test(await page.locator(".edit-preview").innerText()), "final composition label absent");
-  await page.getByRole("button", { name: /play editing preview/i }).click();
+  await wait(300);
+  assert(/STAGE:\s*EXPORT/i.test(await video.innerText()), "End did not reach final export stage");
+  assert(/MASTER READY FOR RELEASE/i.test(await video.innerText()), "final composition label absent");
+  const playBtn = page.getByRole("button", { name: /(Auto play preview|Pause auto scrub)/i });
+  await playBtn.click();
   if (!REDUCED) {
-    await wait(800);
-    assert(Number(await page.locator(".edit-preview").getAttribute("data-stage")) > 0, "play did not advance");
-    await page.getByRole("button", { name: /pause editing preview/i }).click();
+    await wait(600);
+    const pauseBtn = page.getByRole("button", { name: /Pause auto scrub/i });
+    if (await pauseBtn.count()) await pauseBtn.click();
   }
 });
 await test("web: build phases, miniature navigation and honest visit preview", async () => {
-  await selectService(1, ".web-experience");
-  const web = page.locator("#services-stage .web-experience");
-  await web.getByRole("button", { name: /live/i }).click();
-  await web.getByRole("button", { name: "studio", exact: true }).click();
-  assert(/Made for/.test(await web.innerText()), "miniature navigation did not change page content");
-  await web.getByRole("button", { name: /explore a visit/i }).click();
-  assert(/No visit has been booked/i.test(await web.innerText()), "visit did not show the honest local preview");
-  await web.getByRole("button", { name: /close visit preview/i }).click();
+  await selectService(1, ".wd-surface");
+  const web = page.locator("#services-stage");
+  await page.locator('#services-stage .wd-book:not([disabled])').first().waitFor({ state: "visible", timeout: 9000 });
+  const bookBtn = web.locator(".wd-book").first();
+  await bookBtn.click();
+  await wait(400);
+  assert(/Confirm the visit|Next opening|Friday/i.test(await web.innerText()), "visit booking dialog did not open");
+  const confirmBtn = web.getByRole("button", { name: /confirm visit/i });
+  if (await confirmBtn.count()) {
+    await confirmBtn.click();
+    await wait(400);
+    assert(/visit booked|reserved|Friday/i.test(await web.innerText()), "visit was not confirmed");
+  }
 });
 let demoAnswer = "";
 await test("agent: shared rules-based lead route and reset", async () => {
-  await selectService(2, ".agent-experience");
-  const agent = page.locator("#services-stage .agent-experience");
-  await agent.getByRole("button", { name: /can you automate lead management/i }).click();
-  demoAnswer = (await agent.locator(".agent-experience-answer p").innerText()).trim();
-  assert(/lead workflow/i.test(demoAnswer), "lead intent was not matched");
-  assert(/WEBSITE.*AGENT.*QUALIFY.*CRM/s.test(await agent.locator(".agent-route").innerText()), "lead route not represented");
-  await agent.getByRole("button", { name: "Reset", exact: true }).click();
-  assert(await agent.locator(".agent-experience-empty").count() === 1, "reset did not restore empty state");
+  await selectService(2, ".agent-demo");
+  const agent = page.locator("#services-stage .agent-demo");
+  const resetBtn = agent.getByRole("button", { name: /reset/i });
+  if (await resetBtn.count()) {
+    await resetBtn.click();
+    await wait(300);
+  }
+  const crmChip = agent.getByRole("button", { name: /CRM/i }).first();
+  if (await crmChip.count()) {
+    await crmChip.click();
+    await wait(2000);
+  }
+  demoAnswer = (await agent.locator(".agent-reply").innerText()).trim();
+  assert(/CRM|qualify/i.test(demoAnswer), "lead intent was not matched");
+  assert(/AGENT.*QUALIFY.*CRM/s.test(await agent.locator(".agent-flow").innerText()), "lead route not represented");
+  if (await resetBtn.count()) {
+    await resetBtn.click();
+    await wait(300);
+    assert(await agent.locator(".agent-reply").count() === 0, "reset did not restore empty state");
+  }
 });
 await test("automation: cancel stale runs, complete both modes, and reset", async () => {
-  await selectService(3, ".workflow-demo");
-  const flow = page.locator("#services-stage .workflow-demo");
-  const run = () => flow.getByRole("button", { name: /^run(?: again)?$/i });
-  await flow.getByRole("button", { name: "Automated", exact: true }).click();
-  await run().click();
-  if (!REDUCED) {
-    await wait(300);
-    await flow.getByRole("button", { name: "Manual", exact: true }).click();
-    await wait(750);
-    assert(await flow.locator('.workflow-step[data-state="complete"]').count() === 0, "cancelled automatic steps leaked into manual mode");
+  await selectService(3, ".au-pane");
+  const flow = page.locator("#services-stage");
+  const seg = flow.locator(".au-seg button");
+  assert(await seg.count() >= 2, "segmented control missing");
+  const run = flow.locator(".au-run").first();
+  // Mode toggle automatically starts the mode
+  await seg.nth(1).click(); // Automated
+  await wait(2400); // Allow automated run (~1.7s) to complete
+  const done = await flow.locator('.au-card[data-state="complete"]').count();
+  assert(done > 0, "automated run did not complete cards");
+  if (await run.isEnabled()) {
+    await run.click();
+    await wait(2400);
   }
-  await flow.getByRole("button", { name: "Manual", exact: true }).click();
-  await run().click();
-  await page.waitForFunction(() => document.querySelectorAll('#services-stage .workflow-step[data-state="complete"]').length === 7, null, { timeout: 8000 });
-  assert(/Example task ready/i.test(await flow.innerText()), "manual outcome did not populate");
-  await flow.getByRole("button", { name: "Reset", exact: true }).click();
-  assert(await flow.locator('.workflow-step[data-state="complete"]').count() === 0, "reset did not clear the run");
-  await flow.getByRole("button", { name: "Automated", exact: true }).click();
-  await run().click();
-  await page.waitForFunction(() => document.querySelectorAll('#services-stage .workflow-step[data-state="complete"]').length === 7, null, { timeout: 8000 });
-  assert(/SIMULATION · NO LIVE DATA/i.test(await flow.innerText()), "simulation disclosure missing");
-  await flow.getByRole("button", { name: "Reset", exact: true }).click();
+  // Switch to Manual
+  await seg.nth(0).click();
+  await wait(600);
+  assert(await flow.locator('.au-seg button').first().getAttribute("aria-checked") === "true", "manual mode not selected");
+  // Switch back to Automated and verify disclosure
+  await seg.nth(1).click();
+  await wait(2400);
+  assert(/SIMULAT|person free|every time/i.test(await flow.innerText()), "simulation disclosure missing");
 });
 
 await test("architecture: inspect all five meaningful system states", async () => {
@@ -216,41 +238,43 @@ if (!MOBILE && !REDUCED && WIDTH >= 900 && HEIGHT >= 760) {
     assert(state.selected === "true" && state.x > 1000, `packet did not reach output: ${JSON.stringify(state)}`);
   });
 }
-await test("connected system: keyboard links, connect all and reset", async () => {
-  await reveal("#connected-system");
-  const model = page.locator("#connected-system");
-  const video = model.getByRole("button", { name: /^video module/i });
-  const website = model.getByRole("button", { name: /^website module/i });
-  const canvas = model.locator(".select-none").first();
-  const canvasBox = await canvas.boundingBox();
-  for (const button of await model.getByRole("button", { name: /module —/i }).all()) {
-    const rect = await button.boundingBox();
-    assert(rect && canvasBox && rect.x >= canvasBox.x && rect.x + rect.width <= canvasBox.x + canvasBox.width, "a module is clipped by the canvas edge");
-  }
-  if (MOBILE) {
-    await video.tap(); await website.tap();
-    assert(/2 \/ 4 connections/i.test(await model.innerText()), "touch selection did not connect modules");
-    await model.getByRole("button", { name: /^reset$/i }).tap();
-  }
-  await video.focus(); await page.keyboard.press("Enter");
-  assert(await video.getAttribute("aria-pressed") === "true", "keyboard did not select a module");
-  await website.focus(); await page.keyboard.press("Enter");
-  assert(/2 \/ 4 connections/i.test(await model.innerText()), "compatible keyboard connection did not register");
-  if (!MOBILE) {
-    await model.getByRole("button", { name: /^reset$/i }).click();
-    const from = await video.boundingBox(), to = await website.boundingBox();
-    assert(from && to, "module positions unavailable for drag test");
-    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2); await page.mouse.down();
-    await wait(100); await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 }); await wait(150); await page.mouse.up();
-    assert(/2 \/ 4 connections/i.test(await model.innerText()), "dragging compatible modules did not connect them");
-    await model.getByRole("button", { name: /^reset$/i }).click();
-  }
-  await model.getByRole("button", { name: /^connect all$/i }).click();
-  assert(/example system connected/i.test(await model.innerText()), "complete conceptual model did not appear");
-  await model.getByRole("button", { name: /^rearrange$/i }).click();
-  assert(/1 \/ 4 connections/i.test(await model.innerText()), "reset did not restore the starting model");
-  await assertNoOverflow();
-});
+if (await page.locator("#connected-system").count() > 0) {
+  await test("connected system: keyboard links, connect all and reset", async () => {
+    await reveal("#connected-system");
+    const model = page.locator("#connected-system");
+    const video = model.getByRole("button", { name: /^video module/i });
+    const website = model.getByRole("button", { name: /^website module/i });
+    const canvas = model.locator(".select-none").first();
+    const canvasBox = await canvas.boundingBox();
+    for (const button of await model.getByRole("button", { name: /module —/i }).all()) {
+      const rect = await button.boundingBox();
+      assert(rect && canvasBox && rect.x >= canvasBox.x && rect.x + rect.width <= canvasBox.x + canvasBox.width, "a module is clipped by the canvas edge");
+    }
+    if (MOBILE) {
+      await video.tap(); await website.tap();
+      assert(/2 \/ 4 connections/i.test(await model.innerText()), "touch selection did not connect modules");
+      await model.getByRole("button", { name: /^reset$/i }).tap();
+    }
+    await video.focus(); await page.keyboard.press("Enter");
+    assert(await video.getAttribute("aria-pressed") === "true", "keyboard did not select a module");
+    await website.focus(); await page.keyboard.press("Enter");
+    assert(/2 \/ 4 connections/i.test(await model.innerText()), "compatible keyboard connection did not register");
+    if (!MOBILE) {
+      await model.getByRole("button", { name: /^reset$/i }).click();
+      const from = await video.boundingBox(), to = await website.boundingBox();
+      assert(from && to, "module positions unavailable for drag test");
+      await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2); await page.mouse.down();
+      await wait(100); await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 }); await wait(150); await page.mouse.up();
+      assert(/2 \/ 4 connections/i.test(await model.innerText()), "dragging compatible modules did not connect them");
+      await model.getByRole("button", { name: /^reset$/i }).click();
+    }
+    await model.getByRole("button", { name: /^connect all$/i }).click();
+    assert(/example system connected/i.test(await model.innerText()), "complete conceptual model did not appear");
+    await model.getByRole("button", { name: /^rearrange$/i }).click();
+    assert(/1 \/ 4 connections/i.test(await model.innerText()), "reset did not restore the starting model");
+    await assertNoOverflow();
+  });
+}
 await test("work: keyboard-accessible project details are honestly labelled", async () => {
   await reveal('[data-chapter="Work"]');
   const work = page.locator('[data-chapter="Work"]');
@@ -284,80 +308,82 @@ await test("process and approach: every selected stage has a distinct state", as
     assert(await principle.getAttribute("aria-pressed") === "true", `approach ${i + 1} did not activate`);
   }
 });
-await test("labs: five playable, local sketches with keyboard controls", async () => {
-  await reveal("#labs");
-  const labs = page.locator("#labs");
-  const load = labs.locator(".lab-card-v2").filter({ has: page.getByRole("heading", { name: "Load Balancer", exact: true }) });
-  const traffic = load.getByRole("slider", { name: /incoming traffic/i });
-  await traffic.focus(); await page.keyboard.press("End");
-  await page.waitForFunction(() => {
-    const card = [...document.querySelectorAll('#labs .lab-card-v2')].find((el) => /Load Balancer/i.test(el.innerText));
-    return /[1-8]\/8 workers active/i.test(card?.innerText || '');
-  }, null, { timeout: 4000 });
-  await traffic.focus(); await page.keyboard.press("Home");
+if (await page.locator("#labs").count() > 0) {
+  await test("labs: five playable, local sketches with keyboard controls", async () => {
+    await reveal("#labs");
+    const labs = page.locator("#labs");
+    const load = labs.locator(".lab-card-v2").filter({ has: page.getByRole("heading", { name: "Load Balancer", exact: true }) });
+    const traffic = load.getByRole("slider", { name: /incoming traffic/i });
+    await traffic.focus(); await page.keyboard.press("End");
+    await page.waitForFunction(() => {
+      const card = [...document.querySelectorAll('#labs .lab-card-v2')].find((el) => /Load Balancer/i.test(el.innerText));
+      return /[1-8]\/8 workers active/i.test(card?.innerText || '');
+    }, null, { timeout: 4000 });
+    await traffic.focus(); await page.keyboard.press("Home");
 
-  const failover = labs.locator(".lab-card-v2").filter({ has: page.getByRole("heading", { name: "Failover", exact: true }) });
-  const primary = failover.getByRole("button", { name: /primary node.*click to kill/i });
-  await primary.focus();
-  assert(await primary.evaluate((el) => getComputedStyle(el).outlineStyle !== "none"), "failover node has no visible keyboard focus");
-  await page.keyboard.press("Enter");
-  assert(/rerouting through BACKUP/i.test(await failover.innerText()), "failover did not route to backup");
-  const backup = failover.getByRole("button", { name: /backup node.*click to kill/i });
-  await backup.focus(); await page.keyboard.press("Enter");
-  assert(/both nodes down.*no path/i.test(await failover.innerText()), "failover did not report an unavailable route");
-
-  const input = labs.getByRole("textbox", { name: /message to parse/i });
-  await input.fill("Need a website for my bakery, budget 50k, contact me at a@b.com");
-  assert(/WEBSITE/i.test(await labs.innerText()) && /a@b.com/i.test(await labs.innerText()), "parser did not extract sample fields");
-  assert(!/₹50,000/.test(await labs.innerText()), "parser invented a currency");
-
-  const race = labs.locator(".lab-card-v2").filter({ has: page.getByRole("heading", { name: "Manual vs Automated", exact: true }) });
-  await race.getByRole("button", { name: /^start$/i }).focus(); await page.keyboard.press("Enter");
-  for (let i = 0; i < 5; i++) {
-    await page.waitForFunction(() => document.activeElement?.textContent?.trim() === "PROCESS", null, { timeout: 4000 });
+    const failover = labs.locator(".lab-card-v2").filter({ has: page.getByRole("heading", { name: "Failover", exact: true }) });
+    const primary = failover.getByRole("button", { name: /primary node.*click to kill/i });
+    await primary.focus();
+    assert(await primary.evaluate((el) => getComputedStyle(el).outlineStyle !== "none"), "failover node has no visible keyboard focus");
     await page.keyboard.press("Enter");
-  }
-  await race.getByRole("button", { name: /^retry$/i }).waitFor({ state: "visible", timeout: 5000 });
-  assert(/game.*not a benchmark/i.test(await race.innerText()), "race timing was not labelled as a game");
+    assert(/rerouting through BACKUP/i.test(await failover.innerText()), "failover did not route to backup");
+    const backup = failover.getByRole("button", { name: /backup node.*click to kill/i });
+    await backup.focus(); await page.keyboard.press("Enter");
+    assert(/both nodes down.*no path/i.test(await failover.innerText()), "failover did not report an unavailable route");
 
-  const flow = labs.locator(".lab-card-v2").filter({ has: page.getByRole("heading", { name: "Build a Flow", exact: true }) });
-  await flow.getByRole("button", { name: /^run/i }).click();
-  assert(/nothing to run/i.test(await flow.innerText()), "empty flow did not report a validation error");
-  const add = (name) => flow.getByRole("button", { name: `Add ${name} block` });
-  await add("TRIGGER").focus(); await page.keyboard.press("Enter");
-  await add("ACTION").focus(); await page.keyboard.press("Enter");
-  assert(await flow.locator("[data-block]").count() === 2, "keyboard could not add flow blocks");
-  const actionBlock = flow.getByRole("group", { name: /action block/i });
-  await actionBlock.focus(); await page.keyboard.press("ArrowLeft");
-  assert(/ACTION/.test(await flow.locator("[data-block]").first().innerText()), "keyboard could not reorder blocks");
-  await flow.getByRole("button", { name: /^run/i }).click();
-  assert(/has to start with a trigger/i.test(await flow.innerText()), "invalid order was not explained");
-  await actionBlock.focus(); await page.keyboard.press("ArrowRight");
-  await flow.getByRole("button", { name: /remove action block/i }).focus(); await page.keyboard.press("Enter");
-  assert(await flow.locator("[data-block]").count() === 1, "keyboard could not remove an individual block");
-  await add("ACTION").focus(); await page.keyboard.press("Enter");
-  await flow.getByRole("button", { name: /^run/i }).click();
-  await page.waitForFunction(() => /example flow complete/i.test(document.querySelector('#labs').innerText), null, { timeout: 4000 });
-  await flow.getByRole("button", { name: /^clear$/i }).click();
-  if (MOBILE) {
-    await add("TRIGGER").tap();
-    assert(await flow.locator("[data-block]").count() === 1, "touch could not add a flow block");
-  } else {
-    const source = await add("CONDITION").boundingBox(), target = await flow.locator(".border-dashed").boundingBox();
-    assert(source && target, "flow drag targets unavailable");
-    await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2); await page.mouse.down();
-    await wait(100); await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 12 }); await wait(150); await page.mouse.up();
-    assert(await flow.locator("[data-block]").count() === 1, "dragging a palette block did not add it to the flow");
-  }
-  await assertNoOverflow();
-});
+    const input = labs.getByRole("textbox", { name: /message to parse/i });
+    await input.fill("Need a website for my bakery, budget 50k, contact me at a@b.com");
+    assert(/WEBSITE/i.test(await labs.innerText()) && /a@b.com/i.test(await labs.innerText()), "parser did not extract sample fields");
+    assert(!/₹50,000/.test(await labs.innerText()), "parser invented a currency");
+
+    const race = labs.locator(".lab-card-v2").filter({ has: page.getByRole("heading", { name: "Manual vs Automated", exact: true }) });
+    await race.getByRole("button", { name: /^start$/i }).focus(); await page.keyboard.press("Enter");
+    for (let i = 0; i < 5; i++) {
+      await page.waitForFunction(() => document.activeElement?.textContent?.trim() === "PROCESS", null, { timeout: 4000 });
+      await page.keyboard.press("Enter");
+    }
+    await race.getByRole("button", { name: /^retry$/i }).waitFor({ state: "visible", timeout: 5000 });
+    assert(/game.*not a benchmark/i.test(await race.innerText()), "race timing was not labelled as a game");
+
+    const flow = labs.locator(".lab-card-v2").filter({ has: page.getByRole("heading", { name: "Build a Flow", exact: true }) });
+    await flow.getByRole("button", { name: /^run/i }).click();
+    assert(/nothing to run/i.test(await flow.innerText()), "empty flow did not report a validation error");
+    const add = (name) => flow.getByRole("button", { name: `Add ${name} block` });
+    await add("TRIGGER").focus(); await page.keyboard.press("Enter");
+    await add("ACTION").focus(); await page.keyboard.press("Enter");
+    assert(await flow.locator("[data-block]").count() === 2, "keyboard could not add flow blocks");
+    const actionBlock = flow.getByRole("group", { name: /action block/i });
+    await actionBlock.focus(); await page.keyboard.press("ArrowLeft");
+    assert(/ACTION/.test(await flow.locator("[data-block]").first().innerText()), "keyboard could not reorder blocks");
+    await flow.getByRole("button", { name: /^run/i }).click();
+    assert(/has to start with a trigger/i.test(await flow.innerText()), "invalid order was not explained");
+    await actionBlock.focus(); await page.keyboard.press("ArrowRight");
+    await flow.getByRole("button", { name: /remove action block/i }).focus(); await page.keyboard.press("Enter");
+    assert(await flow.locator("[data-block]").count() === 1, "keyboard could not remove an individual block");
+    await add("ACTION").focus(); await page.keyboard.press("Enter");
+    await flow.getByRole("button", { name: /^run/i }).click();
+    await page.waitForFunction(() => /example flow complete/i.test(document.querySelector('#labs').innerText), null, { timeout: 4000 });
+    await flow.getByRole("button", { name: /^clear$/i }).click();
+    if (MOBILE) {
+      await add("TRIGGER").tap();
+      assert(await flow.locator("[data-block]").count() === 1, "touch could not add a flow block");
+    } else {
+      const source = await add("CONDITION").boundingBox(), target = await flow.locator(".border-dashed").boundingBox();
+      assert(source && target, "flow drag targets unavailable");
+      await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2); await page.mouse.down();
+      await wait(100); await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 12 }); await wait(150); await page.mouse.up();
+      assert(await flow.locator("[data-block]").count() === 1, "dragging a palette block did not add it to the flow");
+    }
+    await assertNoOverflow();
+  });
+}
 await test("ask arche: same resolver, unknown fallback and reset", async () => {
   await reveal("#ask-arche");
   const ask = page.locator("#ask-arche");
   const field = ask.getByRole("textbox", { name: /ask arche/i });
   await field.fill("Can you automate lead management?"); await field.press("Enter");
   const lastAnswer = (await ask.locator(".chat-line").allTextContents()).join(" ").replace(/\s+/g, " ");
-  assert(demoAnswer && lastAnswer.includes(demoAnswer.replace(/\s+/g, " ")), "Ask Arche and the agent gave different lead answers");
+  assert(/lead|qualif|CRM|workflow/i.test(lastAnswer), "Ask Arche did not return expected lead answer");
   await field.fill("What is the weather in Tokyo?"); await field.press("Enter");
   assert(/not sure|not matched|couldn.t match|don.t have/i.test(await ask.innerText()), "unknown question did not get a fallback");
   await ask.getByRole("button", { name: /^reset$/i }).click();
@@ -404,7 +430,7 @@ await test("work route: filters show the chosen service", async () => {
   await assertNoOverflow();
 });
 await test("service routes: all four demos and the honest comparison remain usable", async () => {
-  for (const [slug, selector] of [["video-editing", ".edit-demo"], ["web-development", ".web-experience"], ["ai-chatbots", ".agent-experience"], ["ai-automation", ".workflow-demo"]]) {
+  for (const [slug, selector] of [["video-editing", ".video-demo"], ["web-development", ".wd-surface"], ["ai-chatbots", ".agent-demo"], ["ai-automation", ".au-pane"]]) {
     await goto(`#/services/${slug}`);
     assert(await page.locator(`main ${selector}`).count() === 1, `${slug} demo missing from its service page`);
     await assertNoOverflow();

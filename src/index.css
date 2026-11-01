@@ -80,6 +80,17 @@ html {
   background: var(--bg);
 }
 
+html.arche-intro-loading,
+html.arche-intro-loading body {
+  background: var(--solid) !important;
+  color: var(--solid-fg) !important;
+  overflow: hidden;
+}
+
+html.arche-intro-loading #hero-aperture-wrap {
+  clip-path: inset(100% 50% 0 50% round 0px 0px 0 0);
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -909,188 +920,11 @@ textarea.field {
 .cluster-hover .cluster-pulse-ring {
   animation-duration: 1.15s;
 }
-/* ---------- Labs idle invitations (PROMPT 36) ----------
-   One distinct, very subtle looping micro-motion per sketch while
-   untouched — a pre-echo of each sketch's own triggered response,
-   dim and slow enough to read as "alive and waiting", never as a
-   competing animation. */
-/* 01 — ghost packet drifting the track when no payload is in flight */
-.lab-ghost-packet {
-  left: 8%;
-  opacity: 0;
-  animation: labGhostPacket 8s ease-in-out infinite;
-}
-@keyframes labGhostPacket {
-  0% {
-    left: 8%;
-    opacity: 0;
-  }
-  10% {
-    opacity: 0.3;
-  }
-  55% {
-    left: 88%;
-    opacity: 0.26;
-  }
-  66% {
-    opacity: 0;
-  }
-  100% {
-    left: 8%;
-    opacity: 0;
-  }
-}
-/* 02 — slow diagonal breathing wave across the dot matrix; it stands
-   down while the pointer (or a touch) is driving the field */
-.lab-dot {
-  animation: labDotWave 4.6s ease-in-out infinite;
-}
-@keyframes labDotWave {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-.attention-field:hover .lab-dot,
-.attention-field.attention-active .lab-dot {
-  animation: none;
-}
-/* 04 — soft anticipation halo on the node "Step" would enter next */
-.lab-idle-next {
-  animation: labNextBreath 3.8s ease-in-out infinite;
-}
-@keyframes labNextBreath {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(200, 241, 79, 0);
-  }
-  50% {
-    box-shadow: 0 0 14px 1px rgba(200, 241, 79, 0.22);
-  }
-}
-/* 05 — slow glow bloom behind the live type */
-.lab-bloom {
-  animation: labBloom 5.5s ease-in-out infinite;
-}
-@keyframes labBloom {
-  0%,
-  100% {
-    opacity: 0.25;
-    transform: translate(-50%, -50%) scale(0.96);
-  }
-  50% {
-    opacity: 0.6;
-    transform: translate(-50%, -50%) scale(1.05);
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .glyph-flow,
   .glyph-scan {
     animation: none;
   }
-  .lab-ghost-packet {
-    animation: none;
-    opacity: 0.18;
-    left: 48%;
-  }
-  .lab-dot,
-  .lab-idle-next,
-  .lab-bloom {
-    animation: none;
-  }
-}
-
-/* ---------- Arche Labs hover previews (paused until hover/focus) ---------- */
-.lab-card:hover {
-  transform: translateY(-4px);
-}
-.lab-anim {
-  animation-play-state: paused;
-}
-.lab-card:hover .lab-anim,
-.lab-card:focus-visible .lab-anim,
-.lab-card[aria-expanded="true"] .lab-anim {
-  animation-play-state: running;
-}
-@keyframes labFlow {
-  from {
-    left: 10%;
-  }
-  to {
-    left: 88%;
-  }
-}
-.lab-flow {
-  animation: labFlow 1.6s var(--e-inout) infinite;
-}
-@keyframes labBubbleA {
-  0%,
-  100% {
-    transform: translateX(0);
-    opacity: 1;
-  }
-  50% {
-    transform: translateX(8px);
-    opacity: 0.6;
-  }
-}
-@keyframes labBubbleB {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  50% {
-    transform: translateX(-10px);
-  }
-}
-.lab-bubble-a {
-  animation: labBubbleA 1.8s var(--e-inout) infinite;
-}
-.lab-bubble-b {
-  animation: labBubbleB 1.8s var(--e-inout) infinite 0.2s;
-}
-@keyframes labRise {
-  0%,
-  100% {
-    transform: scaleY(0.45);
-  }
-  50% {
-    transform: scaleY(1);
-  }
-}
-.lab-rise {
-  transform-origin: bottom;
-  animation: labRise 1.6s var(--e-inout) infinite;
-}
-@keyframes labRipple {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(2.2);
-  }
-}
-.lab-ripple {
-  animation: labRipple 1.5s var(--e-inout) infinite;
-}
-.lab-d0 {
-  animation-delay: 0s;
-}
-.lab-d1 {
-  animation-delay: 0.15s;
-}
-.lab-d2 {
-  animation-delay: 0.3s;
-}
-.lab-d3 {
-  animation-delay: 0.45s;
-}
-.lab-d4 {
-  animation-delay: 0.6s;
 }
 
 /* ---------- Problem: disconnected → connected ---------- */
@@ -2174,12 +2008,6 @@ img {
   .sv-signal-in { display: none; }
 }
 
-/* Prompt 41 — Labs: router completion burst + queue arrival */
-@keyframes labDoneBurst { from { transform: scale(1); opacity: 0.9; } to { transform: scale(2.2); opacity: 0; } }
-.lab-done-burst { animation: labDoneBurst 0.6s var(--e-out) forwards; }
-@keyframes labQIn { from { transform: translateX(-6px); opacity: 0; } to { transform: none; opacity: 0.8; } }
-.lab-q-in { animation: labQIn 0.25s var(--e-out) both; }
-@media (prefers-reduced-motion: reduce) { .lab-done-burst, .lab-q-in { animation: none; } }
 
 /* ================================================================
    PROMPT 42 — Labs material language: light + weight

@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { siteContent } from "../data/site";
 import { Link } from "../lib/router";
-import { gsap, prefersReducedMotion } from "../lib/gsap";
+import { gsap, ScrollTrigger, prefersReducedMotion } from "../lib/gsap";
+
 
 function Item({
   n,
@@ -101,6 +102,31 @@ function Item({
 export function FAQ() {
   const { label, statement, items } = siteContent.faq;
   const [open, setOpen] = useState<number | null>(0);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // Scroll-triggered stagger entrance for FAQ items
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    if (!list || prefersReducedMotion()) return;
+    const rows = Array.from(list.querySelectorAll<HTMLElement>(".faq-row"));
+    gsap.set(rows, { opacity: 0, y: 20 });
+    const ctx = gsap.context(() => {
+      ScrollTrigger.create({
+        trigger: list,
+        start: "top 82%",
+        once: true,
+        onEnter: () =>
+          gsap.to(rows, {
+            opacity: 1,
+            y: 0,
+            duration: 0.65,
+            ease: "power3.out",
+            stagger: 0.07,
+          }),
+      });
+    }, list);
+    return () => ctx.revert();
+  }, []);
 
   return (
     <section id="faq" className="w-full py-[clamp(70px,9vw,140px)]" style={{ background: "var(--bg-2)" }}>
@@ -120,10 +146,14 @@ export function FAQ() {
           </div>
         </div>
         <div className="lg:col-span-8">
-          {items.map((it, i) => (
-            <Item key={it.q} n={String(i + 1).padStart(2, "0")} q={it.q} a={it.a} open={open === i} onToggle={() => setOpen(open === i ? null : i)} />
-          ))}
-          <span className="block h-px w-full" style={{ background: "var(--line)" }} />
+          <div ref={listRef}>
+            {items.map((it, i) => (
+              <div key={it.q} className="faq-row">
+                <Item n={String(i + 1).padStart(2, "0")} q={it.q} a={it.a} open={open === i} onToggle={() => setOpen(open === i ? null : i)} />
+              </div>
+            ))}
+            <span className="block h-px w-full" style={{ background: "var(--line)" }} />
+          </div>
         </div>
       </div>
     </section>

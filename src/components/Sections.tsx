@@ -1,72 +1,295 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { siteContent, services } from "../data/site";
 import { Link } from "../lib/router";
-import { gsap, ScrollTrigger, onMotionPreferenceChange, prefersReducedMotion } from "../lib/gsap";
+import { gsap, ScrollTrigger, SplitText, onMotionPreferenceChange, prefersReducedMotion } from "../lib/gsap";
 import { HeroEnvironment } from "./HeroEnvironment";
-import { whenIntroDone } from "./Intro";
+import { isIntroActive } from "./Intro";
 
 /* ================================================================
-   HERO — quiet, precise, then alive. Statement lands word by word;
-   the four service modules tick along the base line.
+   HERO — quiet, precise, then alive. Orchestrated reveal,
+   desktop pointer idle on planes, scrubbed scroll-out over 100vh.
    ================================================================ */
 const HERO_LINES = ["Systems that make", "businesses work", "better."];
+
+function wrapLinesInMasks(lines: Element[]) {
+  lines.forEach((line) => {
+    const parent = line.parentElement;
+    if (!parent || !parent.classList.contains("split-line-mask")) {
+      const mask = document.createElement("div");
+      mask.className = "split-line-mask";
+      mask.style.overflow = "hidden";
+      mask.style.display = "block";
+      line.parentNode?.insertBefore(mask, line);
+      mask.appendChild(line);
+    }
+  });
+}
 
 export function Hero() {
   const root = useRef<HTMLElement>(null);
   const statement = useRef<HTMLHeadingElement>(null);
-  const rest = useRef<HTMLDivElement>(null);
+  const eyebrowText = useRef<HTMLSpanElement>(null);
+  const eyebrowHairline = useRef<HTMLSpanElement>(null);
+  const tagline = useRef<HTMLSpanElement>(null);
+  const subRef = useRef<HTMLParagraphElement>(null);
+  const buttonsRef = useRef<HTMLDivElement>(null);
+  const stripHairline = useRef<HTMLSpanElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
 
   const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion);
   useEffect(() => onMotionPreferenceChange(setReducedMotion), []);
 
   useLayoutEffect(() => {
-    if (reducedMotion || !root.current) return;
-    let intro: gsap.core.Timeline | null = null;
+    const heroEl = root.current;
+    if (!heroEl) return;
+
+    const reduce = reducedMotion || prefersReducedMotion();
+    if (reduce) return;
+
+    let splitHeadline: SplitText | null = null;
+    let splitTagline: SplitText | null = null;
+    let splitSub: SplitText | null = null;
+    let isRevealed = false;
     const ctx = gsap.context(() => {
-      const masks = statement.current!.querySelectorAll<HTMLElement>(".hl-mask");
-      const lines = statement.current!.querySelectorAll<HTMLElement>(".hl-line");
+      // Split headline lines
+      if (statement.current) {
+        splitHeadline = new SplitText(statement.current, {
+          type: "lines",
+          linesClass: "hl-split-line",
+        });
+        wrapLinesInMasks(splitHeadline.lines);
+      }
 
-      gsap.set(masks, { clipPath: "inset(100% 0% 0% 0%)" });
-      gsap.set(lines, { y: 14, filter: "blur(4px)" });
-      gsap.set(rest.current!.children, { opacity: 0, y: 12 });
+      // Split right tagline characters
+      if (tagline.current) {
+        splitTagline = new SplitText(tagline.current, {
+          type: "chars",
+          charsClass: "tagline-char",
+        });
+      }
 
-      intro = gsap
-        .timeline({ paused: true })
-        .to(masks, { clipPath: "inset(-14% 0% -22% 0%)", duration: 1.05, ease: "expo.out", stagger: 0.08 })
-        .to(lines, { y: 0, filter: "blur(0px)", duration: 1.05, ease: "expo.out", stagger: 0.08 }, 0)
-        .to(rest.current!.children, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out", stagger: 0.08 }, 0.6);
+      // Split sub paragraph lines
+      if (subRef.current) {
+        splitSub = new SplitText(subRef.current, {
+          type: "lines",
+          linesClass: "sub-split-line",
+        });
+        wrapLinesInMasks(splitSub.lines);
+      }
 
-      const layoutTop = (n: HTMLElement | null) => {
-        let y = 0;
-        while (n) {
-          y += n.offsetTop;
-          n = n.offsetParent as HTMLElement | null;
-        }
-        return y;
-      };
-      const LABEL_Y = 108;
-      const heroH = () => root.current!.offsetHeight;
-      const tyA = () => LABEL_Y + heroH() * 0.5 - layoutTop(statement.current);
+      const buttonEls = buttonsRef.current ? Array.from(buttonsRef.current.children) : [];
+      const serviceItems = stripRef.current ? stripRef.current.querySelectorAll<HTMLElement>(".hero-service-item") : [];
 
-      gsap
-        .timeline({
-          scrollTrigger: {
-            trigger: root.current,
-            start: "top top",
-            end: "bottom top",
-            scrub: 0.6,
-            invalidateOnRefresh: true,
+      // HERO SCROLL-OUT (scrubbed, scrub 0.6, over the first 100vh, no pin):
+      // - Headline lines move up at different rates (line 1 -20%, line 2 -35%, line 3 -50%)
+      //   and fade to opacity 0 between 60 and 100 percent.
+      // - Paragraph and buttons fade to 0.5 and then 0.
+      const scrollOut = gsap.timeline({
+        scrollTrigger: {
+          trigger: heroEl,
+          start: "top top",
+          end: "+=100%",
+          scrub: 0.6,
+          invalidateOnRefresh: true,
+        },
+      });
+
+      if (splitHeadline && splitHeadline.lines.length >= 3) {
+        scrollOut.to(splitHeadline.lines[0], { yPercent: -20, ease: "none", duration: 1 }, 0);
+        scrollOut.to(splitHeadline.lines[1], { yPercent: -35, ease: "none", duration: 1 }, 0);
+        scrollOut.to(splitHeadline.lines[2], { yPercent: -50, ease: "none", duration: 1 }, 0);
+        scrollOut.to(splitHeadline.lines, { opacity: 0, ease: "none", duration: 0.4 }, 0.6);
+      } else if (splitHeadline) {
+        scrollOut.to(splitHeadline.lines, { yPercent: -35, ease: "none", duration: 1 }, 0);
+        scrollOut.to(splitHeadline.lines, { opacity: 0, ease: "none", duration: 0.4 }, 0.6);
+      }
+
+      if (subRef.current && buttonsRef.current) {
+        scrollOut.to([subRef.current, buttonsRef.current], { opacity: 0.5, ease: "none", duration: 0.5 }, 0);
+        scrollOut.to([subRef.current, buttonsRef.current], { opacity: 0, ease: "none", duration: 0.5 }, 0.5);
+      }
+
+      if (stripRef.current) {
+        scrollOut.to(stripRef.current, { opacity: 0, ease: "none", duration: 0.4 }, 0.2);
+      }
+
+      // Pre-set elements for reveal
+      gsap.set(eyebrowHairline.current, { scaleX: 0, transformOrigin: "left center" });
+      gsap.set(eyebrowText.current, { y: 12, opacity: 0 });
+      if (splitHeadline) gsap.set(splitHeadline.lines, { yPercent: 110 });
+      if (splitTagline) gsap.set(splitTagline.chars, { opacity: 0 });
+      if (splitSub) gsap.set(splitSub.lines, { yPercent: 110 });
+      gsap.set(buttonEls, { y: 24, opacity: 0 });
+      gsap.set(stripHairline.current, { scaleX: 0, transformOrigin: "left center" });
+      gsap.set(serviceItems, { y: 16, opacity: 0 });
+
+      // Orchestrated Hero Reveal Timeline
+      const revealTl = gsap.timeline({
+        paused: true,
+        onComplete: () => {
+          isRevealed = true;
+        },
+      });
+
+      // Eyebrow: hairline scaleX 0 to 1 from left over 0.9s; text rises 12px and fades in
+      revealTl.to(eyebrowHairline.current, { scaleX: 1, duration: 0.9, ease: "power2.out" }, 0);
+      revealTl.to(eyebrowText.current, { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" }, 0.05);
+
+      // Headline: SplitText lines, masked, yPercent 110 to 0, 1.1s expo.out, stagger 0.09
+      if (splitHeadline) {
+        revealTl.to(
+          splitHeadline.lines,
+          {
+            yPercent: 0,
+            duration: 1.1,
+            ease: "expo.out",
+            stagger: 0.09,
           },
-        })
-        .to(statement.current, { scale: 0.2, y: tyA, opacity: 0.4, ease: "none", duration: 0.5 }, 0)
-        .to(rest.current, { opacity: 0, ease: "none", duration: 0.28 }, 0)
-        .to(".hero-strip", { opacity: 0, ease: "none", duration: 0.28 }, 0)
-        .to(statement.current, { y: () => tyA() + heroH() * 0.26, ease: "none", duration: 0.26 })
-        .to(statement.current, { y: () => tyA() + heroH() * 0.5, opacity: 0, ease: "none", duration: 0.24 });
-    }, root);
-    const cancel = whenIntroDone(() => intro?.play());
+          0.1
+        );
+      }
+
+      // Right tagline: types in by characters, 0.02s stagger, starting 0.4s after the headline (at 0.5s)
+      if (splitTagline) {
+        revealTl.to(
+          splitTagline.chars,
+          {
+            opacity: 1,
+            duration: 0.01,
+            stagger: 0.02,
+            ease: "none",
+          },
+          0.5
+        );
+      }
+
+      // Paragraph: masked line reveal, stagger 0.06
+      if (splitSub) {
+        revealTl.to(
+          splitSub.lines,
+          {
+            yPercent: 0,
+            duration: 0.9,
+            ease: "expo.out",
+            stagger: 0.06,
+          },
+          0.35
+        );
+      }
+
+      // Buttons: y 24 to 0 and opacity, 0.8s, stagger 0.1
+      revealTl.to(
+        buttonEls,
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.8,
+          ease: "power3.out",
+          stagger: 0.1,
+        },
+        0.55
+      );
+
+      // Bottom service row: its top hairline scaleX 0 to 1 over 0.9s, then each of the four items rises with stagger 0.08
+      revealTl.to(stripHairline.current, { scaleX: 1, duration: 0.9, ease: "power2.out" }, 0.4);
+      revealTl.to(
+        serviceItems,
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.6,
+          ease: "power3.out",
+          stagger: 0.08,
+        },
+        1.0
+      );
+
+      // Same-session reload: headline only reveal (0.9s)
+      const runFastReveal = () => {
+        gsap.set(eyebrowHairline.current, { scaleX: 1 });
+        gsap.set(eyebrowText.current, { y: 0, opacity: 1 });
+        if (splitTagline) gsap.set(splitTagline.chars, { opacity: 1 });
+        if (splitSub) gsap.set(splitSub.lines, { yPercent: 0 });
+        gsap.set(buttonEls, { y: 0, opacity: 1 });
+        gsap.set(stripHairline.current, { scaleX: 1 });
+        gsap.set(serviceItems, { y: 0, opacity: 1 });
+
+        if (splitHeadline) {
+          gsap.fromTo(
+            splitHeadline.lines,
+            { yPercent: 110 },
+            {
+              yPercent: 0,
+              duration: 0.9,
+              ease: "expo.out",
+              stagger: 0.08,
+              onComplete: () => {
+                isRevealed = true;
+              },
+            }
+          );
+        } else {
+          isRevealed = true;
+        }
+      };
+
+      let cleanupRevealListener = () => {};
+      if (!isIntroActive()) {
+        runFastReveal();
+      } else {
+        const onHeroReveal = () => {
+          revealTl.play();
+        };
+        window.addEventListener("arche:hero-reveal-start", onHeroReveal, { once: true });
+        const failsafe = window.setTimeout(onHeroReveal, 3200);
+        cleanupRevealListener = () => {
+          window.removeEventListener("arche:hero-reveal-start", onHeroReveal);
+          window.clearTimeout(failsafe);
+        };
+      }
+
+      // Handle window resize mid-reveal without flash or broken split text
+      let resizeTimer: number;
+      const onResize = () => {
+        window.clearTimeout(resizeTimer);
+        resizeTimer = window.setTimeout(() => {
+          if (splitHeadline && statement.current) {
+            splitHeadline.split({ type: "lines", linesClass: "hl-split-line" });
+            wrapLinesInMasks(splitHeadline.lines);
+            if (isRevealed) {
+              gsap.set(splitHeadline.lines, { yPercent: 0, opacity: 1 });
+            }
+          }
+          if (splitSub && subRef.current) {
+            splitSub.split({ type: "lines", linesClass: "sub-split-line" });
+            wrapLinesInMasks(splitSub.lines);
+            if (isRevealed) {
+              gsap.set(splitSub.lines, { yPercent: 0, opacity: 1 });
+            }
+          }
+          if (splitTagline && tagline.current) {
+            splitTagline.split({ type: "chars", charsClass: "tagline-char" });
+            if (isRevealed) {
+              gsap.set(splitTagline.chars, { opacity: 1 });
+            }
+          }
+          ScrollTrigger.refresh();
+        }, 120);
+      };
+
+      window.addEventListener("resize", onResize, { passive: true });
+
+      return () => {
+        cleanupRevealListener();
+        window.removeEventListener("resize", onResize);
+        window.clearTimeout(resizeTimer);
+        splitHeadline?.revert();
+        splitTagline?.revert();
+        splitSub?.revert();
+      };
+    }, heroEl);
+
     return () => {
-      cancel();
       ctx.revert();
     };
   }, [reducedMotion]);
@@ -77,7 +300,7 @@ export function Hero() {
     <section id="hero" ref={root} className="relative flex min-h-[92svh] w-full flex-col justify-end pt-[130px] pb-[26px]">
       <HeroEnvironment />
       {/* faint structural columns */}
-      <div className="pointer-events-none absolute inset-0 hidden justify-between px-[var(--gut)] md:flex" aria-hidden>
+      <div className="pointer-events-none absolute inset-0 hidden justify-between px-[var(--gut)] md:flex" aria-hidden="true">
         {Array.from({ length: 5 }).map((_, i) => (
           <span key={i} className="h-full w-px" style={{ background: "var(--line)", opacity: 0.5 }} />
         ))}
@@ -85,25 +308,25 @@ export function Hero() {
 
       <div className="wrap relative">
         <div className="mb-[22px] flex items-center gap-[14px]">
-          <span className="mono mono-a">{h.kicker}</span>
-          <span className="h-px flex-1" style={{ background: "var(--line)" }} />
-          <span className="mono hidden sm:block">{siteContent.brand.line}</span>
+          <span ref={eyebrowText} className="mono mono-a">{h.kicker}</span>
+          <span ref={eyebrowHairline} className="h-px flex-1 origin-left" style={{ background: "var(--line)" }} />
+          <span ref={tagline} className="mono hidden sm:block">{siteContent.brand.line}</span>
         </div>
 
         <h1 ref={statement} className="d1 relative" aria-label={h.statement} style={{ transformOrigin: "0% 0%" }}>
           {HERO_LINES.map((ln) => (
-            <span key={ln} className="hl-mask block md:whitespace-nowrap" aria-hidden>
-              <span className="hl-line block">{ln}</span>
+            <span key={ln} className="hl-line block md:whitespace-nowrap" aria-hidden="true">
+              {ln}
             </span>
           ))}
         </h1>
 
-        <div ref={rest} className="mt-[36px] flex flex-col gap-[26px] border-t pt-[24px] md:flex-row md:items-end md:justify-between" style={{ borderColor: "var(--line)" }}>
+        <div className="mt-[36px] flex flex-col gap-[26px] border-t pt-[24px] md:flex-row md:items-end md:justify-between" style={{ borderColor: "var(--line)" }}>
           <div className="max-w-[52ch]">
             <p className="mono mono-a mb-[10px]">What if everything worked together?</p>
-            <p className="body">{h.sub}</p>
+            <p ref={subRef} className="body">{h.sub}</p>
           </div>
-          <div className="flex flex-none flex-wrap gap-[10px]">
+          <div ref={buttonsRef} className="flex flex-none flex-wrap gap-[10px]">
             <Link to={h.ctaPrimary.to} className="btn" cursor="START" data-magnetic>
               {h.ctaPrimary.label} <span className="arw">→</span>
             </Link>
@@ -114,22 +337,26 @@ export function Hero() {
         </div>
 
         {/* service modules tick along the base */}
-        <div className="hero-strip mt-[22px] grid grid-cols-2 gap-px md:grid-cols-4" style={{ background: "var(--line)", border: "1px solid var(--line)" }}>
-          {services.map((s) => (
-            <Link key={s.slug} to={`/services/${s.slug}`} className="group flex items-center justify-between px-[16px] py-[13px]" style={{ background: "var(--bg)" }} cursor="OPEN">
-              <span className="mono mono-fg">
-                {s.n} — {s.title}
-              </span>
-              <span className="mono transition-transform duration-500 group-hover:translate-x-[4px]" style={{ color: "var(--accent-ink)" }}>
-                →
-              </span>
-            </Link>
-          ))}
+        <div ref={stripRef} className="hero-strip mt-[22px] relative" style={{ background: "var(--line)", border: "1px solid var(--line)" }}>
+          <span ref={stripHairline} className="absolute -top-px left-0 right-0 h-px origin-left" style={{ background: "var(--line)" }} />
+          <div className="grid grid-cols-2 gap-px md:grid-cols-4">
+            {services.map((s) => (
+              <Link key={s.slug} to={`/services/${s.slug}`} className="hero-service-item group flex items-center justify-between px-[16px] py-[13px]" style={{ background: "var(--bg)" }} cursor="OPEN">
+                <span className="mono mono-fg">
+                  {s.n} — {s.title}
+                </span>
+                <span className="mono transition-transform duration-500 group-hover:translate-x-[4px]" style={{ color: "var(--accent-ink)" }}>
+                  →
+                </span>
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
     </section>
   );
 }
+
 
 /* ================================================================
    APPROACH (Prompt 15) — quiet positioning.
@@ -181,7 +408,17 @@ export function Approach() {
   }, [reducedMotion]);
 
   return (
-    <section id="approach" ref={sectionRef} data-visible={visible} className="on-ink w-full py-[clamp(76px,10vw,150px)]">
+    <section id="approach" ref={sectionRef} data-visible={visible} className="on-ink relative w-full overflow-hidden py-[clamp(76px,10vw,150px)]">
+      {/* Ambient diagonal sweep — plays once on section entry */}
+      <div
+        className="approach-sweep pointer-events-none absolute inset-0"
+        style={{
+          background: "linear-gradient(135deg, transparent 0%, color-mix(in srgb, var(--accent) 5%, transparent) 45%, transparent 65%)",
+          transform: "translateX(-110%)",
+          transition: "transform 1.4s var(--e-inout)",
+        }}
+        aria-hidden
+      />
       <div className="wrap">
         <div className="mb-[clamp(36px,4vw,64px)] flex items-center gap-[16px]">
           <span className="mono" style={{ color: "var(--accent-ink)" }}>
@@ -513,7 +750,7 @@ function ApproachMorph({ active }: { active: number }) {
           <text
             key={i}
             x="100" y={i === 1 ? 78 : 70} textAnchor="middle" dominantBaseline="central"
-            className="mono" fontSize={i === 3 ? 8.5 : 9} fontWeight={700} fill="var(--accent)"
+            className="mono" fontSize={i === 3 ? 7 : 9} fontWeight={700} fill="var(--accent)"
             style={{ opacity: on(i) ? 1 : 0, transition: `opacity .4s ${on(i) ? ".7s" : "0s"}` }}
           >
             {st.hubLabel}

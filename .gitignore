@@ -14,4 +14,21 @@ node_modules/rollup/node_modules/
 # Local tooling / generated previews
 .DS_Store
 *.log
+*.png
 arche-preview*
+scripts/audit_artifacts/
+
+# Temporary diagnostic scripts & experiments
+scripts/audit-morph-engine.mjs
+scripts/capture-*.mjs
+scripts/check-overlap.mjs
+scripts/debug-copy.mjs
+scripts/diagnose-left-column.mjs
+scripts/inspect-spacing.mjs
+scripts/measure-vertical.mjs
+scripts/run-full-audit.mjs
+scripts/test-*.mjs
+
+node_modules/
+dist/
+
