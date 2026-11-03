@@ -179,6 +179,111 @@ export function ServiceHandoff() {
 
       measure();
       applyProgress(st.progress);
+
+      // --- 4. Continuous Signal Thread: Services -> Architecture ---
+      const archSec = document.getElementById("system-architecture");
+      const archScene = archSec?.querySelector<HTMLElement>(".relative.min-h-\\[440px\\]");
+      let ptServices: { x: number; y: number } = { x: 0, y: 0 };
+      let ptArch: { x: number; y: number } = { x: 0, y: 0 };
+
+      const measureArch = () => {
+        const activeRailDot =
+          document.querySelector<HTMLElement>('#services-stage [data-rail-dot="ai-automation"]') ||
+          document.querySelector<HTMLElement>('#services-stage [data-rail-dot]') ||
+          railDots[railDots.length - 1];
+        const archSocket =
+          document.querySelector<HTMLElement>('#system-architecture [data-glyph="input"]') ||
+          document.querySelector<HTMLElement>('#system-architecture .stage-glyph');
+
+        if (activeRailDot) {
+          const r = activeRailDot.getBoundingClientRect();
+          ptServices = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        }
+        if (archSocket) {
+          const r = archSocket.getBoundingClientRect();
+          ptArch = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        }
+      };
+
+      const applyArchProgress = (t: number) => {
+        if (t <= 0.005 || t >= 0.995) {
+          if (st.progress >= 0.995 || st.progress <= 0.005) {
+            layer.style.opacity = "0";
+          }
+          if (archScene) {
+            archScene.style.clipPath = "";
+          }
+        } else {
+          layer.style.opacity = "1";
+          // Only show dot 0 for Services -> Architecture
+          dotEls.slice(1).forEach((d) => {
+            if (d) d.style.opacity = "0";
+          });
+
+          if (dot0Ref.current && ptServices.x && ptArch.x) {
+            dot0Ref.current.style.opacity = "1";
+            const a = ptServices;
+            const b = ptArch;
+            const dx = b.x - a.x;
+            const dy = b.y - a.y;
+            const dist = Math.hypot(dx, dy);
+            let x = a.x + dx * t;
+            let y = a.y + dy * t;
+            if (dist > 1) {
+              const perpX = -dy / dist;
+              const perpY = dx / dist;
+              const offset = dist * 0.18;
+              const midX = (a.x + b.x) / 2 + perpX * offset;
+              const midY = (a.y + b.y) / 2 + perpY * offset;
+              const mt = 1 - t;
+              x = mt * mt * a.x + 2 * mt * t * midX + t * t * b.x;
+              y = mt * mt * a.y + 2 * mt * t * midY + t * t * b.y;
+            }
+            dot0Ref.current.style.transform = `translate(${x}px, ${y}px)`;
+          }
+
+          // Arch Aperture into Architecture scene
+          if (archScene) {
+            const topInset = (1 - t) * 30;
+            const xInset = (1 - t) * 15;
+            const sceneW = archScene.offsetWidth || 900;
+            const curW = sceneW * t;
+            const topR = Math.min(140, (curW / 2) * (1 - t) + 8 * t);
+            archScene.style.clipPath = `inset(${topInset.toFixed(2)}% ${xInset.toFixed(2)}% 0% ${xInset.toFixed(2)}% round ${Math.round(topR)}px ${Math.round(topR)}px 8px 8px)`;
+          }
+        }
+      };
+
+      if (archSec) {
+        ScrollTrigger.create({
+          id: "services-architecture-handoff",
+          trigger: archSec,
+          start: () => {
+            const sPin = ScrollTrigger.getById("services-pin");
+            return sPin ? sPin.end : 5000;
+          },
+          end: () => {
+            const aPin = ScrollTrigger.getById("3d-system-pinned-rail");
+            return aPin ? aPin.start : 5800;
+          },
+          scrub: 0.6,
+          invalidateOnRefresh: true,
+          onRefresh: (self) => {
+            measureArch();
+            applyArchProgress(self.progress);
+          },
+          onUpdate: (self) => {
+            applyArchProgress(self.progress);
+          },
+          onLeave: () => {
+            applyArchProgress(1);
+          },
+          onLeaveBack: () => {
+            applyArchProgress(0);
+          },
+        });
+        measureArch();
+      }
     });
 
     return () => ctx.revert();
@@ -216,3 +321,4 @@ export function ServiceHandoff() {
     </div>
   );
 }
+

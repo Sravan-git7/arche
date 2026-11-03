@@ -17,6 +17,7 @@ node_modules/rollup/node_modules/
 *.png
 arche-preview*
 scripts/audit_artifacts/
+audit_deliverables/
 
 # Temporary diagnostic scripts & experiments
 scripts/audit-morph-engine.mjs

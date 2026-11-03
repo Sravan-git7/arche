@@ -3,7 +3,7 @@
  * Standardized easing, duration, and stagger values per docs/MOTION_RULES.md.
  */
 
-export const EASE = {
+export const easing = {
   reveal: "expo.out",
   soft: "power3.out",
   inOut: "power3.inOut",
@@ -12,7 +12,7 @@ export const EASE = {
   scrub: "none",
 } as const;
 
-export const DUR = {
+export const duration = {
   micro: 0.18,
   short: 0.35,
   base: 0.6,
@@ -21,16 +21,22 @@ export const DUR = {
   hop: 0.8,
 } as const;
 
-export const STAGGER = {
+export const stagger = {
   line: 0.08,
   word: 0.04,
   item: 0.06,
 } as const;
 
+export const EASE = easing;
+export const DUR = duration;
+export const STAGGER = stagger;
+
 export const tokens = {
-  ease: EASE,
-  dur: DUR,
-  stagger: STAGGER,
+  easing,
+  duration,
+  stagger,
+  ease: easing,
+  dur: duration,
 } as const;
 
 export default tokens;

@@ -225,7 +225,7 @@ export function ArcheAssistant() {
                       {/* Structured project brief card when available */}
                       {m.brief && (
                         <div
-                          className="mt-[10px] rounded-[6px] border p-[14px]"
+                          className="mt-[10px] rounded-[6px] border p-[14px] sv-rise"
                           style={{
                             background: "var(--bg)",
                             borderColor: "var(--accent-deep)",
@@ -365,7 +365,7 @@ function TriggerPanel({ trigger, runId, busy, matched }: { trigger: VisualTrigge
     >
       <div className="flex items-center justify-between border-b px-[16px] py-[12px]" style={{ borderColor: "var(--line)" }}>
         <div className="flex items-center gap-[9px]">
-          <span className={`block h-[7px] w-[7px] rounded-full ${busy ? "demo-pulse" : ""}`} style={{ background: "var(--accent-deep)" }} />
+          <span key={`dot-${runId}`} className={`block h-[7px] w-[7px] rounded-full sv-pop ${busy ? "demo-pulse" : ""}`} style={{ background: "var(--accent-deep)" }} />
           <span className="mono mono-fg">System view</span>
         </div>
         <span className="mono swap-fade" key={trigger} style={{ color: "var(--accent-ink)" }}>

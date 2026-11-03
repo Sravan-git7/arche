@@ -158,6 +158,16 @@ export function ServiceTransitionLayer({
     window.addEventListener("resize", handleResize);
     return () => {
       window.removeEventListener("resize", handleResize);
+      if (currentTimeline.current) {
+        currentTimeline.current.kill();
+        currentTimeline.current = null;
+      }
+      if (morphLayerRef.current) {
+        morphLayerRef.current.innerHTML = "";
+      }
+      if (signalDotRef.current) {
+        gsap.set(signalDotRef.current, { display: "none", opacity: 0 });
+      }
     };
   }, []);
 
@@ -224,7 +234,15 @@ export function ServiceTransitionLayer({
 
     const isRetarget = isRetargeting.current;
     const durationSec = isRetarget ? RETARGET_DUR : GENERIC_MORPH_DUR;
-    const ease = isRetarget ? "power3.out" : "power3.inOut";
+    const targetEase =
+      incomingSlug === "video-editing"
+        ? "power3.inOut"
+        : incomingSlug === "web-development"
+          ? "power2.out"
+          : incomingSlug === "ai-automation"
+            ? "power3.inOut"
+            : "power2.out";
+    const ease = isRetarget ? "power3.out" : targetEase;
 
     // 1. Identify and prioritize roles for up to 6 simultaneous ghosts
     const availableRoles: SlabRole[] = [];
@@ -570,6 +588,15 @@ export function ServiceTransitionLayer({
         0.02
       );
     }
+
+    return () => {
+      if (tl) {
+        tl.kill();
+      }
+      if (morphLayerRef.current) {
+        morphLayerRef.current.innerHTML = "";
+      }
+    };
   }, [isTransitioning, outgoingSlug, incomingSlug, onTransitionComplete, stageContainerRef]);
 
   return (

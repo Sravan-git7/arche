@@ -53,11 +53,28 @@ export function Cursor() {
       });
     };
 
+    const isProblem = (el: HTMLElement | null) =>
+      Boolean(el?.closest?.("#problem, [data-chapter='Problem']"));
+
     const move = (e: PointerEvent) => {
-      if (!shown) {
-        shown = true;
-        gsap.to([d, r], { opacity: 1, duration: 0.3 });
+      const target = (e.target as HTMLElement | null) ?? (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null);
+      const inProblem = isProblem(target);
+
+      if (inProblem) {
+        gsap.to(r, { opacity: 0, duration: 0.1, overwrite: "auto" });
+        gsap.to(d, { opacity: 0, duration: 0.1, overwrite: "auto" });
+      } else {
+        if (!shown) {
+          shown = true;
+          gsap.to([d, r], { opacity: 1, duration: 0.3 });
+        } else {
+          gsap.to(r, { opacity: 1, duration: 0.2, overwrite: "auto" });
+          if (!target?.closest?.("[data-cursor]")) {
+            gsap.to(d, { opacity: 1, duration: 0.2, overwrite: "auto" });
+          }
+        }
       }
+
       dx(e.clientX);
       dy(e.clientY);
       if (magnet) {
@@ -74,6 +91,13 @@ export function Cursor() {
 
     const over = (e: PointerEvent) => {
       const el = e.target as HTMLElement | null;
+      if (isProblem(el)) {
+        setLabel("");
+        gsap.to(r, { opacity: 0, duration: 0.15, overwrite: "auto" });
+        gsap.to(d, { opacity: 0, duration: 0.15, overwrite: "auto" });
+        return;
+      }
+
       const labelled = el?.closest?.("[data-cursor]") as HTMLElement | null;
       const interactive = el?.closest?.("a,button,input,textarea,label,[role='slider']");
       // ring magnetism, like button magnetism, is reserved for primary CTAs
@@ -83,10 +107,12 @@ export function Cursor() {
         setLabel(labelled.dataset.cursor || "");
         setScale(1);
         gsap.to(d, { opacity: 0, duration: 0.2 });
+        gsap.to(r, { opacity: 1, duration: 0.2 });
       } else {
         setLabel("");
         setScale(interactive ? 0.7 : 0.42);
         gsap.to(d, { opacity: 1, duration: 0.2 });
+        gsap.to(r, { opacity: 1, duration: 0.2 });
       }
     };
 

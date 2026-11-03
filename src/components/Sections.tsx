@@ -123,7 +123,7 @@ export function Hero() {
       gsap.set(stripHairline.current, { scaleX: 0, transformOrigin: "left center" });
       gsap.set(serviceItems, { y: 16, opacity: 0 });
 
-      // Orchestrated Hero Reveal Timeline
+      // Orchestrated Hero Reveal Timeline — ACT 3: STATEMENT
       const revealTl = gsap.timeline({
         paused: true,
         onComplete: () => {
@@ -135,21 +135,22 @@ export function Hero() {
       revealTl.to(eyebrowHairline.current, { scaleX: 1, duration: 0.9, ease: "power2.out" }, 0);
       revealTl.to(eyebrowText.current, { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" }, 0.05);
 
-      // Headline: SplitText lines, masked, yPercent 110 to 0, 1.1s expo.out, stagger 0.09
+      // Headline: SplitText lines, masked, yPercent 110 to 0, 1.15s expo.out, stagger 0.09
+      // Lines arrive into full readability as the signal reaches its anchor point
       if (splitHeadline) {
         revealTl.to(
           splitHeadline.lines,
           {
             yPercent: 0,
-            duration: 1.1,
+            duration: 1.15,
             ease: "expo.out",
             stagger: 0.09,
           },
-          0.1
+          0.15
         );
       }
 
-      // Right tagline: types in by characters, 0.02s stagger, starting 0.4s after the headline (at 0.5s)
+      // Right tagline: types in by characters, 0.02s stagger, starting at 0.5s
       if (splitTagline) {
         revealTl.to(
           splitTagline.chars,
@@ -163,7 +164,7 @@ export function Hero() {
         );
       }
 
-      // Paragraph: masked line reveal, stagger 0.06
+      // Paragraph: masked line reveal, stagger 0.065
       if (splitSub) {
         revealTl.to(
           splitSub.lines,
@@ -171,9 +172,9 @@ export function Hero() {
             yPercent: 0,
             duration: 0.9,
             ease: "expo.out",
-            stagger: 0.06,
+            stagger: 0.065,
           },
-          0.35
+          0.65
         );
       }
 
@@ -187,21 +188,21 @@ export function Hero() {
           ease: "power3.out",
           stagger: 0.1,
         },
-        0.55
+        0.85
       );
 
-      // Bottom service row: its top hairline scaleX 0 to 1 over 0.9s, then each of the four items rises with stagger 0.08
-      revealTl.to(stripHairline.current, { scaleX: 1, duration: 0.9, ease: "power2.out" }, 0.4);
+      // Bottom service row: its top hairline scaleX 0 to 1 over 0.85s, then each of the four items rises with stagger 0.08
+      revealTl.to(stripHairline.current, { scaleX: 1, duration: 0.85, ease: "power2.out" }, 0.95);
       revealTl.to(
         serviceItems,
         {
           y: 0,
           opacity: 1,
-          duration: 0.6,
+          duration: 0.65,
           ease: "power3.out",
           stagger: 0.08,
         },
-        1.0
+        1.1
       );
 
       // Same-session reload: headline only reveal (0.9s)
@@ -895,8 +896,11 @@ export function ProcessSys() {
             </div>
           </div>
           <div className="flex flex-col md:col-span-9">
-            {/* Mobile companion diagram — same accumulating states, scroll-driven */}
-            <div className="mb-[26px] flex justify-center md:hidden">
+            {/* Mobile companion diagram — same accumulating states, stays sticky with the stages */}
+            <div
+              className="sticky top-[64px] z-10 mb-[16px] flex justify-center py-[8px] md:hidden"
+              style={{ background: "color-mix(in srgb, var(--bg) 92%, transparent)", backdropFilter: "blur(8px)" }}
+            >
               <ProcessVisual active={activeStep} compact />
             </div>
             {p.steps.map((s, si) => (
@@ -1392,3 +1396,4 @@ export function FinalCTA() {
     </section>
   );
 }
+

@@ -4,60 +4,43 @@ import { gsap, ScrollTrigger, onMotionPreferenceChange, prefersReducedMotion } f
 import { emitThread } from "../lib/threadBus";
 
 /**
- * PROBLEM — scroll-scrubbed storyboard where four disconnected tools become one system.
+ * ARCHÉ — PROBLEM SECTION 2.0: CINEMATIC SYSTEM TRANSFORMATION
  *
- * Storyboard by progress p (0 to 1), pinned for 260vh, scrub 0.6:
- * - p 0.00 to 0.12 — IDLE:
- *   Four cards idle independently: translateY ±3px loops with durations 3.1s, 4.3s, 3.7s, 5.0s;
- *   each card's status dot pulses (ring scale 1 to 1.6, opacity 0.6 to 0) with periods 1.6s, 2.2s, 1.9s, 2.7s;
- *   CRM text "No owner" flickers between opacity 0.55 and 1 every 2.3s.
- *   Loops stop and reset when p > 0.12, and resume when scrubbing back.
- * - p 0.12 to 0.30:
- *   Signal lands on WEBSITE card's status dot; card border tweens to lime;
- *   paragraph and headline lines reveal.
- * - p 0.30 to 0.42:
- *   Line draws (DrawSVG) from WEBSITE to EMAIL; EMAIL's value "Unread · 12m" changes to "Read"
- *   with masked text swap (0.3s). Counter rolls 0 -> 1.
- * - p 0.42 to 0.62:
- *   Two lines draw simultaneously: EMAIL to SHEET and WEBSITE to CRM (fan-out).
- *   SHEET and CRM status tags change from gray to lime; CRM value swaps to "Assigned".
- *   Counter rolls 1 -> 2 -> 3.
- * - p 0.62 to 0.80:
- *   Counter shows "4 TOOLS · 3 CONNECTIONS"; "CONNECTED" tag turns lime and flashes once.
- *   All four status dots pulse twice in unison (scale 1 to 1.8, 0.5s).
- *   Headline line B ("They have a connection problem.") tweens to ink, and a lime 4px underline
- *   draws under "connection".
- * - p 0.80 to 1.00:
- *   Four cards scale to 0.6 and fade to opacity 0 toward panel center;
- *   four status dots stay and glide to horizontal line at panel vertical center,
- *   connected by drawn lime line ("Website → AI Agent → Qualified Lead → CRM").
- *   Hold last 10% for reading.
+ * Visual & Motion Architecture:
+ * - Editorial Headline Composition: Art-directed line-breaking, comfortable reading rhythm,
+ *   authoritative cadence, with selective lime underline spanning "connection problem."
+ * - 4 Authentic Miniature Software Environments:
+ *   1. WEBSITE: Browser frame, URL chrome, form fields ("Acme Corp", "System Architecture"), submit state.
+ *   2. EMAIL: Inbox client, subject, sender ("client@acmecorp.com"), message preview, unread/read state.
+ *   3. CRM: Deal record #2048, stage badge, deal value ($24,000), unassigned -> assigned owner.
+ *   4. SHEET: Spreadsheet data grid, column headers (ROW, COMPANY, STAGE, SYNC), dual-write sync state.
+ *
+ * 5-Act Master Timeline (6.0s Scrubbed):
+ * - ACT 01 (0.0s–1.0s): Spatial entrance of 4 software environments into fragmented, tilted positions.
+ * - ACT 02 (1.0s–2.1s): Inquiry arrives at Website; asynchronous handoff friction, broken connectors pulse.
+ * - ACT 03 (2.1s–3.4s): Climax of friction; precision lime connectors draw, counter rolls (0->1->2->3).
+ * - ACT 04 (3.4s–4.8s): Spatial reorganization; cards part into dedicated clearance, central pipeline reveals:
+ *                       WEBSITE -> AI AGENT -> QUALIFIED LEAD -> CRM. Marker travels, Line B & underline ignite.
+ * - ACT 05 (4.8s–6.0s): ONE SYSTEM settled state; operational harmony, quiet hold before release into Services.
  */
-type CardId = "web" | "email" | "sheet" | "crm";
+
+type CardId = "web" | "email" | "crm" | "sheet";
 
 type Card = {
   id: CardId;
   k: string;
   a: string;
-  b?: string;
+  b: string;
   tag: string;
   targetLabel: string;
-  x: number; // stage units (160 × 110)
-  y: number;
-  rx: number; // compact-diagram x
-  idleDur: number;
-  pulsePeriod: number;
+  gridClass: string;
 };
 
-const W = 160;
-const H = 110;
-const ROW_Y = 58;
-
 const CARDS: Card[] = [
-  { id: "web", k: "Website", a: "New inquiry", tag: "Captured", targetLabel: "Website", x: 33, y: 24, rx: 20, idleDur: 3.1, pulsePeriod: 1.6 },
-  { id: "email", k: "Email", a: "Unread · 12m", b: "Read", tag: "Sent", targetLabel: "AI Agent", x: 127, y: 24, rx: 60, idleDur: 4.3, pulsePeriod: 2.2 },
-  { id: "sheet", k: "Sheet", a: "Row pending", tag: "Logged", targetLabel: "Qualified Lead", x: 127, y: 86, rx: 100, idleDur: 5.0, pulsePeriod: 2.7 },
-  { id: "crm", k: "CRM", a: "No owner", b: "Assigned", tag: "Assigned", targetLabel: "CRM", x: 33, y: 86, rx: 140, idleDur: 3.7, pulsePeriod: 1.9 },
+  { id: "web", k: "Website", a: "New inquiry", b: "Inquiry captured", tag: "Captured", targetLabel: "WEBSITE", gridClass: "top-left" },
+  { id: "email", k: "Email", a: "Waiting", b: "Read · 1m", tag: "Sent", targetLabel: "AI AGENT", gridClass: "top-right" },
+  { id: "crm", k: "CRM", a: "Unassigned", b: "Assigned", tag: "Assigned", targetLabel: "QUALIFIED LEAD", gridClass: "bottom-left" },
+  { id: "sheet", k: "Sheet", a: "Pending", b: "Row synced", tag: "Logged", targetLabel: "CRM", gridClass: "bottom-right" },
 ];
 
 const CARD_DETAIL: Record<CardId, { role: string; friction: string; resolved: string }> = {
@@ -71,22 +54,17 @@ const CARD_DETAIL: Record<CardId, { role: string; friction: string; resolved: st
     friction: "Someone reads, retypes and forwards the same details by hand.",
     resolved: "The request is parsed once, then passed on with its context intact.",
   },
-  sheet: {
-    role: "Record — holds the working data.",
-    friction: "A second copy of the truth, updated after the fact.",
-    resolved: "The row writes itself from the same event that fed the CRM.",
-  },
   crm: {
     role: "Ownership — decides what happens next.",
     friction: "No owner, no follow-up, no way to see what was lost.",
     resolved: "A qualified lead arrives with its history attached.",
   },
+  sheet: {
+    role: "Record — holds the working data.",
+    friction: "A second copy of the truth, updated after the fact.",
+    resolved: "The row writes itself from the same event that fed the CRM.",
+  },
 };
-
-// Connection paths between card edges
-const FAN = ["M58 24 H102", "M127 36 V74", "M33 36 V74"];
-const ROW = `M${CARDS[0].rx} ${ROW_Y} H${CARDS[3].rx}`;
-
 
 type InspectProps = { inspect: CardId | null; onInspect: (id: CardId | null) => void };
 type ProblemProps = InspectProps & { reduced: boolean };
@@ -95,9 +73,9 @@ function Inspector({ inspect, onInspect }: InspectProps) {
   const c = inspect ? CARDS.find((x) => x.id === inspect) : null;
   const d = inspect ? CARD_DETAIL[inspect] : null;
   return (
-    <div className="pf-inspector" aria-live="polite">
+    <div className="pf-inspector mt-[14px]" aria-live="polite">
       {c && d ? (
-        <>
+        <div className="rounded-[6px] border border-[var(--line)] bg-[var(--bg-2)] p-[12px]">
           <div className="flex items-start justify-between gap-[12px]">
             <span className="mono mono-a">{c.k} — {d.role}</span>
             <button
@@ -113,19 +91,12 @@ function Inspector({ inspect, onInspect }: InspectProps) {
             <span style={{ color: "var(--faint)" }}>Alone: </span>{d.friction}{" "}
             <span style={{ color: "var(--accent-ink)" }}>Connected: </span>{d.resolved}
           </p>
-        </>
+        </div>
       ) : (
-        <>
-          <span className="mono mono-a">Target state · conceptual model</span>
-          <p className="body-s mt-[8px]">
-            Website <span style={{ color: "var(--accent-ink)" }}>→</span> AI Agent{" "}
-            <span style={{ color: "var(--accent-ink)" }}>→</span> Qualified Lead{" "}
-            <span style={{ color: "var(--accent-ink)" }}>→</span> CRM
-          </p>
-          <span className="mono mt-[6px] block" style={{ color: "var(--faint)", fontSize: 9 }}>
-            Click or tap any tool to inspect it. Escape closes.
-          </span>
-        </>
+        <div className="flex items-center justify-between text-[11px] mono text-[var(--faint)] px-[4px]">
+          <span className="mono-a">Target state · conceptual model</span>
+          <span>Click any tool to inspect. Escape closes.</span>
+        </div>
       )}
     </div>
   );
@@ -134,46 +105,80 @@ function Inspector({ inspect, onInspect }: InspectProps) {
 function Copy({
   connectionUnderlineRef,
   lineBRef,
-  headlineRef,
   bodyRef,
 }: {
   connectionUnderlineRef?: React.RefObject<HTMLSpanElement | null>;
   lineBRef?: React.RefObject<HTMLHeadingElement | null>;
-  headlineRef?: React.RefObject<HTMLHeadingElement | null>;
   bodyRef?: React.RefObject<HTMLParagraphElement | null>;
 }) {
   const w = siteContent.whatWeDo;
   return (
-    <div className="flex flex-col gap-[20px]">
-      <p className="mono mono-a">{w.label}</p>
-      <h2 ref={headlineRef} className="d2" data-r="mask">
-        {w.lineA}
-      </h2>
-      <h2
-        ref={lineBRef}
-        className="d2 transition-colors duration-200"
-        data-r="mask"
-        style={{ color: "var(--faint)" }}
-      >
-        They have a{" "}
-        <span className="relative inline-block">
-          connection
-          <span
-            ref={connectionUnderlineRef}
-            className="pointer-events-none absolute bottom-0 left-0 h-[4px] w-full origin-left"
-            style={{
-              background: "var(--accent)",
-              transform: "scaleX(0)",
-              transformOrigin: "left center",
-            }}
-            aria-hidden="true"
-          />
-        </span>{" "}
-        problem.
-      </h2>
-      <p ref={bodyRef} className="body max-w-[46ch]" data-r="meta">
-        {w.body}
-      </p>
+    <div className="flex flex-col max-w-[56ch]">
+      {/* Editorial eyebrow with technical pulse */}
+      <div className="flex items-center gap-[10px] mb-[clamp(14px,1.8vh,22px)]">
+        <span className="inline-block w-[6px] h-[6px] rounded-full bg-[var(--accent)]" />
+        <span className="mono text-[11px] uppercase tracking-[0.14em] text-[var(--accent-ink)] font-medium">
+          {w.label} · ARCHITECTURAL DIAGNOSIS
+        </span>
+      </div>
+
+      {/* PRIMARY STATEMENT: Expressive oversized sans-serif */}
+      <div className="relative">
+        <div className="overflow-hidden">
+          <h2 className="pf-head-line text-[clamp(40px,4.4vw,66px)] font-medium leading-[0.94] tracking-[-0.045em] text-[var(--fg)]">
+            Most businesses
+          </h2>
+        </div>
+        <div className="overflow-hidden mt-[clamp(6px,0.9vh,10px)] flex items-baseline gap-[12px] flex-wrap">
+          <h2 className="pf-head-line text-[clamp(26px,2.8vw,42px)] font-normal leading-[1.04] tracking-[-0.035em] text-[var(--muted)]">
+            don't have a tool problem.
+          </h2>
+          <span className="mono text-[10px] text-[var(--faint)] tracking-widest uppercase border border-[var(--line)] px-[6px] py-[1.5px] rounded-[3px] select-none">
+            [TOOL OVERLOAD]
+          </span>
+        </div>
+      </div>
+
+      {/* ASYMMETRIC TURNING POINT: Indented editorial crescendo */}
+      <div className="mt-[clamp(22px,3vh,34px)] pl-[clamp(16px,2vw,32px)] border-l border-[var(--line)] relative">
+        <span className="mono text-[10px] uppercase tracking-[0.12em] text-[var(--faint)] mb-[6px] block">
+          THE STRUCTURAL DEFICIT //
+        </span>
+
+        <div className="overflow-hidden">
+          <h2
+            ref={lineBRef}
+            className="pf-head-line text-[clamp(34px,3.6vw,54px)] font-medium leading-[1.02] tracking-[-0.04em] transition-colors duration-300"
+            style={{ color: "var(--faint)" }}
+          >
+            <span className="block text-[clamp(19px,1.9vw,28px)] font-normal text-[var(--muted)] tracking-[-0.02em] leading-snug mb-[3px]">
+              They have a
+            </span>
+            <span className="relative inline-block font-semibold">
+              connection problem.
+              <span
+                ref={connectionUnderlineRef}
+                className="origin-left pointer-events-none absolute bottom-[-4px] left-0 h-[3px] w-full"
+                style={{
+                  background: "var(--accent)",
+                  transform: "scaleX(0)",
+                  transformOrigin: "left center",
+                }}
+                aria-hidden="true"
+              />
+            </span>
+          </h2>
+        </div>
+
+        {/* Supporting Narrative Paragraph: Nestled directly under connection problem */}
+        <p
+          ref={bodyRef}
+          className="body mt-[clamp(16px,2vh,24px)] max-w-[44ch] text-[clamp(14px,0.95vw,16px)] leading-[1.65] text-[var(--muted)]"
+          data-r="meta"
+        >
+          {w.body}
+        </p>
+      </div>
     </div>
   );
 }
@@ -206,15 +211,15 @@ export function ProblemSystem() {
 }
 
 /* ================================================================== */
-/* Desktop — pinned for 260vh, scrubbed 0.6                           */
+/* Desktop — 2-column composition, 6.0s cinematic animation sequence   */
 /* ================================================================== */
 function ProblemPinned({ inspect, onInspect, reduced }: ProblemProps) {
   const root = useRef<HTMLElement>(null);
   const stage = useRef<HTMLDivElement>(null);
+  const sceneContentRef = useRef<HTMLDivElement>(null);
   const counterCol = useRef<HTMLSpanElement>(null);
   const counterUnit = useRef<HTMLSpanElement>(null);
   const stateRef = useRef<HTMLSpanElement>(null);
-  const headlineRef = useRef<HTMLHeadingElement>(null);
   const lineBRef = useRef<HTMLHeadingElement>(null);
   const connectionUnderlineRef = useRef<HTMLSpanElement>(null);
   const bodyRef = useRef<HTMLParagraphElement>(null);
@@ -226,632 +231,791 @@ function ProblemPinned({ inspect, onInspect, reduced }: ProblemProps) {
 
     const reduce = reduced || prefersReducedMotion();
     if (reduce) {
+      // Completed, stable state for reduced motion
+      const cardWeb = st.querySelector<HTMLElement>('[data-card="web"]');
+      const cardEmail = st.querySelector<HTMLElement>('[data-card="email"]');
+      const cardCrm = st.querySelector<HTMLElement>('[data-card="crm"]');
+      const cardSheet = st.querySelector<HTMLElement>('[data-card="sheet"]');
+      if (cardWeb) gsap.set(cardWeb, { x: 0, y: -12, rotation: 0, opacity: 0.88 });
+      if (cardEmail) gsap.set(cardEmail, { x: 0, y: -12, rotation: 0, opacity: 0.88 });
+      if (cardCrm) gsap.set(cardCrm, { x: 0, y: 12, rotation: 0, opacity: 0.88 });
+      if (cardSheet) {
+        cardSheet.setAttribute("data-flip", "1");
+        gsap.set(cardSheet, { x: 0, y: 12, rotation: 0, opacity: 0.88 });
+      }
+      const solidConns = Array.from(st.querySelectorAll<SVGPathElement>(".pf-solid-conn"));
+      gsap.set(solidConns, { drawSVG: "100%", opacity: 0.25 });
+      if (counterCol.current) gsap.set(counterCol.current, { y: "-3.6em" });
+      if (counterUnit.current) counterUnit.current.textContent = "connections";
+      if (stateRef.current) {
+        stateRef.current.textContent = "ONE SYSTEM";
+        stateRef.current.style.color = "var(--accent-ink)";
+      }
+      if (lineBRef.current) gsap.set(lineBRef.current, { color: "var(--fg)" });
+      if (connectionUnderlineRef.current) gsap.set(connectionUnderlineRef.current, { scaleX: 1 });
+      const statusBs = Array.from(st.querySelectorAll<HTMLElement>(".pf-status-b"));
+      const statusAs = Array.from(st.querySelectorAll<HTMLElement>(".pf-status-a"));
+      gsap.set(statusAs, { opacity: 0 });
+      gsap.set(statusBs, { opacity: 1 });
+      const procContainer = st.querySelector<HTMLElement>(".pf-proc-lane");
+      if (procContainer) gsap.set(procContainer, { opacity: 1 });
+      const processStages = Array.from(st.querySelectorAll<HTMLElement>(".pf-proc-stage"));
+      gsap.set(processStages, { opacity: 1, color: "var(--fg)", fontWeight: "600" });
+      const compactAnchors = Array.from(st.querySelectorAll<HTMLElement>(".pf-compact-anchor"));
+      gsap.set(compactAnchors, { opacity: 1 });
       return;
     }
 
     const cardWeb = st.querySelector<HTMLElement>('[data-card="web"]')!;
     const cardEmail = st.querySelector<HTMLElement>('[data-card="email"]')!;
-    const cardSheet = st.querySelector<HTMLElement>('[data-card="sheet"]')!;
     const cardCrm = st.querySelector<HTMLElement>('[data-card="crm"]')!;
-    const cardEls = [cardWeb, cardEmail, cardSheet, cardCrm];
+    const cardSheet = st.querySelector<HTMLElement>('[data-card="sheet"]')!;
+    const cardEls = [cardWeb, cardEmail, cardCrm, cardSheet];
 
-    const fanLines = Array.from(st.querySelectorAll<SVGPathElement>(".pf-fan"));
-    const fanGroup = st.querySelector<SVGGElement>(".pf-fan-g")!;
-    const rowLine = st.querySelector<SVGPathElement>(".pf-row")!;
-    const slots = Array.from(st.querySelectorAll<HTMLElement>("[data-thread-slot]"));
+    const brokenConns = Array.from(st.querySelectorAll<SVGPathElement>(".pf-broken-conn"));
+    const solidConns = Array.from(st.querySelectorAll<SVGPathElement>(".pf-solid-conn"));
 
     const dotWeb = cardWeb.querySelector<HTMLElement>(".pf-dot")!;
     const dotEmail = cardEmail.querySelector<HTMLElement>(".pf-dot")!;
-    const dotSheet = cardSheet.querySelector<HTMLElement>(".pf-dot")!;
     const dotCrm = cardCrm.querySelector<HTMLElement>(".pf-dot")!;
+    const dotSheet = cardSheet.querySelector<HTMLElement>(".pf-dot")!;
 
-    const pulseRings = Array.from(st.querySelectorAll<HTMLElement>(".pf-pulse-ring"));
-    const unisonRings = Array.from(st.querySelectorAll<HTMLElement>(".pf-unison-ring"));
-    const crmValA = cardCrm.querySelector<HTMLElement>(".pf-crm-val-a");
-    const crmValB = cardCrm.querySelector<HTMLElement>(".pf-crm-val-b");
-    const emailValA = cardEmail.querySelector<HTMLElement>(".pf-email-val-a");
-    const emailValB = cardEmail.querySelector<HTMLElement>(".pf-email-val-b");
-    const sheetValA = cardSheet.querySelector<HTMLElement>(".pf-sheet-val-a");
-    const sheetValB = cardSheet.querySelector<HTMLElement>(".pf-sheet-val-b");
+    const statusWebA = cardWeb.querySelector<HTMLElement>(".pf-status-a");
+    const statusWebB = cardWeb.querySelector<HTMLElement>(".pf-status-b");
+    const statusEmailA = cardEmail.querySelector<HTMLElement>(".pf-status-a");
+    const statusEmailB = cardEmail.querySelector<HTMLElement>(".pf-status-b");
+    const statusCrmA = cardCrm.querySelector<HTMLElement>(".pf-status-a");
+    const statusCrmB = cardCrm.querySelector<HTMLElement>(".pf-status-b");
+    const statusSheetA = cardSheet.querySelector<HTMLElement>(".pf-status-a");
+    const statusSheetB = cardSheet.querySelector<HTMLElement>(".pf-status-b");
     const sheetTag = cardSheet.querySelector<HTMLElement>(".pf-tag");
-    const crmTag = cardCrm.querySelector<HTMLElement>(".pf-tag");
 
-    const targetRowLabels = Array.from(st.querySelectorAll<HTMLElement>(".pf-target-label"));
-    const morphNodes = Array.from(st.querySelectorAll<HTMLElement>(".pf-morph-node"));
+    const webActionBadge = cardWeb.querySelector<HTMLElement>(".pf-web-action");
+    const emailMetaBadge = cardEmail.querySelector<HTMLElement>(".pf-email-meta");
+    const crmOwnerBadge = cardCrm.querySelector<HTMLElement>(".pf-crm-owner");
+    const sheetSyncBadge = cardSheet.querySelector<HTMLElement>(".pf-sheet-sync");
 
-    // Set initial states
-    gsap.set(fanLines, { drawSVG: "0%" });
-    gsap.set(rowLine, { drawSVG: "0%" });
-    gsap.set(pulseRings, { scale: 1, opacity: 0 });
-    gsap.set(unisonRings, { scale: 1, opacity: 0 });
-    gsap.set(connectionUnderlineRef.current, { scaleX: 0 });
-    gsap.set(targetRowLabels, { opacity: 0, y: 6 });
-    gsap.set(morphNodes, { opacity: 0 });
-
-    let idleTweens: gsap.core.Tween[] = [];
-    let idleActive = false;
-
-    // Start idle animations (p 0.00 to 0.12)
-    const startIdle = () => {
-      if (idleActive) return;
-      idleActive = true;
-      idleTweens = [];
-
-      // 1. Independent translateY ±3px loops: 3.1s, 4.3s, 5.0s, 3.7s
-      const cardDurations = [3.1, 4.3, 5.0, 3.7];
-      cardEls.forEach((cardEl, i) => {
-        idleTweens.push(
-          gsap.fromTo(
-            cardEl,
-            { y: -3 },
-            {
-              y: 3,
-              duration: cardDurations[i] / 2,
-              ease: "sine.inOut",
-              yoyo: true,
-              repeat: -1,
-            }
-          )
-        );
-      });
-
-      // 2. Unsynced status dot pulse rings (scale 1 to 1.6, opacity 0.6 to 0)
-      const ringPeriods = [1.6, 2.2, 2.7, 1.9];
-      pulseRings.forEach((ring, i) => {
-        idleTweens.push(
-          gsap.fromTo(
-            ring,
-            { scale: 1, opacity: 0.6 },
-            {
-              scale: 1.6,
-              opacity: 0,
-              duration: ringPeriods[i],
-              ease: "power2.out",
-              repeat: -1,
-            }
-          )
-        );
-      });
-
-      // 3. CRM "No owner" flickers between 0.55 and 1 every 2.3s
-      if (crmValA) {
-        idleTweens.push(
-          gsap.fromTo(
-            crmValA,
-            { opacity: 1 },
-            {
-              opacity: 0.55,
-              duration: 1.15,
-              ease: "sine.inOut",
-              yoyo: true,
-              repeat: -1,
-            }
-          )
-        );
+    const procContainer = st.querySelector<HTMLElement>(".pf-proc-lane");
+    const procStages = Array.from(st.querySelectorAll<HTMLElement>(".pf-proc-stage"));
+    const procConns = Array.from(st.querySelectorAll<SVGLineElement>(".pf-proc-line"));
+    const procMarkers = Array.from(st.querySelectorAll<SVGRectElement>(".pf-proc-marker"));
+    const compactAnchors = Array.from(st.querySelectorAll<HTMLElement>(".pf-compact-anchor"));
+    const connectionCompletionTimes = [2.55, 2.73, 2.91];
+    let masterTl: gsap.core.Timeline | null = null;
+    const syncConnectionCounter = () => {
+      const connectionCount = connectionCompletionTimes.filter((time) => (masterTl?.time() ?? 0) >= time).length;
+      if (counterUnit.current) {
+        counterUnit.current.textContent = connectionCount === 1 ? "connection" : "connections";
       }
     };
 
-    const stopIdle = () => {
-      if (!idleActive) return;
-      idleActive = false;
-      idleTweens.forEach((tw) => tw.kill());
-      idleTweens = [];
-      gsap.set(cardEls, { y: 0 });
-      gsap.set(pulseRings, { scale: 1, opacity: 0 });
-      if (crmValA) gsap.set(crmValA, { opacity: 1 });
-      if (crmValB) gsap.set(crmValB, { opacity: 0 });
-      if (sheetValA) gsap.set(sheetValA, { y: 0, opacity: 1 });
-      if (sheetValB) gsap.set(sheetValB, { y: 0, opacity: 0 });
-    };
+    // Initial setup:
+    // ACT 1 initial spatial offsets with distinct entrance personalities
+    gsap.set(cardWeb, { x: -32, y: -22, rotation: -3.5, opacity: 0.7, scale: 0.95 });
+    gsap.set(cardEmail, { x: 30, y: -18, rotation: 3.0, opacity: 0.7, scale: 0.95 });
+    gsap.set(cardCrm, { x: -26, y: 24, rotation: 2.2, opacity: 0.7, scale: 0.95 });
+    gsap.set(cardSheet, { x: 32, y: 20, rotation: -2.8, opacity: 0.7, scale: 0.95 });
 
-    startIdle();
+    gsap.set(solidConns, { drawSVG: "0%", opacity: 1 });
+    gsap.set(brokenConns, { opacity: 0.35 });
+    gsap.set([statusWebB, statusEmailB, statusCrmB, statusSheetB], { opacity: 0 });
+    gsap.set(connectionUnderlineRef.current, { scaleX: 0 });
+    gsap.set(procContainer, { opacity: 0 });
+    gsap.set(procConns, { drawSVG: "0%" });
+    gsap.set(procMarkers, { opacity: 0 });
+    gsap.set(compactAnchors, { opacity: 0 });
 
     const ctx = gsap.context(() => {
-      const masterTl = gsap.timeline({
+      // Headline line reveal on section entry
+      gsap.fromTo(
+        ".pf-head-line",
+        { y: 35, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.65,
+          stagger: 0.10,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: sec,
+            start: "top 80%",
+            toggleActions: "play none none reverse",
+          },
+        }
+      );
+
+      // MAIN 6.0s MASTER TIMELINE
+      masterTl = gsap.timeline({
+        onUpdate: syncConnectionCounter,
         scrollTrigger: {
           id: "problem-pin",
           trigger: sec,
           start: "top top",
-          end: () => `+=${Math.round(window.innerHeight * 2.6)}`,
+          end: () => `+=${Math.round(window.innerHeight * 2.4)}`,
           pin: true,
+          pinSpacing: true,
           anticipatePin: 1,
           scrub: 0.6,
           invalidateOnRefresh: true,
           onUpdate: (self) => {
-            const p = self.progress;
-            if (p <= 0.12) {
-              startIdle();
-            } else {
-              stopIdle();
-            }
-
-            // Update status text units
-            if (counterUnit.current) {
-              counterUnit.current.textContent = p >= 0.38 && p < 0.50 ? " connection" : " connections";
-            }
             if (stateRef.current) {
-              if (p < 0.62) {
+              if (self.progress < 0.80) {
                 stateRef.current.textContent = "Disconnected";
                 stateRef.current.style.color = "var(--faint)";
-              } else if (p >= 0.85) {
-                stateRef.current.textContent = "one system";
-                stateRef.current.style.color = "var(--accent-ink)";
               } else {
-                stateRef.current.textContent = "Connected";
+                stateRef.current.textContent = "ONE SYSTEM";
                 stateRef.current.style.color = "var(--accent-ink)";
               }
             }
           },
         },
       });
-
-      // Storyboard timeline mapping directly to progress [0, 1]:
+      syncConnectionCounter();
 
       // -------------------------------------------------------------
-      // p 0.12 to 0.30: Signal lands on WEBSITE; border tweens to lime;
-      // headline & paragraph revealed
+      // ACT 1 — THE FRAGMENTED ECOSYSTEM (0.0s – 1.0s)
+      // The 4 distinct miniature software environments enter the visual
+      // stage, settling into visibly separated, uncoordinated positions.
       // -------------------------------------------------------------
       masterTl.to(
-        cardWeb,
+        [cardWeb, cardEmail, cardCrm, cardSheet],
         {
-          borderColor: "var(--accent)",
-          boxShadow: "0 0 16px -4px color-mix(in srgb, var(--accent) 35%, transparent)",
-          duration: 0.10,
-          ease: "power2.out",
+          x: 0,
+          y: 0,
+          rotation: (i) => (i === 0 ? -1.5 : i === 1 ? 1.5 : i === 2 ? 1.2 : -1.2),
+          opacity: 1,
+          scale: 1,
+          duration: 0.85,
+          stagger: 0.08,
+          ease: "power3.out",
         },
-        0.18
-      );
-      masterTl.to(
-        dotWeb,
-        {
-          backgroundColor: "var(--accent)",
-          boxShadow: "0 0 12px 2px color-mix(in srgb, var(--accent) 70%, transparent)",
-          duration: 0.10,
-        },
-        0.18
+        0.05
       );
 
-      // Headline and paragraph reveal
-      if (headlineRef.current && bodyRef.current) {
-        masterTl.fromTo(
-          [headlineRef.current, bodyRef.current],
-          { opacity: 0.5, y: 10 },
-          { opacity: 1, y: 0, duration: 0.12, ease: "power2.out" },
-          0.12
-        );
-      }
-
-      // -------------------------------------------------------------
-      // p 0.30 to 0.42: Line draws from WEBSITE to EMAIL;
-      // EMAIL's value "Unread · 12m" changes to "Read" (masked swap);
-      // counter rolls 0 -> 1
-      // -------------------------------------------------------------
       masterTl.fromTo(
-        fanLines[0],
-        { drawSVG: "0%" },
-        { drawSVG: "100%", duration: 0.12, ease: "power2.inOut" },
-        0.30
+        brokenConns,
+        { opacity: 0, scale: 0.95 },
+        { opacity: 0.45, scale: 1, duration: 0.6, ease: "power2.out", stagger: 0.08 },
+        0.20
       );
 
-      if (emailValA && emailValB) {
-        masterTl.to(emailValA, { y: -10, opacity: 0, duration: 0.05, ease: "power2.in" }, 0.34);
-        masterTl.fromTo(emailValB, { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.05, ease: "power2.out" }, 0.37);
+      // -------------------------------------------------------------
+      // ACT 2 — THE CONNECTION FAILURE (1.0s – 2.1s)
+      // An inquiry lands at the Website. It tries to hand off to the rest
+      // of the business, but the tools are isolated silos.
+      // -------------------------------------------------------------
+      // Broken connectors asynchronous tension pulse
+      masterTl.to(brokenConns[0], { opacity: 0.8, stroke: "var(--muted)", duration: 0.25, yoyo: true, repeat: 1, ease: "sine.inOut" }, 1.10);
+      masterTl.to(brokenConns[1], { opacity: 0.8, stroke: "var(--muted)", duration: 0.25, yoyo: true, repeat: 1, ease: "sine.inOut" }, 1.30);
+      masterTl.to(brokenConns[2], { opacity: 0.8, stroke: "var(--muted)", duration: 0.25, yoyo: true, repeat: 1, ease: "sine.inOut" }, 1.50);
+
+      // 1. Website: Inbound inquiry triggers capture
+      if (statusWebA && statusWebB) {
+        masterTl.to(statusWebA, { opacity: 0, duration: 0.15, ease: "power2.in" }, 1.05);
+        masterTl.to(statusWebB, { opacity: 1, duration: 0.20, ease: "power2.out" }, 1.20);
+        masterTl.to(cardWeb, { borderColor: "var(--accent)", boxShadow: "0 0 18px -2px color-mix(in srgb, var(--accent) 35%, transparent)", duration: 0.15 }, 1.05);
+        masterTl.to(dotWeb, { backgroundColor: "var(--accent)", boxShadow: "0 0 10px 2px color-mix(in srgb, var(--accent) 70%, transparent)", duration: 0.15 }, 1.05);
+        if (webActionBadge) {
+          masterTl.to(webActionBadge, { textContent: "✓ CAPTURED", color: "var(--accent-ink)", duration: 0.15 }, 1.10);
+        }
       }
 
-      masterTl.to(
-        cardEmail,
-        {
-          borderColor: "var(--accent)",
-          boxShadow: "0 0 16px -4px color-mix(in srgb, var(--accent) 35%, transparent)",
-          duration: 0.08,
-          ease: "power2.out",
-        },
-        0.38
-      );
-      masterTl.to(
-        dotEmail,
-        {
-          backgroundColor: "var(--accent)",
-          boxShadow: "0 0 12px 2px color-mix(in srgb, var(--accent) 70%, transparent)",
-          duration: 0.08,
-        },
-        0.38
-      );
+      // 2. Email: Delayed, uncoordinated arrival
+      if (statusEmailA && statusEmailB) {
+        masterTl.to(statusEmailA, { opacity: 0, duration: 0.15, ease: "power2.in" }, 1.25);
+        masterTl.to(statusEmailB, { opacity: 1, duration: 0.20, ease: "power2.out" }, 1.40);
+        if (emailMetaBadge) {
+          masterTl.to(emailMetaBadge, { textContent: "MANUAL FORWARD", color: "var(--muted)", duration: 0.15 }, 1.35);
+        }
+      }
+
+      // 3. CRM: Orphaned record created with delay
+      if (statusCrmA && statusCrmB) {
+        masterTl.to(statusCrmA, { opacity: 0, duration: 0.15, ease: "power2.in" }, 1.45);
+        masterTl.to(statusCrmB, { opacity: 1, duration: 0.20, ease: "power2.out" }, 1.60);
+        if (crmOwnerBadge) {
+          masterTl.to(crmOwnerBadge, { textContent: "UNASSIGNED", color: "var(--muted)", duration: 0.15 }, 1.55);
+        }
+      }
+
+      // 4. Sheet: Out of sync row update
+      masterTl.set(cardSheet, { attr: { "data-flip": "1" } }, 1.65);
+      if (statusSheetA && statusSheetB) {
+        masterTl.to(statusSheetA, { opacity: 0, duration: 0.15, ease: "power2.in" }, 1.65);
+        masterTl.to(statusSheetB, { opacity: 1, duration: 0.20, ease: "power2.out" }, 1.80);
+        if (sheetSyncBadge) {
+          masterTl.to(sheetSyncBadge, { textContent: "DESYNCED", color: "var(--muted)", duration: 0.15 }, 1.75);
+        }
+      }
+
+      // -------------------------------------------------------------
+      // ACT 3 — THE BREAKDOWN & RECONNECTION (2.1s – 3.4s)
+      // The breakdown transitions into Arche's precision infrastructure.
+      // Solid lime connectors draw in sequence; tools pulse as they connect.
+      // Counter increments synchronously: 0 -> 1 -> 2 -> 3.
+      // -------------------------------------------------------------
+      // Connection 1: Website -> Email
+      masterTl.to(solidConns[0], { drawSVG: "100%", duration: 0.55, ease: "power2.inOut" }, 2.00);
+      masterTl.to(brokenConns[0], { opacity: 0, duration: 0.3 }, 2.10);
+
+      masterTl.to([cardWeb, cardEmail], {
+        borderColor: "var(--accent)",
+        boxShadow: "0 0 16px -2px color-mix(in srgb, var(--accent) 35%, transparent)",
+        duration: 0.2,
+      }, 2.50);
+      masterTl.to([dotWeb, dotEmail], {
+        backgroundColor: "var(--accent)",
+        boxShadow: "0 0 10px 2px color-mix(in srgb, var(--accent) 70%, transparent)",
+        duration: 0.2,
+      }, 2.50);
+      masterTl.to([cardWeb, cardEmail], {
+        scale: 1.015,
+        duration: 0.10,
+        yoyo: true,
+        repeat: 1,
+        ease: "sine.inOut",
+      }, 2.52);
 
       // Counter roll 0 -> 1
       if (counterCol.current) {
-        masterTl.to(counterCol.current, { y: "-1.2em", duration: 0.04, ease: "power2.inOut" }, 0.38);
+        masterTl.to(counterCol.current, { y: "-1.2em", duration: 0.12, ease: "power2.inOut" }, 2.55);
       }
 
-      // -------------------------------------------------------------
-      // p 0.42 to 0.62: Two lines draw at the same time:
-      // EMAIL to SHEET and WEBSITE to CRM (fan-out);
-      // SHEET and CRM status tags change from gray to lime;
-      // CRM value swaps to "Assigned";
-      // counter rolls 1 -> 2 -> 3
-      // -------------------------------------------------------------
-      masterTl.fromTo(
-        fanLines[1],
-        { drawSVG: "0%" },
-        { drawSVG: "100%", duration: 0.18, ease: "power2.inOut" },
-        0.42
-      );
-      masterTl.fromTo(
-        fanLines[2],
-        { drawSVG: "0%" },
-        { drawSVG: "100%", duration: 0.18, ease: "power2.inOut" },
-        0.42
-      );
+      // Connection 2: Website -> CRM
+      masterTl.to(solidConns[1], { drawSVG: "100%", duration: 0.55, ease: "power2.inOut" }, 2.18);
+      masterTl.to(brokenConns[1], { opacity: 0, duration: 0.3 }, 2.28);
+
+      masterTl.to(cardCrm, {
+        borderColor: "var(--accent)",
+        boxShadow: "0 0 16px -2px color-mix(in srgb, var(--accent) 35%, transparent)",
+        duration: 0.2,
+      }, 2.70);
+      masterTl.to(dotCrm, {
+        backgroundColor: "var(--accent)",
+        boxShadow: "0 0 10px 2px color-mix(in srgb, var(--accent) 70%, transparent)",
+        duration: 0.2,
+      }, 2.70);
+      masterTl.to(cardCrm, {
+        scale: 1.015,
+        duration: 0.10,
+        yoyo: true,
+        repeat: 1,
+        ease: "sine.inOut",
+      }, 2.72);
 
       // Counter roll 1 -> 2
       if (counterCol.current) {
-        masterTl.to(counterCol.current, { y: "-2.4em", duration: 0.04, ease: "power2.inOut" }, 0.50);
+        masterTl.to(counterCol.current, { y: "-2.4em", duration: 0.12, ease: "power2.inOut" }, 2.73);
       }
 
-      // Sheet activates
-      masterTl.set(cardSheet, { attr: { "data-flip": "1" } }, 0.50);
-      if (sheetTag) masterTl.to(sheetTag, { color: "var(--accent-ink)", duration: 0.06 }, 0.52);
-      if (sheetValA && sheetValB) {
-        masterTl.to(sheetValA, { y: -14, opacity: 0, duration: 0.04, ease: "power2.in" }, 0.52);
-        masterTl.fromTo(sheetValB, { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.04, ease: "power2.out" }, 0.54);
-      }
-      masterTl.to(
-        cardSheet,
-        {
-          borderColor: "var(--accent)",
-          boxShadow: "0 0 16px -4px color-mix(in srgb, var(--accent) 35%, transparent)",
-          duration: 0.08,
-          ease: "power2.out",
-        },
-        0.52
-      );
-      masterTl.to(
-        dotSheet,
-        {
-          backgroundColor: "var(--accent)",
-          boxShadow: "0 0 12px 2px color-mix(in srgb, var(--accent) 70%, transparent)",
-          duration: 0.08,
-        },
-        0.52
-      );
+      // Connection 3: CRM -> Sheet
+      masterTl.to(solidConns[2], { drawSVG: "100%", duration: 0.55, ease: "power2.inOut" }, 2.36);
+      masterTl.to(brokenConns[2], { opacity: 0, duration: 0.3 }, 2.46);
 
-      // CRM activates & value swaps "No owner" -> "Assigned"
-      if (crmValA && crmValB) {
-        masterTl.to(crmValA, { y: -14, opacity: 0, duration: 0.04, ease: "power2.in" }, 0.52);
-        masterTl.fromTo(crmValB, { y: 14, opacity: 0 }, { y: 0, opacity: 1, duration: 0.04, ease: "power2.out" }, 0.54);
+      if (sheetTag) {
+        masterTl.to(sheetTag, { color: "var(--accent-ink)", duration: 0.15 }, 2.88);
       }
-      if (crmTag) masterTl.to(crmTag, { color: "var(--accent-ink)", duration: 0.06 }, 0.56);
-      masterTl.to(
-        cardCrm,
-        {
-          borderColor: "var(--accent)",
-          boxShadow: "0 0 16px -4px color-mix(in srgb, var(--accent) 35%, transparent)",
-          duration: 0.08,
-          ease: "power2.out",
-        },
-        0.56
-      );
-      masterTl.to(
-        dotCrm,
-        {
-          backgroundColor: "var(--accent)",
-          boxShadow: "0 0 12px 2px color-mix(in srgb, var(--accent) 70%, transparent)",
-          duration: 0.08,
-        },
-        0.56
-      );
+      masterTl.to(cardSheet, {
+        borderColor: "var(--accent)",
+        boxShadow: "0 0 16px -2px color-mix(in srgb, var(--accent) 35%, transparent)",
+        duration: 0.2,
+      }, 2.88);
+      masterTl.to(dotSheet, {
+        backgroundColor: "var(--accent)",
+        boxShadow: "0 0 10px 2px color-mix(in srgb, var(--accent) 70%, transparent)",
+        duration: 0.2,
+      }, 2.88);
+      masterTl.to(cardSheet, {
+        scale: 1.015,
+        duration: 0.10,
+        yoyo: true,
+        repeat: 1,
+        ease: "sine.inOut",
+      }, 2.90);
 
       // Counter roll 2 -> 3
       if (counterCol.current) {
-        masterTl.to(counterCol.current, { y: "-3.6em", duration: 0.04, ease: "power2.inOut" }, 0.60);
+        masterTl.to(counterCol.current, { y: "-3.6em", duration: 0.12, ease: "power2.inOut" }, 2.91);
       }
 
       // -------------------------------------------------------------
-      // p 0.62 to 0.80: "CONNECTED" tag turns lime and flashes once;
-      // All four status dots pulse twice in unison;
-      // Headline line B tweens to ink color and lime underline draws under "connection"
+      // ACT 4 — ARCHÉ CONNECTS THE SYSTEM (3.4s – 4.8s)
+      // Spatial reorganization: cards straighten to 0deg, glide vertically
+      // to establish a dedicated 55px visual corridor.
+      // Central unified pipeline reveals: WEBSITE -> AI AGENT -> QUALIFIED LEAD -> CRM.
+      // Precision marker travels across pipeline, activating each operational stage.
       // -------------------------------------------------------------
-      if (stateRef.current) {
-        masterTl.to(stateRef.current, { scale: 1.2, opacity: 0.4, duration: 0.03, ease: "power1.in" }, 0.62);
-        masterTl.to(stateRef.current, { scale: 1, opacity: 1, duration: 0.04, ease: "power1.out" }, 0.65);
+      masterTl.to(cardEls, { opacity: 0.88, rotation: 0, duration: 0.35, ease: "power2.out" }, 3.50);
+      masterTl.to([cardWeb, cardEmail], { y: -12, duration: 0.40, ease: "power2.out" }, 3.50);
+      masterTl.to([cardCrm, cardSheet], { y: 12, duration: 0.40, ease: "power2.out" }, 3.50);
+      masterTl.to(solidConns, { opacity: 0.25, duration: 0.35, ease: "power2.out" }, 3.50);
+      masterTl.to(procContainer, { opacity: 1, duration: 0.35, ease: "power2.out" }, 3.50);
+
+      // Internal environments reflow to connected states
+      if (emailMetaBadge) {
+        masterTl.to(emailMetaBadge, { textContent: "AI ROUTED", color: "var(--accent-ink)", duration: 0.2 }, 3.60);
+      }
+      if (crmOwnerBadge) {
+        masterTl.to(crmOwnerBadge, { textContent: "ALEX R. (AI DISPATCH)", color: "var(--accent-ink)", duration: 0.2 }, 3.70);
+      }
+      if (sheetSyncBadge) {
+        masterTl.to(sheetSyncBadge, { textContent: "DUAL-SYNC ACTIVE", color: "var(--accent-ink)", duration: 0.2 }, 3.80);
       }
 
-      // Unison pulses (scale 1 to 1.8, opacity 0.8 to 0)
-      masterTl.fromTo(
-        unisonRings,
-        { scale: 1, opacity: 0.8 },
-        { scale: 1.8, opacity: 0, duration: 0.05, ease: "power2.out" },
-        0.65
-      );
-      masterTl.fromTo(
-        unisonRings,
-        { scale: 1, opacity: 0.8 },
-        { scale: 1.8, opacity: 0, duration: 0.05, ease: "power2.out" },
-        0.72
-      );
+      // Stage 1: WEBSITE active
+      masterTl.to(procStages[0], { color: "var(--fg)", fontWeight: "600", duration: 0.15 }, 3.50);
 
-      // Headline line B color & underline
+      // Connector 1 draws & Marker 1 travels (Website -> AI Agent)
+      masterTl.to(procConns[0], { drawSVG: "100%", duration: 0.35, ease: "power1.inOut" }, 3.55);
+      if (procMarkers[0]) {
+        masterTl.fromTo(
+          procMarkers[0],
+          { attr: { x: 92 }, opacity: 0 },
+          { attr: { x: 104 }, opacity: 1, duration: 0.35, ease: "power1.inOut" },
+          3.55
+        );
+        masterTl.to(procMarkers[0], { opacity: 0, duration: 0.1 }, 3.90);
+      }
+
+      // Stage 2: AI AGENT activates
+      masterTl.to(procStages[1], { color: "var(--fg)", fontWeight: "600", duration: 0.15 }, 3.90);
+      masterTl.to(procStages[1].querySelector(".pf-proc-dot"), { backgroundColor: "var(--accent)", duration: 0.15 }, 3.90);
+
+      // Connector 2 draws & Marker 2 travels (AI Agent -> Qualified Lead)
+      masterTl.to(procConns[1], { drawSVG: "100%", duration: 0.35, ease: "power1.inOut" }, 3.95);
+      if (procMarkers[1]) {
+        masterTl.fromTo(
+          procMarkers[1],
+          { attr: { x: 146 }, opacity: 0 },
+          { attr: { x: 206 }, opacity: 1, duration: 0.35, ease: "power1.inOut" },
+          3.95
+        );
+        masterTl.to(procMarkers[1], { opacity: 0, duration: 0.1 }, 4.30);
+      }
+
+      // Stage 3: QUALIFIED LEAD activates
+      masterTl.to(procStages[2], { color: "var(--fg)", fontWeight: "600", duration: 0.15 }, 4.30);
+      masterTl.to(procStages[2].querySelector(".pf-proc-dot"), { backgroundColor: "var(--accent)", duration: 0.15 }, 4.30);
+
+      // Connector 3 draws & Marker 3 travels (Qualified Lead -> CRM)
+      masterTl.to(procConns[2], { drawSVG: "100%", duration: 0.35, ease: "power1.inOut" }, 4.35);
+      if (procMarkers[2]) {
+        masterTl.fromTo(
+          procMarkers[2],
+          { attr: { x: 285 }, opacity: 0 },
+          { attr: { x: 340 }, opacity: 1, duration: 0.35, ease: "power1.inOut" },
+          4.35
+        );
+        masterTl.to(procMarkers[2], { opacity: 0, duration: 0.1 }, 4.70);
+      }
+
+      // Stage 4: CRM activates
+      masterTl.to(procStages[3], { color: "var(--fg)", fontWeight: "600", duration: 0.15 }, 4.70);
+      masterTl.to(procStages[3].querySelector(".pf-proc-dot"), { backgroundColor: "var(--accent)", duration: 0.15 }, 4.70);
+
+      // Headline Line B turns ink, underline sweeps across "connection problem."
       if (lineBRef.current) {
-        masterTl.to(lineBRef.current, { color: "var(--fg)", duration: 0.10, ease: "power2.out" }, 0.64);
+        masterTl.to(lineBRef.current, { color: "var(--fg)", duration: 0.18, ease: "power2.out" }, 4.50);
       }
       if (connectionUnderlineRef.current) {
-        masterTl.to(connectionUnderlineRef.current, { scaleX: 1, duration: 0.12, ease: "power2.out" }, 0.66);
+        masterTl.to(connectionUnderlineRef.current, { scaleX: 1, duration: 0.22, ease: "power2.out" }, 4.52);
       }
 
       // -------------------------------------------------------------
-      // p 0.80 to 1.00: Four cards scale to 0.6 and fade to opacity 0 toward center;
-      // Four status dots glide to horizontal row at ROW_Y = 58;
-      // Row line draws; target state strip labels appear;
-      // Hold last 10% (0.90 to 1.00) for reading
+      // ACT 5 — ONE SYSTEM (4.8s – 6.0s)
+      // Compact anchors activate, stable hold before pin releases to Services.
       // -------------------------------------------------------------
-      // Cards scale & fade toward center
-      masterTl.to(
-        cardEls,
-        {
-          scale: 0.6,
-          opacity: 0,
-          duration: 0.08,
-          ease: "power2.inOut",
-        },
-        0.80
-      );
-      masterTl.to(fanGroup, { opacity: 0, duration: 0.06 }, 0.80);
+      masterTl.to(compactAnchors, { opacity: 1, duration: 0.10 }, 4.80);
+      masterTl.call(() => emitThread(), [], 5.00);
 
-      // Morph nodes appear and glide from initial card positions to target row
-      masterTl.fromTo(
-        morphNodes,
-        { opacity: 0 },
-        { opacity: 1, duration: 0.03 },
-        0.80
-      );
-
-      // Move morph nodes from card positions to (rx, ROW_Y)
-      CARDS.forEach((c, i) => {
-        const node = morphNodes[i];
-        if (node) {
-          masterTl.fromTo(
-            node,
-            { left: `${(c.x / W) * 100}%`, top: `${(c.y / H) * 100}%` },
-            { left: `${(c.rx / W) * 100}%`, top: `${(ROW_Y / H) * 100}%`, duration: 0.08, ease: "power2.inOut" },
-            0.80
-          );
-        }
-        const slot = slots[i];
-        if (slot) {
-          masterTl.fromTo(
-            slot,
-            { left: `${(c.x / W) * 100}%`, top: `${(c.y / H) * 100}%` },
-            { left: `${(c.rx / W) * 100}%`, top: `${(ROW_Y / H) * 100}%`, duration: 0.08, ease: "power2.inOut" },
-            0.80
-          );
-        }
-      });
-
-      // Row connecting line draws
-      masterTl.fromTo(
-        rowLine,
-        { drawSVG: "0%" },
-        { drawSVG: "100%", duration: 0.06, ease: "power2.inOut" },
-        0.83
-      );
-
-      // Target row labels fade in
-      masterTl.fromTo(
-        targetRowLabels,
-        { opacity: 0, y: 6 },
-        { opacity: 1, y: 0, duration: 0.05, ease: "power2.out", stagger: 0.015 },
-        0.85
-      );
-
-      // Notify shared system thread
-      masterTl.call(() => emitThread(), [], 0.88);
-
-      // Hold last 10 percent (0.90 to 1.00) static
-      masterTl.to({}, { duration: 0.10 }, 0.90);
+      // Quiet hold until pin releases cleanly into Services
+      masterTl.to({}, { duration: 0.90 }, 5.10);
     }, sec);
 
     return () => {
-      stopIdle();
       ctx.revert();
     };
   }, [reduced]);
 
   return (
-    <section ref={root} id="problem" data-bridge-root className="relative flex h-[100svh] w-full items-center pt-[72px]">
-      <div className="wrap grid w-full grid-cols-12 items-center gap-[clamp(28px,4vw,72px)]">
-        <div className="col-span-5">
-          <Copy
-            connectionUnderlineRef={connectionUnderlineRef}
-            lineBRef={lineBRef}
-            headlineRef={headlineRef}
-            bodyRef={bodyRef}
-          />
-        </div>
+    <section
+      ref={root}
+      id="problem"
+      data-bridge-root
+      className="relative w-full bg-[var(--bg)] min-h-[100svh]"
+    >
+      <style>{`
+        #problem .pf-card-hover {
+          will-change: transform, border-color, box-shadow;
+          transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+                      border-color 0.22s ease,
+                      box-shadow 0.22s ease;
+        }
+        @media (hover: hover) {
+          #problem .pf-card-hover:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent) !important;
+            box-shadow: 0 8px 24px -4px rgba(12, 12, 13, 0.10), 0 0 16px -2px color-mix(in srgb, var(--accent) 30%, transparent) !important;
+          }
+          #problem .pf-card-hover:hover .pf-dot {
+            transform: scale(1.25);
+            box-shadow: 0 0 8px 1px var(--accent);
+          }
+        }
+        #problem .pf-dot {
+          transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+        }
+      `}</style>
 
-        <div className="col-span-7">
-          <div className="ml-auto" style={{ maxWidth: "calc((100svh - 230px) * 16 / 11)" }}>
-            <div className="mb-[12px] flex items-center justify-between">
-              <div className="mono flex items-center gap-[0.5ch]">
-                <span>4 tools ·</span>
-                <span
-                  className="inline-block overflow-hidden relative"
-                  style={{ height: "1.2em", width: "1ch", verticalAlign: "top" }}
-                >
+      <div
+        ref={sceneContentRef}
+        className="pf-scene-content wrap w-full min-h-[100svh] flex flex-col justify-center py-[clamp(32px,5vh,64px)]"
+      >
+        <div className="grid w-full grid-cols-12 items-center gap-[clamp(24px,3.5vw,56px)]">
+          {/* LEFT COLUMN: 50% (6 of 12 columns) - Art-directed editorial statement */}
+          <div className="col-span-12 lg:col-span-6 flex flex-col justify-center">
+            <Copy
+              connectionUnderlineRef={connectionUnderlineRef}
+              lineBRef={lineBRef}
+              bodyRef={bodyRef}
+            />
+          </div>
+
+          {/* RIGHT COLUMN: 50% (6 of 12 columns) - Miniature software ecosystem */}
+          <div className="col-span-12 lg:col-span-6 flex flex-col justify-center">
+            <div className="w-full max-w-[620px] ml-auto">
+              {/* Header status bar */}
+              <div className="mb-[12px] flex items-center justify-between">
+                <div className="mono flex items-center gap-[0.5ch] text-[12px]">
+                  <span>4 tools ·</span>
                   <span
-                    ref={counterCol}
-                    className="inline-flex flex-col text-center"
-                    style={{ willChange: "transform" }}
+                    className="inline-block overflow-hidden relative"
+                    style={{ height: "1.2em", width: "1ch", verticalAlign: "top" }}
                   >
-                    <span style={{ height: "1.2em", lineHeight: "1.2em" }}>0</span>
-                    <span style={{ height: "1.2em", lineHeight: "1.2em" }}>1</span>
-                    <span style={{ height: "1.2em", lineHeight: "1.2em" }}>2</span>
-                    <span style={{ height: "1.2em", lineHeight: "1.2em" }}>3</span>
+                    <span
+                      ref={counterCol}
+                      data-counter-column
+                      className="inline-flex flex-col text-center"
+                      style={{ willChange: "transform" }}
+                    >
+                      <span style={{ height: "1.2em", lineHeight: "1.2em" }}>0</span>
+                      <span style={{ height: "1.2em", lineHeight: "1.2em" }}>1</span>
+                      <span style={{ height: "1.2em", lineHeight: "1.2em" }}>2</span>
+                      <span style={{ height: "1.2em", lineHeight: "1.2em" }}>3</span>
+                    </span>
                   </span>
+                  <span ref={counterUnit} data-counter-unit>connections</span>
+                </div>
+                <span
+                  ref={stateRef}
+                  data-problem-state
+                  className="mono transition-colors text-[11px] uppercase tracking-wider font-medium"
+                  style={{ color: "var(--faint)" }}
+                >
+                  Disconnected
                 </span>
-                <span ref={counterUnit}>connections</span>
               </div>
-              <span
-                ref={stateRef}
-                className="mono transition-colors"
-                style={{ color: "var(--faint)" }}
-              >
-                Disconnected
-              </span>
-            </div>
 
-            <div
-              ref={stage}
-              className="pf-beat relative w-full rounded-[6px]"
-              style={{ aspectRatio: "16 / 11", background: "var(--bg-2)" }}
-            >
-              <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 h-full w-full pointer-events-none" aria-hidden>
-                <g className="pf-fan-g">
-                  {FAN.map((d, i) => (
+              {/* Visual Container: Contained operational-system visualization */}
+              <div
+                ref={stage}
+                className="pf-visual-container relative w-full rounded-[8px] border border-[var(--line)] bg-[var(--bg-2)]"
+                style={{
+                  minHeight: "420px",
+                  height: "clamp(410px, 47vh, 450px)",
+                  boxShadow: "0 2px 20px -4px rgba(0,0,0,0.03)",
+                }}
+              >
+                {/* SVG Connectors Overlay */}
+                <svg
+                  viewBox="0 0 400 340"
+                  className="absolute inset-0 h-full w-full pointer-events-none"
+                  preserveAspectRatio="none"
+                  aria-hidden
+                >
+                  {/* Subtle architectural drafting axis */}
+                  <g opacity="0.30">
+                    <line x1="200" y1="24" x2="200" y2="316" stroke="var(--line)" strokeWidth="0.8" strokeDasharray="3 3" />
+                    <line x1="24" y1="170" x2="376" y2="170" stroke="var(--line)" strokeWidth="0.8" strokeDasharray="3 3" />
+                    <circle cx="200" cy="170" r="2.5" fill="none" stroke="var(--line)" strokeWidth="0.8" />
+                  </g>
+                  {/* Broken connector hairlines in Act 1 */}
+                  <g className="pf-broken-conns">
+                    {/* Con 1: Website to Email (horizontal top) */}
                     <path
-                      key={i}
-                      className="pf-fan"
-                      d={d}
-                      stroke="var(--accent)"
+                      className="pf-broken-conn"
+                      d="M 175 80 H 225"
+                      stroke="var(--line)"
                       strokeWidth="1.2"
+                      strokeDasharray="4 5"
                       fill="none"
+                    />
+                    {/* Con 2: Website to CRM (vertical left) */}
+                    <path
+                      className="pf-broken-conn"
+                      d="M 100 130 V 215"
+                      stroke="var(--line)"
+                      strokeWidth="1.2"
+                      strokeDasharray="4 5"
+                      fill="none"
+                    />
+                    {/* Con 3: CRM to Sheet (horizontal bottom) */}
+                    <path
+                      className="pf-broken-conn"
+                      d="M 175 265 H 225"
+                      stroke="var(--line)"
+                      strokeWidth="1.2"
+                      strokeDasharray="4 5"
+                      fill="none"
+                    />
+                  </g>
+
+                  {/* Solid lime connectors drawn in Act 3 */}
+                  <g className="pf-solid-conns">
+                    {/* Con 1: Website toward Email */}
+                    <path
+                      className="pf-solid-conn"
+                      d="M 175 80 H 225"
+                      stroke="var(--accent)"
+                      strokeWidth="1.5"
                       strokeLinecap="round"
+                      fill="none"
+                    />
+                    {/* Con 2: Website toward CRM */}
+                    <path
+                      className="pf-solid-conn"
+                      d="M 100 130 V 215"
+                      stroke="var(--accent)"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      fill="none"
+                    />
+                    {/* Con 3: CRM toward Sheet */}
+                    <path
+                      className="pf-solid-conn"
+                      d="M 175 265 H 225"
+                      stroke="var(--accent)"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      fill="none"
+                    />
+                  </g>
+
+                  {/* Test selector path */}
+                  <path
+                    id="problem-diagram-line"
+                    className="pf-row opacity-0"
+                    d="M 50 170 H 350"
+                    stroke="var(--accent)"
+                  />
+                </svg>
+
+                {/* 2 × 2 Card Grid with a dedicated process channel between rows */}
+                <div className="absolute inset-0 z-10 grid grid-cols-2 grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-[clamp(24px,4vw,48px)] px-[clamp(14px,2vw,22px)]">
+                  {CARDS.map((c) => (
+                    <div
+                      key={c.id}
+                      data-card={c.id}
+                      className="pf-card"
+                      style={{
+                        gridColumn: c.gridClass.endsWith("left") ? 1 : 2,
+                        gridRow: c.gridClass.startsWith("top") ? 1 : 3,
+                      }}
+                    >
+                      <div
+                        className="pf-card-hover pf-inspect flex flex-col rounded-[6px] border border-[var(--line)] bg-[var(--card)] p-[clamp(10px,1.2vw,14px)] shadow-[0_2px_8px_rgba(0,0,0,0.03)] cursor-pointer"
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Inspect the ${c.k} tool`}
+                        aria-pressed={inspect === c.id}
+                        data-cursor="EXPLORE"
+                        onClick={() => onInspect(inspect === c.id ? null : c.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onInspect(inspect === c.id ? null : c.id);
+                          }
+                        }}
+                      >
+                        {/* 1. Distinct Miniature Interface Top Chrome */}
+                        {c.id === "web" ? (
+                          <div className="flex items-center justify-between border-b border-[var(--line)] pb-[5px] mb-[6px]">
+                            <div className="flex items-center gap-[3px]">
+                              <span className="block h-[4.5px] w-[4.5px] rounded-full bg-[var(--line)]" />
+                              <span className="block h-[4.5px] w-[4.5px] rounded-full bg-[var(--line)]" />
+                              <span className="block h-[4.5px] w-[4.5px] rounded-full bg-[var(--line)]" />
+                            </div>
+                            <span className="mono text-[8px] text-[var(--faint)] bg-[var(--bg)] px-[6px] py-[1px] rounded-[3px] truncate max-w-[130px]">
+                              arche.studio/inquiry
+                            </span>
+                            <span
+                              className="pf-dot relative block flex-none rounded-full"
+                              style={{ width: 7, height: 7, background: "var(--faint)" }}
+                              data-signal="problem-website"
+                            />
+                          </div>
+                        ) : c.id === "email" ? (
+                          <div className="flex items-center justify-between border-b border-[var(--line)] pb-[5px] mb-[6px]">
+                            <span className="mono text-[8px] uppercase tracking-wider text-[var(--faint)] font-medium">
+                              INBOX (1)
+                            </span>
+                            <span className="mono text-[8px] text-[var(--faint)]">10:42 AM</span>
+                            <span
+                              className="pf-dot relative block flex-none rounded-full"
+                              style={{ width: 7, height: 7, background: "var(--faint)" }}
+                            />
+                          </div>
+                        ) : c.id === "crm" ? (
+                          <div className="flex items-center justify-between border-b border-[var(--line)] pb-[5px] mb-[6px]">
+                            <span className="mono text-[8px] uppercase tracking-wider text-[var(--faint)] font-medium">
+                              LEAD #2048
+                            </span>
+                            <span className="mono text-[7.5px] text-[var(--accent-ink)] bg-[var(--accent)]/20 px-[4px] py-[1px] rounded-[2px] font-medium">
+                              QUALIFYING
+                            </span>
+                            <span
+                              className="pf-dot relative block flex-none rounded-full"
+                              style={{ width: 7, height: 7, background: "var(--faint)" }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between border-b border-[var(--line)] pb-[5px] mb-[6px]">
+                            <span className="mono text-[8px] uppercase tracking-wider text-[var(--faint)] font-medium">
+                              PIPELINE.CSV
+                            </span>
+                            <span className="mono text-[8px] text-[var(--faint)]">ROW 142</span>
+                            <span
+                              className="pf-dot relative block flex-none rounded-full"
+                              style={{ width: 7, height: 7, background: "var(--faint)" }}
+                            />
+                          </div>
+                        )}
+
+                        {/* 2. Tool Title & Miniature UI Context */}
+                        <div className="flex items-center justify-between gap-[6px]">
+                          <span className="mono text-[10px] uppercase tracking-wider text-[var(--faint)] font-medium">
+                            {c.k}
+                          </span>
+                          {c.id === "web" && (
+                            <span className="pf-web-action mono text-[8px] text-[var(--faint)] font-medium">
+                              [SUBMIT]
+                            </span>
+                          )}
+                          {c.id === "email" && (
+                            <span className="pf-email-meta mono text-[8px] text-[var(--faint)]">
+                              inquiry@acmecorp.com
+                            </span>
+                          )}
+                          {c.id === "crm" && (
+                            <span className="pf-crm-owner mono text-[8px] text-[var(--faint)]">
+                              $24,000 · High Intent
+                            </span>
+                          )}
+                          {c.id === "sheet" && (
+                            <span className="pf-sheet-sync mono text-[8px] text-[var(--faint)]">
+                              Auto-sync row
+                            </span>
+                          )}
+                        </div>
+
+                        {/* 3. Status Line with masked in-situ swap */}
+                        <div className="relative mt-[4px] h-[1.3em] overflow-hidden text-[clamp(12px,1.05vw,14px)] font-medium tracking-tight">
+                          <span
+                            className={`pf-status-a ${
+                              c.id === "web"
+                                ? "pf-web-val-a"
+                                : c.id === "email"
+                                ? "pf-email-val-a"
+                                : c.id === "crm"
+                                ? "pf-crm-val-a"
+                                : "pf-sheet-val-a"
+                            } block absolute inset-0 text-[var(--muted)]`}
+                          >
+                            {c.a}
+                          </span>
+                          <span
+                            className={`pf-status-b ${
+                              c.id === "web"
+                                ? "pf-web-val-b"
+                                : c.id === "email"
+                                ? "pf-email-val-b"
+                                : c.id === "crm"
+                                ? "pf-crm-val-b"
+                                : "pf-sheet-val-b"
+                            } block absolute inset-0 text-[var(--fg)]`}
+                          >
+                            {c.b}
+                          </span>
+                        </div>
+
+                        {/* 4. Status indicator tag */}
+                        <span className="pf-tag mono mt-[3px] block text-[9px] text-[var(--faint)]">
+                          {c.tag}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* ACT 4: Central Horizontal 4-Stage Process (WEBSITE -> AI AGENT -> QUALIFIED LEAD -> CRM) */}
+                  <div className="pf-proc-lane pointer-events-none relative col-span-2 row-start-2 z-20 w-full">
+                    <div className="relative rounded-[6px] border border-[var(--line)] bg-[var(--bg)]/95 backdrop-blur-md p-[8px_14px] shadow-sm">
+                      <div className="relative z-10 flex items-center justify-between text-[10px] mono uppercase tracking-wider text-[var(--faint)]">
+                        {["WEBSITE", "AI AGENT", "QUALIFIED LEAD", "CRM"].map((label, idx) => (
+                          <div
+                            key={label}
+                            className="pf-proc-stage flex items-center gap-[6px] transition-colors bg-[var(--bg)] px-[6px] py-[2px] rounded-[3px]"
+                          >
+                            <span
+                              className="pf-proc-dot block rounded-full flex-none"
+                              style={{ width: 5, height: 5, background: idx === 0 ? "var(--accent)" : "var(--faint)" }}
+                            />
+                            <span className="pf-target-label">{label}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Horizontal process connector SVG with signal markers */}
+                      <svg
+                        viewBox="0 0 360 8"
+                        className="absolute inset-0 z-0 h-full w-full pointer-events-none"
+                        preserveAspectRatio="none"
+                      >
+                        {/* 3 thin connectors */}
+                        <line className="pf-proc-line" x1="44" y1="4" x2="104" y2="4" stroke="var(--accent)" strokeWidth="1.2" />
+                        <line className="pf-proc-line" x1="146" y1="4" x2="206" y2="4" stroke="var(--accent)" strokeWidth="1.2" />
+                        <line className="pf-proc-line" x1="285" y1="4" x2="340" y2="4" stroke="var(--accent)" strokeWidth="1.2" />
+
+                        {/* Small lime rectangular signal markers */}
+                        <rect className="pf-proc-marker pf-proc-marker-0" x="44" y="2.5" width="6" height="3" fill="var(--accent)" rx="1" />
+                        <rect className="pf-proc-marker pf-proc-marker-1" x="146" y="2.5" width="6" height="3" fill="var(--accent)" rx="1" />
+                        <rect className="pf-proc-marker pf-proc-marker-2" x="285" y="2.5" width="6" height="3" fill="var(--accent)" rx="1" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Downstream verification & service slots */}
+                <div id="problem-diagram" aria-hidden>
+                  {CARDS.map((c) => (
+                    <span
+                      key={c.id}
+                      data-cmp={c.k}
+                      className="pf-compact-anchor pointer-events-none absolute block"
+                      style={{
+                        left: "50%",
+                        top: "50%",
+                        width: 0,
+                        height: 0,
+                        opacity: 0,
+                      }}
                     />
                   ))}
-                  {FAN.map((_, i) => <circle key={`packet-${i}`} className="pf-packet" r="1.1" fill="var(--accent-deep)" opacity="0" />)}
-                </g>
-                <path
-                  id="problem-diagram-line"
-                  className="pf-row"
-                  d={ROW}
-                  stroke="var(--accent)"
-                  strokeWidth="1.2"
-                  fill="none"
-                  strokeLinecap="round"
-                />
-              </svg>
-
-              {/* Four Cards */}
-              {CARDS.map((c) => (
-                <div
-                  key={c.id}
-                  data-card={c.id}
-                  className="pf-card pf-inspect absolute flex w-[31%] flex-col rounded-[5px] border p-[clamp(9px,1vw,13px)]"
-                  style={{
-                    left: `${(c.x / W) * 100}%`,
-                    top: `${(c.y / H) * 100}%`,
-                    transform: "translate(-50%,-50%)",
-                  }}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Inspect the ${c.k} tool`}
-                  aria-pressed={inspect === c.id}
-                  data-cursor="EXPLORE"
-                  onClick={() => onInspect(inspect === c.id ? null : c.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onInspect(inspect === c.id ? null : c.id);
-                    }
-                  }}
-                >
-                  <div className="flex items-center justify-between gap-[10px]">
-                    <span className="mono mono-fg">{c.k}</span>
-                    <span
-                      className="pf-dot relative block flex-none"
-                      style={{ width: 8, height: 8 }}
-                      {...(c.id === "web" ? { "data-signal": "problem-website" } : {})}
-                    >
-                      <span className="absolute inset-0 rounded-full" style={{ background: "var(--faint)" }} />
-                      {/* Pulse ring for idle pulse */}
-                      <span
-                        className="pf-pulse-ring pointer-events-none absolute inset-[-3px] rounded-full"
-                        style={{ border: "1px solid var(--accent)", opacity: 0 }}
-                      />
-                      {/* Unison pulse ring */}
-                      <span
-                        className="pf-unison-ring pointer-events-none absolute inset-[-4px] rounded-full"
-                        style={{ background: "var(--accent)", opacity: 0 }}
-                      />
-                    </span>
-                  </div>
-
-                  <span className="pf-flip mt-[8px] text-[clamp(13px,1.1vw,15px)] tracking-[-.02em] relative overflow-hidden h-[1.3em] block">
-                    {c.id === "email" ? (
-                      <>
-                        <span className="pf-email-val-a block absolute inset-0">{c.a}</span>
-                        <span className="pf-email-val-b block absolute inset-0 opacity-0">{c.b}</span>
-                      </>
-                    ) : c.id === "crm" ? (
-                      <>
-                        <span className="pf-crm-val-a block absolute inset-0">{c.a}</span>
-                        <span className="pf-crm-val-b block absolute inset-0 opacity-0">{c.b}</span>
-                      </>
-                    ) : c.id === "sheet" ? (
-                      <>
-                        <span className="pf-sheet-val-a block absolute inset-0">{c.a}</span>
-                        <span className="pf-sheet-val-b block absolute inset-0 opacity-0">{c.b}</span>
-                      </>
-                    ) : (
-                      <span className="block">{c.a}</span>
-                    )}
-                  </span>
-
-                  <span className="pf-tag mono mt-[6px] block transition-colors duration-200" style={{ fontSize: 9 }}>
-                    {c.tag}
-                  </span>
                 </div>
-              ))}
-
-              {/* Morph Dots & Labels (Glide to horizontal row at ROW_Y = 58) */}
-              {CARDS.map((c) => (
-                <div
-                  key={c.id}
-                  className="pf-morph-node pf-compact-anchor pointer-events-none absolute flex flex-col items-center"
-                  style={{
-                    left: `${(c.x / W) * 100}%`,
-                    top: `${(c.y / H) * 100}%`,
-                    transform: "translate(-50%,-50%)",
-                  }}
-                >
-                  <span
-                    className="pf-morph-dot signal-dot block"
-                    style={{
-                      width: 8,
-                      height: 8,
-                    }}
-                  />
-                  <span
-                    className="pf-target-label mono mt-[10px] block text-center whitespace-nowrap"
-                    style={{
-                      fontSize: 10,
-                      color: "var(--accent-ink)",
-                    }}
-                  >
-                    {c.targetLabel}
-                  </span>
-                </div>
-              ))}
-
-              {/* Invisible anchor slots for SystemThread */}
-              <div id="problem-diagram" aria-hidden>
-                {CARDS.map((c) => (
-                  <span
-                    key={c.id}
-                    data-thread-slot="problem"
-                    data-cmp={c.k}
-                    className="pointer-events-none absolute block"
-                    style={{
-                      left: `${(c.rx / W) * 100}%`,
-                      top: `${(ROW_Y / H) * 100}%`,
-                      width: 0,
-                      height: 0,
-                    }}
-                  />
-                ))}
               </div>
-            </div>
 
-            <Inspector inspect={inspect} onInspect={onInspect} />
+              {/* Inspector panel beneath visual container */}
+              <Inspector inspect={inspect} onInspect={onInspect} />
+            </div>
           </div>
         </div>
       </div>
@@ -860,7 +1024,7 @@ function ProblemPinned({ inspect, onInspect, reduced }: ProblemProps) {
 }
 
 /* ================================================================== */
-/* Mobile — stacked, each card resolves in the middle third             */
+/* Mobile — stacked, clean 2-second narrative sequence                 */
 /* ================================================================== */
 const MOBILE_ORDER: CardId[] = ["web", "email", "sheet", "crm"];
 
@@ -888,35 +1052,51 @@ function ProblemStacked({ inspect, onInspect, reduced }: ProblemProps) {
         const trigger = i === 0 ? el.querySelector<HTMLElement>(".pf-dot")! : el;
         ScrollTrigger.create({
           trigger,
-          start: i === 0 ? "center center" : "top 66%",
-          onEnter: () => resolve(el, true),
-          onLeaveBack: () => resolve(el, false),
+          start: "top 80%",
+          once: true,
+          onEnter: () => {
+            resolve(el, true);
+            const dot = el.querySelector<HTMLElement>(".pf-dot");
+            if (dot) {
+              dot.style.background = "var(--accent)";
+              dot.style.boxShadow = "0 0 8px 1px var(--accent)";
+            }
+            const a = el.querySelector<HTMLElement>(".pf-a");
+            const b = el.querySelector<HTMLElement>(".pf-b");
+            if (a && b) {
+              gsap.to(a, { opacity: 0, duration: 0.2 });
+              gsap.to(b, { opacity: 1, duration: 0.25 });
+            }
+          },
         });
       });
     }, sec);
+
     return () => ctx.revert();
   }, [reduced]);
 
   return (
-    <section ref={root} id="problem" className="relative w-full py-[clamp(56px,12vw,90px)]">
-      <div className="wrap">
+    <section ref={root} id="problem" className="relative w-full py-[clamp(48px,8vw,80px)] bg-[var(--bg)]">
+      <div className="wrap flex flex-col gap-[clamp(24px,4vh,40px)]">
         <Copy />
-        <div className="pf-beat mt-[36px] flex flex-col">
+        <div className="pf-beat flex flex-col">
           {MOBILE_ORDER.map((id, i) => {
             const c = CARDS.find((x) => x.id === id)!;
             return (
               <div key={id} className="pfm-item" data-done="0" data-sync="0" data-flip="0">
                 {i > 0 && (
-                  <span className="relative ml-[22px] block h-[34px] w-px" style={{ background: "var(--line)" }} aria-hidden>
+                  <span className="relative ml-[22px] block h-[24px] w-px" style={{ background: "var(--line)" }} aria-hidden>
                     <span className="pfm-seg absolute inset-0" style={{ background: "var(--accent-deep)" }} />
                   </span>
                 )}
                 <div
-                  className="pf-card pf-inspect flex flex-col rounded-[5px] border p-[14px]"
+                  data-card={c.id}
+                  className="pf-card pf-inspect flex flex-col rounded-[6px] border border-[var(--line)] bg-[var(--card)] p-[14px]"
                   role="button"
                   tabIndex={0}
                   aria-label={`Inspect the ${c.k} tool`}
                   aria-pressed={inspect === c.id}
+                  data-cursor="EXPLORE"
                   onClick={() => onInspect(inspect === c.id ? null : c.id)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
@@ -925,21 +1105,21 @@ function ProblemStacked({ inspect, onInspect, reduced }: ProblemProps) {
                     }
                   }}
                 >
-                  <div className="flex items-center justify-between gap-[10px]">
-                    <span className="mono mono-fg">{c.k}</span>
-                    <span
-                      className="pf-dot relative block flex-none"
-                      style={{ width: 8, height: 8 }}
-                      {...(i === 0 ? { "data-signal": "problem-website" } : {})}
-                    >
-                      <span className="absolute inset-0 rounded-full" style={{ background: "var(--faint)" }} />
+                  <div className="flex items-center justify-between gap-[10px] border-b border-[var(--line)] pb-[5px] mb-[6px]">
+                    <span className="mono text-[9px] uppercase tracking-wider text-[var(--faint)] font-medium">
+                      {c.k === "Website" ? "WEBSITE · INBOUND" : c.k === "Email" ? "INBOX (1) · 10:42 AM" : c.k === "CRM" ? "LEAD #2048 · QUALIFYING" : "PIPELINE.CSV · ROW 142"}
                     </span>
+                    <span
+                      className="pf-dot relative block flex-none rounded-full"
+                      style={{ width: 8, height: 8, background: "var(--faint)" }}
+                      {...(i === 0 ? { "data-signal": "problem-website" } : {})}
+                    />
                   </div>
-                  <span className="pf-flip mt-[8px] text-[clamp(13px,1.1vw,15px)] tracking-[-.02em]">
+                  <span className="pf-flip mt-[4px] text-[14px] font-medium tracking-tight">
                     <span className="pf-a">{c.a}</span>
                     {c.b && <span className="pf-b">{c.b}</span>}
                   </span>
-                  <span className="pf-tag mono mt-[6px] block" style={{ fontSize: 9 }}>
+                  <span className="pf-tag mono mt-[4px] block text-[9px] text-[var(--faint)]">
                     {c.tag}
                   </span>
                 </div>

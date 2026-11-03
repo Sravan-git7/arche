@@ -84,6 +84,12 @@ export function Chapters() {
   const inViewRef = useRef(false);
   inViewRef.current = inView;
 
+  const userExplicitSelectedRef = useRef(false);
+  const explicitIndexRef = useRef<number | null>(null);
+  const isClickScrollingRef = useRef(false);
+  const isScrollingRef = useRef(false);
+  const scrollEndTimerRef = useRef(0);
+
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 900px)");
     const sync = () => setPinned(mq.matches && !prefersReducedMotion());
@@ -109,11 +115,11 @@ export function Chapters() {
   /** Arms automatic progression to the next service upon showcase completion + dwell */
   const armAutoAdvance = (serviceSlug: string) => {
     clearAdvanceTimer();
-    if (showcaseModeRef.current !== "AUTO" || !inViewRef.current) return;
+    if (showcaseModeRef.current !== "AUTO" || !inViewRef.current || isScrollingRef.current) return;
 
     const triggerNext = () => {
       clearAdvanceTimer();
-      if (showcaseModeRef.current !== "AUTO" || !inViewRef.current) return;
+      if (showcaseModeRef.current !== "AUTO" || !inViewRef.current || isScrollingRef.current) return;
       const nextIdx = (indexRef.current + 1) % services.length;
       transitionToService(nextIdx);
     };
@@ -128,7 +134,7 @@ export function Chapters() {
 
     previewDoneUnsubRef.current = onPreviewDone((doneSlug) => {
       if (doneSlug !== serviceSlug) return;
-      if (showcaseModeRef.current !== "AUTO") {
+      if (showcaseModeRef.current !== "AUTO" || isScrollingRef.current) {
         clearAdvanceTimer();
         return;
       }
@@ -264,12 +270,29 @@ export function Chapters() {
     clearAdvanceTimer();
     setShowcaseMode("MANUAL");
     showcaseModeRef.current = "MANUAL";
+    userExplicitSelectedRef.current = true;
+    explicitIndexRef.current = newIndex;
 
     if (newIndex === indexRef.current && newIndex === targetIndexRef.current) {
       return;
     }
 
     transitionToService(newIndex);
+
+    if (pinSt.current && pinOnRef.current) {
+      const pinStart = pinSt.current.start;
+      const pinLength = pinSt.current.end - pinStart;
+      const targetProgress = (newIndex + 0.5) / services.length;
+      const targetY = pinStart + targetProgress * pinLength;
+      isClickScrollingRef.current = true;
+      window.scrollTo({
+        top: targetY,
+        behavior: prefersReducedMotion() ? "auto" : "smooth",
+      });
+      window.setTimeout(() => {
+        isClickScrollingRef.current = false;
+      }, 600);
+    }
   };
   const selectFromUserRef = useRef(selectFromUser);
   selectFromUserRef.current = selectFromUser;
@@ -341,14 +364,14 @@ export function Chapters() {
         setInView(isVisible);
         inViewRef.current = isVisible;
         if (isVisible) {
-          if (showcaseModeRef.current === "AUTO") {
+          if (showcaseModeRef.current === "AUTO" && !userExplicitSelectedRef.current && !isScrollingRef.current) {
             armAutoAdvance(services[indexRef.current].slug);
           }
         } else {
           clearAdvanceTimer();
         }
       },
-      { threshold: 0.15 }
+      { threshold: 0.35 }
     );
     io.observe(el);
     return () => {
@@ -360,7 +383,7 @@ export function Chapters() {
   /*
    * Pinned scroll container (desktop, motion OK).
    * Pin keeps page navigation stable and predictable.
-   * Service selection is autonomous or locked; scrolling does NOT change active service.
+   * Scrolling down drives 01 -> 02 -> 03 -> 04; scrolling up reverses 04 -> 03 -> 02 -> 01.
    */
   useLayoutEffect(() => {
     if (!pinned) {
@@ -384,10 +407,56 @@ export function Chapters() {
         start: "top top",
         end: () => `+=${pinDistance()}`,
         pin: true,
+        pinSpacing: true,
         anticipatePin: 1,
         invalidateOnRefresh: true,
         onRefresh: () => fitStage(),
         onToggle: (self) => setPinOn(self.isActive),
+        onEnter: () => {
+          clearAdvanceTimer();
+          if (!userExplicitSelectedRef.current) {
+            if (indexRef.current !== 0) {
+              transitionToService(0);
+            }
+          } else if (explicitIndexRef.current !== null && indexRef.current !== explicitIndexRef.current) {
+            transitionToService(explicitIndexRef.current);
+          }
+        },
+        onLeaveBack: () => {
+          clearAdvanceTimer();
+          if (!userExplicitSelectedRef.current) {
+            if (indexRef.current !== 0) {
+              transitionToService(0);
+            }
+          }
+        },
+        onUpdate: (self) => {
+          if (isClickScrollingRef.current) return;
+          clearAdvanceTimer();
+          isScrollingRef.current = true;
+          window.clearTimeout(scrollEndTimerRef.current);
+          scrollEndTimerRef.current = window.setTimeout(() => {
+            isScrollingRef.current = false;
+          }, 350);
+
+          const p = self.progress;
+          let targetIdx: number;
+          if (p <= 0.02) {
+            targetIdx = userExplicitSelectedRef.current && explicitIndexRef.current !== null
+              ? explicitIndexRef.current
+              : 0;
+          } else {
+            targetIdx = Math.min(services.length - 1, Math.max(0, Math.floor(p * services.length)));
+            if (userExplicitSelectedRef.current && explicitIndexRef.current !== targetIdx) {
+              userExplicitSelectedRef.current = false;
+              explicitIndexRef.current = null;
+            }
+          }
+
+          if (targetIdx !== indexRef.current && targetIdx !== targetIndexRef.current) {
+            transitionToService(targetIdx);
+          }
+        },
       });
       setPinOn(pinSt.current.isActive);
     }, sec);
@@ -432,8 +501,8 @@ export function Chapters() {
       ref={root}
       className={
         pinned
-          ? "relative w-full pt-[86px] pb-[clamp(24px,4vh,48px)] min-[900px]:-mt-[30vh]"
-          : "relative w-full py-[clamp(56px,8vh,96px)]"
+          ? "relative w-full pt-[clamp(48px,6vh,86px)] pb-[clamp(24px,4vh,48px)] overflow-hidden"
+          : "relative w-full py-[clamp(56px,8vh,96px)] overflow-hidden"
       }
     >
       <div ref={moduleRef} className="wrap flex flex-col">
@@ -462,7 +531,7 @@ export function Chapters() {
                 aria-label={`Service ${s.n} of ${services.length} — show next service`}
                 data-cursor="NEXT"
               >
-                <span className="relative block select-none" style={{ fontSize: "clamp(46px,5vw,78px)", lineHeight: 1 }}>
+                <span className="relative block select-none" style={{ fontSize: "clamp(52px,5.5vw,84px)", lineHeight: 1 }}>
                   <span className="numeral outline-t block">
                     {s.n}
                   </span>
@@ -485,15 +554,15 @@ export function Chapters() {
               <h3
                 className="d2"
                 style={{
-                  fontSize: "clamp(26px,3.2vw,48px)",
-                  lineHeight: 1.1,
-                  letterSpacing: "-0.035em",
+                  fontSize: "clamp(34px,3.8vw,56px)",
+                  lineHeight: 1.02,
+                  letterSpacing: "-0.04em",
                   marginBottom: "clamp(18px, 1.8vw, 22px)",
                 }}
               >
                 {s.title.split(" ").map((w, idx) => (
                   <span key={idx} className="inline-block overflow-hidden mr-[0.28em] align-top pb-[0.05em] -mb-[0.05em]">
-                    <span className="svc-title-word inline-block">{w}</span>
+                    <span className="svc-title-word inline-block">{w}</span>{" "}
                   </span>
                 ))}
               </h3>
@@ -605,7 +674,6 @@ export function Chapters() {
                 onMouseEnter={() => hoverStart(i)}
                 onFocus={() => hoverEnd()}
                 className="svc-tab flex h-[34px] flex-none snap-center items-center justify-center min-[900px]:min-w-[clamp(126px,12.5vw,176px)]"
-                data-cursor={i === index ? undefined : "OPEN"}
               >
                 <span className="svc-tab-pill relative overflow-hidden">
                   <span
@@ -644,4 +712,3 @@ export function Chapters() {
     </section>
   );
 }
-

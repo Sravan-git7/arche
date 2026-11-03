@@ -40,8 +40,14 @@ async function run() {
   await page.screenshot({ path: introScreenshot });
   console.log("Saved intro screenshot:", introScreenshot);
 
-  // Wait for total intro + aperture + hero reveal to complete (about 3.6s total from t0)
-  await page.waitForTimeout(2800);
+  // Wait for total intro + aperture + hero reveal to complete
+  try {
+    await page.waitForFunction(
+      () => !document.documentElement.classList.contains("arche-intro-loading"),
+      { timeout: 7000 }
+    );
+  } catch {}
+  await page.waitForTimeout(1000);
 
   // Fully revealed hero at 0% scroll
   const heroScreenshot = path.join(ARTIFACT_DIR, "hero_revealed.png");

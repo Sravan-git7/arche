@@ -28,23 +28,21 @@ const S = {
 };
 
 export function StageGlyph({ id, animate = false, className }: { id: string; animate?: boolean; className?: string }) {
-  const flow = animate ? "glyph-flow" : undefined;
-
   let body: ReactNode;
   switch (id) {
     case "input":
       body = (
         <>
-          {/* three inbound signals converging to one */}
-          <path {...S} d="M4 14 H52 L78 27" className={flow} />
-          <path {...S} d="M4 32 H78" className={flow} />
-          <path {...S} d="M4 50 H52 L78 37" className={flow} />
+          {/* three inbound signals converging to one with staggered draw */}
+          <path {...S} d="M4 14 H52 L78 27" className={animate ? "glyph-input-line glyph-flow" : undefined} style={{ animationDelay: "0ms" }} />
+          <path {...S} d="M4 32 H78" className={animate ? "glyph-input-line glyph-flow" : undefined} style={{ animationDelay: "80ms" }} />
+          <path {...S} d="M4 50 H52 L78 37" className={animate ? "glyph-input-line glyph-flow" : undefined} style={{ animationDelay: "160ms" }} />
           {/* direction chevron riding the centre line */}
-          <path {...S} d="M25 26 l8 6 -8 6" />
+          <path {...S} d="M25 26 l8 6 -8 6" className={animate ? "glyph-bracket-lock" : undefined} />
           {/* the intake node */}
-          <circle cx="84" cy="32" r="4" fill="currentColor" stroke="none" />
+          <circle cx="84" cy="32" r="4" fill="currentColor" stroke="none" className={animate ? "glyph-node-pop glyph-core-pulse" : undefined} style={{ animationDelay: "240ms" }} />
           {/* socket bracket, open to the inbound side */}
-          <path {...S} d="M104 16 H92 V48 H104" />
+          <path {...S} d="M104 16 H92 V48 H104" className={animate ? "glyph-bracket-lock" : undefined} style={{ animationDelay: "300ms" }} />
         </>
       );
       break;
@@ -59,12 +57,21 @@ export function StageGlyph({ id, animate = false, className }: { id: string; ani
       body = (
         <>
           {/* spokes: core → every satellite */}
-          <path {...S} strokeWidth={1.6} d={satellites.map(([x, y]) => `M62 32 L${x} ${y}`).join(" ")} />
+          <path {...S} strokeWidth={1.6} d={satellites.map(([x, y]) => `M62 32 L${x} ${y}`).join(" ")} className={animate ? "glyph-spoke-draw" : undefined} />
           {/* the web: satellites resolving against each other */}
-          <path {...S} strokeWidth={1.3} d="M24 12 L10 44 M98 9 L114 42 M114 42 L74 57" />
-          <circle cx="62" cy="32" r="5" fill="currentColor" stroke="none" />
-          {satellites.map(([x, y]) => (
-            <circle key={`${x}-${y}`} {...S} strokeWidth={1.6} cx={x} cy={y} r="3" />
+          <path {...S} strokeWidth={1.3} d="M24 12 L10 44 M98 9 L114 42 M114 42 L74 57" className={animate ? "glyph-spoke-draw" : undefined} style={{ animationDelay: "260ms" }} />
+          <circle cx="62" cy="32" r="5" fill="currentColor" stroke="none" className={animate ? "glyph-core-pulse" : undefined} />
+          {satellites.map(([x, y], idx) => (
+            <circle
+              key={`${x}-${y}`}
+              {...S}
+              strokeWidth={1.6}
+              cx={x}
+              cy={y}
+              r="3"
+              className={animate ? "glyph-node-pop" : undefined}
+              style={{ animationDelay: `${80 + idx * 60}ms` }}
+            />
           ))}
         </>
       );
@@ -84,17 +91,17 @@ export function StageGlyph({ id, animate = false, className }: { id: string; ani
       body = (
         <>
           {/* the kernel's boundary — dashed perimeter, the sparsest line */}
-          <path {...S} strokeWidth={1.3} strokeDasharray="4 7" d="M62 4 L97 8 L118 32 L97 56 L62 60 L27 56 L6 32 L27 8 Z" />
+          <path {...S} strokeWidth={1.3} strokeDasharray="4 7" d="M62 4 L97 8 L118 32 L97 56 L62 60 L27 56 L6 32 L27 8 Z" className={animate ? "glyph-diamond-pulse" : undefined} />
           {/* eight spokes from the core to every node */}
-          <path {...S} strokeWidth={1.5} d={ring.map(([x, y]) => `M62 32 L${x} ${y}`).join(" ")} />
+          <path {...S} strokeWidth={1.5} d={ring.map(([x, y]) => `M62 32 L${x} ${y}`).join(" ")} className={animate ? "glyph-spoke-draw" : undefined} />
           {/* twin interlocking diamonds + cross: the state core */}
-          <path {...S} d="M62 16 L78 32 L62 48 L46 32 Z" />
-          <path {...S} strokeWidth={1.5} d="M62 24 L70 32 L62 40 L54 32 Z" />
+          <path {...S} d="M62 16 L78 32 L62 48 L46 32 Z" className={animate ? "glyph-diamond-pulse" : undefined} />
+          <path {...S} strokeWidth={1.5} d="M62 24 L70 32 L62 40 L54 32 Z" className={animate ? "glyph-diamond-pulse" : undefined} />
           <path {...S} strokeWidth={1.3} d="M62 16 V48 M46 32 H78" />
-          {ring.map(([x, y]) => (
-            <circle key={`${x}-${y}`} cx={x} cy={y} r="2.3" fill="currentColor" stroke="none" />
+          {ring.map(([x, y], idx) => (
+            <circle key={`${x}-${y}`} cx={x} cy={y} r="2.3" fill="currentColor" stroke="none" className={animate ? "glyph-node-pop" : undefined} style={{ animationDelay: `${idx * 40}ms` }} />
           ))}
-          <circle cx="62" cy="32" r="3.6" fill="currentColor" stroke="none" />
+          <circle cx="62" cy="32" r="3.6" fill="currentColor" stroke="none" className={animate ? "glyph-core-pulse" : undefined} />
         </>
       );
       break;
@@ -103,17 +110,17 @@ export function StageGlyph({ id, animate = false, className }: { id: string; ani
       body = (
         <>
           {/* dispatch bracket, open to the outbound side */}
-          <path {...S} d="M32 16 H20 V48 H32" />
+          <path {...S} d="M32 16 H20 V48 H32" className={animate ? "glyph-bracket-lock" : undefined} />
           {/* the dispatch node */}
-          <circle cx="40" cy="32" r="4" fill="currentColor" stroke="none" />
+          <circle cx="40" cy="32" r="4" fill="currentColor" stroke="none" className={animate ? "glyph-core-pulse" : undefined} />
           {/* three signals fanning out */}
-          <path {...S} d="M44 32 H72 L114 13" className={flow} />
-          <path {...S} d="M44 32 H114" className={flow} />
-          <path {...S} d="M44 32 H72 L114 51" className={flow} />
+          <path {...S} d="M44 32 H72 L114 13" className={animate ? "glyph-input-line glyph-flow" : undefined} style={{ animationDelay: "0ms" }} />
+          <path {...S} d="M44 32 H114" className={animate ? "glyph-input-line glyph-flow" : undefined} style={{ animationDelay: "60ms" }} />
+          <path {...S} d="M44 32 H72 L114 51" className={animate ? "glyph-input-line glyph-flow" : undefined} style={{ animationDelay: "120ms" }} />
           {/* arrowheads at every delivered end */}
-          <path {...S} strokeWidth={1.7} d="M107 23 L114 13 L102 12" />
-          <path {...S} strokeWidth={1.7} d="M104 26 L114 32 L104 38" />
-          <path {...S} strokeWidth={1.7} d="M107 41 L114 51 L102 52" />
+          <path {...S} strokeWidth={1.7} d="M107 23 L114 13 L102 12" className={animate ? "glyph-arrow-lock" : undefined} style={{ animationDelay: "220ms" }} />
+          <path {...S} strokeWidth={1.7} d="M104 26 L114 32 L104 38" className={animate ? "glyph-arrow-lock" : undefined} style={{ animationDelay: "260ms" }} />
+          <path {...S} strokeWidth={1.7} d="M107 41 L114 51 L102 52" className={animate ? "glyph-arrow-lock" : undefined} style={{ animationDelay: "300ms" }} />
         </>
       );
       break;
@@ -124,13 +131,13 @@ export function StageGlyph({ id, animate = false, className }: { id: string; ani
           <g className={animate ? "glyph-scan" : undefined} opacity={animate ? 1 : 0}>
             <circle {...S} strokeWidth={2} strokeDasharray="14 149.4" cx="62" cy="32" r="26" />
           </g>
-          <circle {...S} cx="62" cy="32" r="20" />
+          <circle {...S} cx="62" cy="32" r="20" className={animate ? "glyph-spoke-draw" : undefined} />
           {/* the completed mark */}
-          <path {...S} strokeWidth={2.6} d="M51 33 L59 41 L74 23" />
+          <path {...S} strokeWidth={2.6} d="M51 33 L59 41 L74 23" className={animate ? "glyph-check-draw" : undefined} />
           {/* three verification nodes on the seal */}
-          <circle cx="62" cy="12" r="2.4" fill="currentColor" stroke="none" />
-          <circle cx="79.3" cy="42" r="2.4" fill="currentColor" stroke="none" />
-          <circle cx="44.7" cy="42" r="2.4" fill="currentColor" stroke="none" />
+          <circle cx="62" cy="12" r="2.4" fill="currentColor" stroke="none" className={animate ? "glyph-node-pop" : undefined} style={{ animationDelay: "100ms" }} />
+          <circle cx="79.3" cy="42" r="2.4" fill="currentColor" stroke="none" className={animate ? "glyph-node-pop" : undefined} style={{ animationDelay: "180ms" }} />
+          <circle cx="44.7" cy="42" r="2.4" fill="currentColor" stroke="none" className={animate ? "glyph-node-pop" : undefined} style={{ animationDelay: "260ms" }} />
         </>
       );
       break;

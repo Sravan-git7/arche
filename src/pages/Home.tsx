@@ -8,7 +8,6 @@ import { ProblemSystem } from "../components/ProblemSystem";
 import { Architecture3D } from "../components/Architecture3D";
 import { ProgressRail } from "../components/ProgressRail";
 import { BridgeDot } from "../components/BridgeDot";
-import { SystemThread } from "../components/SystemThread";
 import { ServiceHandoff } from "../components/ServiceHandoff";
 import { Link, usePage } from "../lib/router";
 import { useReveal, useParallax } from "../lib/reveal";
@@ -91,7 +90,6 @@ export function Home() {
       </div>
       <ProgressRail />
       <BridgeDot />
-      <SystemThread />
       <ServiceHandoff />
     </>
   );

@@ -52,6 +52,7 @@ export default function App() {
       </a>
       <Intro />
       <Cursor />
+      <div className="film-grain" aria-hidden="true" />
       <RouteWipe />
       <Header />
       <main id="main" key={route} tabIndex={-1} className="relative w-full">

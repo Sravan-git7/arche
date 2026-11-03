@@ -154,7 +154,7 @@ export function Architecture3D() {
         const near = Math.abs(i - p * LAST) <= 1.15;
         cap.style.opacity = (pt.opacity * (i === idx ? 1 : 0.5)).toFixed(3);
         cap.style.visibility =
-          p < CONVERGE_AT && near && pt.opacity > 0.42 && pt.visible && below < box.h - 6
+          p < CONVERGE_AT && near && pt.opacity > 0.42 && pt.visible && below > 18 && below < box.h - 6
             ? "visible"
             : "hidden";
       });
@@ -285,7 +285,7 @@ export function Architecture3D() {
                 className="d1 block select-none"
                 style={{ fontSize: "clamp(28px,4.4vw,64px)", fontWeight: 600, letterSpacing: "-0.02em", lineHeight: 0.92 }}
               >
-                SYSTEM MODEL
+                SYSTEM{"\u00A0"}MODEL
               </h2>
             </div>
             <p className="body max-w-[44ch] text-[var(--muted)] leading-relaxed">
@@ -687,7 +687,7 @@ export function Architecture3D() {
               <span className="mono">5-STAGE SYSTEM MODEL</span>
             </div>
             <h2 className="d2" style={{ fontSize: "clamp(30px,7vw,54px)" }}>
-              SYSTEM MODEL
+              SYSTEM{"\u00A0"}MODEL
             </h2>
             <p className="body max-w-[46ch] text-[var(--muted)]">
               Five clusters on one axis: <strong>INPUT → INTELLIGENCE → SYSTEM → ACTION → OUTPUT</strong>.

@@ -7,7 +7,7 @@ import { DUR, EASE, STAGGER } from "./tokens";
    Place each line inside an overflow-hidden mask.
    Animate yPercent: 110 to 0 over 1.0s with ease: "expo.out" and 0.08s stagger.
    Support automatic re-splitting on resize without visible flash.
-   Revert SplitText instances during cleanup.
+   Revert all SplitText instances during cleanup.
    ======================================================================== */
 
 export interface RevealLinesOptions {
@@ -42,6 +42,9 @@ export function revealLines(
       revert: () => {},
     };
   }
+
+  const originalHTMLs = new Map<HTMLElement, string>();
+  elements.forEach((el) => originalHTMLs.set(el, el.innerHTML));
 
   const splits: SplitText[] = [];
   const tl = gsap.timeline({
@@ -121,7 +124,19 @@ export function revealLines(
     window.removeEventListener("resize", onResize);
     window.clearTimeout(resizeTimer);
     tl.kill();
-    splits.forEach((s) => s.revert());
+    splits.forEach((s) => {
+      try {
+        s.revert();
+      } catch {
+        // no-op
+      }
+    });
+    elements.forEach((el) => {
+      const orig = originalHTMLs.get(el);
+      if (orig !== undefined) {
+        el.innerHTML = orig;
+      }
+    });
   };
 
   return {
@@ -196,6 +211,8 @@ export function digitRoll(
   const sTo = String(to);
   const originalHtml = el.innerHTML;
   const originalAriaLabel = el.getAttribute("aria-label");
+  const originalDisplay = el.style.display;
+  const originalAlignItems = el.style.alignItems;
 
   el.setAttribute("aria-label", sTo);
 
@@ -294,6 +311,8 @@ export function digitRoll(
     } else {
       el.removeAttribute("aria-label");
     }
+    el.style.display = originalDisplay;
+    el.style.alignItems = originalAlignItems;
   };
 
   return {
@@ -415,7 +434,7 @@ export function magnetic(
     el.removeEventListener("pointerleave", onPointerLeave);
     gsap.killTweensOf(el);
     if (inner) gsap.killTweensOf(inner);
-    gsap.set(el, { x: 0, y: 0 });
-    if (inner) gsap.set(inner, { x: 0, y: 0 });
+    gsap.set(el, { clearProps: "transform" });
+    if (inner) gsap.set(inner, { clearProps: "transform" });
   };
 }

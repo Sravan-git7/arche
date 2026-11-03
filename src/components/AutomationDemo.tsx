@@ -100,6 +100,7 @@ export function AutomationDemo({
   const collapsed = useRef(false);
   const clockStart = useRef(0);
   const clock = useRef<HTMLSpanElement>(null);
+  const simulatedClock = useRef<HTMLSpanElement>(null);
 
   const [mode, setMode] = useState<Mode>("manual");
   const [phase, setPhase] = useState<Phase>("idle");
@@ -256,14 +257,16 @@ export function AutomationDemo({
       const work = d - reach;
       const target = onRow(rows[i], MANUAL.jitter[i]);
       const at = pos;
-      t.call(() => setState(rows[i], "active"), undefined, at)
-        .to(hand, { x: target.x, y: target.y, duration: reach, ease: "power2.inOut" }, at)
-        .to(hand, { scale: 0.84, duration: 0.09, yoyo: true, repeat: 1, ease: "power1.inOut" }, at + reach)
+      t.to(hand, { x: target.x, y: target.y, duration: reach, ease: "power2.inOut" }, at)
+        .call(() => setState(rows[i], "active"), undefined, at + reach)
+        // 0.2s hesitation before checking each step
+        .to({}, { duration: 0.2 }, at + reach)
+        .to(hand, { scale: 0.84, duration: 0.09, yoyo: true, repeat: 1, ease: "power1.inOut" }, at + reach + 0.2)
         // the person gets partway, pauses, then finishes — never one even sweep
-        .to(fills[i], { scaleX: MANUAL.split[i], duration: work * 0.5, ease: "sine.inOut" }, at + reach)
-        .to(fills[i], { scaleX: 1, duration: work * (0.5 - MANUAL.hold[i]), ease: "power2.out" }, at + reach + work * (0.5 + MANUAL.hold[i]))
-        .call(() => setState(rows[i], "complete"), undefined, at + d);
-      pos += d;
+        .to(fills[i], { scaleX: MANUAL.split[i], duration: work * 0.5, ease: "sine.inOut" }, at + reach + 0.2)
+        .to(fills[i], { scaleX: 1, duration: work * (0.5 - MANUAL.hold[i]), ease: "power2.out" }, at + reach + 0.2 + work * (0.5 + MANUAL.hold[i]))
+        .call(() => setState(rows[i], "complete"), undefined, at + d + 0.2);
+      pos += d + 0.2;
     });
 
     // then they go and update each tool, one at a time
@@ -353,11 +356,18 @@ export function AutomationDemo({
       .fromTo(ring, { scale: 1, opacity: 0.8 }, { scale: 1.9, opacity: 0, duration: 0.5, ease: "power2.out" }, pos);
     pos += AUTO.absorb;
 
-    // four paths, identical easing, exactly 80ms apart
+    // four paths: 900px/s constant velocity, decelerating in the last 40px
+    let maxPathEnd = pos;
     cards.forEach((c, i) => {
       const at = pos + i * AUTO.stagger;
       const L = ends[i];
+      const d1 = Math.max(0, L - 40);
+      const d2 = L - d1;
+      const t1 = d1 / 900;
+      const t2 = d2 > 0 ? d2 / 450 : 0.01;
+      const p1 = L > 0 ? d1 / L : 0;
       const p = { v: 0 };
+
       t.set(splitP[i], { opacity: 1, strokeDasharray: L, strokeDashoffset: L }, at)
         .set(dots[i], { opacity: 1 }, at)
         .call(() => {
@@ -367,9 +377,9 @@ export function AutomationDemo({
         .to(
           p,
           {
-            v: 1,
-            duration: AUTO.path,
-            ease: "power2.inOut",
+            v: p1,
+            duration: t1,
+            ease: "none",
             onUpdate: () => {
               place(dots[i], splitP[i], L, p.v);
               splitP[i].style.strokeDashoffset = String(L * (1 - p.v));
@@ -377,15 +387,39 @@ export function AutomationDemo({
           },
           at
         )
-        .call(() => setState(c, "complete"), undefined, at + AUTO.path)
-        .to(dots[i], { opacity: 0, duration: 0.15 }, at + AUTO.path);
+        .to(
+          p,
+          {
+            v: 1,
+            duration: t2,
+            ease: "power2.out",
+            onUpdate: () => {
+              place(dots[i], splitP[i], L, p.v);
+              splitP[i].style.strokeDashoffset = String(L * (1 - p.v));
+            },
+          },
+          at + t1
+        )
+        .call(() => {
+          setState(c, "complete");
+          if (!prefersReducedMotion()) {
+            gsap.fromTo(c, { scaleY: 0.2 }, { scaleY: 1, duration: 0.35, ease: "power2.out" });
+            const check = c.querySelector<SVGPathElement>(".au-mark-check");
+            if (check) {
+              gsap.fromTo(check, { drawSVG: "0%" }, { drawSVG: "100%", duration: 0.3, ease: "power2.out" });
+            }
+          }
+        }, undefined, at + t1 + t2)
+        .to(dots[i], { opacity: 0, duration: 0.15 }, at + t1 + t2);
+
+      const thisPathEnd = at + t1 + t2;
+      if (thisPathEnd > maxPathEnd) maxPathEnd = thisPathEnd;
     });
 
-    const end = pos + AUTO.stagger * (cards.length - 1) + AUTO.path;
     t.call(() => {
       setState(node, "complete");
       finish("auto");
-    }, undefined, end);
+    }, undefined, maxPathEnd);
   };
 
   /* ---- run ------------------------------------------------------------------ */
@@ -414,7 +448,11 @@ export function AutomationDemo({
 
     const t = gsap.timeline({
       onUpdate: () => {
-        if (clockStart.current && clock.current) clock.current.textContent = fmt((performance.now() - clockStart.current) / 1000);
+        if (clockStart.current) {
+          const val = fmt((performance.now() - clockStart.current) / 1000);
+          if (clock.current) clock.current.textContent = val;
+          if (simulatedClock.current) simulatedClock.current.textContent = val;
+        }
       },
     });
     if (m === "manual") buildManual(t);
@@ -545,7 +583,18 @@ export function AutomationDemo({
               <div key={c.k} data-slab={i === 0 ? "s3" : i === 1 ? "s4" : i === 2 ? "s5" : "s6"} className="au-card" data-state="idle" tabIndex={0} aria-describedby={`au-tip-${i}`}>
                 <div className="flex items-center justify-between gap-[8px]">
                   <span className="mono mono-fg">{c.k}</span>
-                  <span className="au-mark" aria-hidden />
+                  <span className="au-mark" aria-hidden>
+                    <svg className="h-[8px] w-[8px]" viewBox="0 0 10 8" fill="none">
+                      <path
+                        className="au-mark-check"
+                        d="M1 4L3.5 6.5L9 1"
+                        stroke="var(--bg)"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
                 </div>
                 <span className="au-flip" aria-live="polite">
                   <span>Waiting</span>
@@ -581,7 +630,7 @@ export function AutomationDemo({
         </span>
         {both ? (
           <span className="mono mono-fg flex items-center gap-[4px]">
-            <span>SIMULATED · Manual {fmt(results.manual!)} → Automated {fmt(results.auto!)} ·</span>
+            <span>SIMULATED · MANUAL {fmt(results.manual!)} → AUTOMATED {fmt(results.auto!)} · </span>
             <strong
               className="text-[var(--accent)] font-bold transition-transform duration-200"
               style={{
@@ -589,11 +638,19 @@ export function AutomationDemo({
                 transform: displayMult === Math.round(results.manual! / results.auto!) ? "scale(1.08)" : "scale(1)",
               }}
             >
-              {displayMult}× faster
+              {displayMult}× FASTER
             </strong>
           </span>
         ) : (
-          <span className="mono text-[10px] opacity-60">SIMULATION · NO LIVE DATA</span>
+          <span className="mono text-[10px] opacity-60">
+            {phase === "running" ? (
+              <>
+                SIMULATED · <span ref={simulatedClock}>0.0s</span>
+              </>
+            ) : (
+              "SIMULATION · NO LIVE DATA"
+            )}
+          </span>
         )}
       </div>
 
