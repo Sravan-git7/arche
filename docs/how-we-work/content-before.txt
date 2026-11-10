@@ -1,0 +1,502 @@
++
++
+┌
+└
+SYS // 01 · INGESTION STREAM
+SYNCED
+WEB
+API
+FLOW
+RATE // 10.4 kb/s
++
++
+┌
+└
+SYS // 02 · ORCHESTRATION KERNEL
+ROUTING
+ROUTER
+DECIDE
+DISPATCH
+LOGIC // OPTIMAL
++
++
+┌
+└
+ARCHE // CORE · ARCHITECTURAL MATRIX
+STABLE
+AI-AGENT
+PIPELINE
+SHARED-DATA
+COUPLING // 100%
+REQ // INTAKE
++
++
+┌
+└
+SYS // 03 · EXECUTION BUS
+ARMED
+VIDEO
+WEB
+CRM
+THREADS // 4 ACTIVE
++
++
+┌
+└
+SYS // 04 · INTERFACE GATEWAY
+ONLINE
+SURFACE
+TELEMETRY
+LATENCY // <1ms
+AI + DIGITAL SYSTEMS STUDIO
+WE DON'T SELL SERVICES. WE BUILD SYSTEMS.
+Systems that make
+businesses work
+better.
+
+Arche is a digital systems studio. Today we build four things —
+video, websites, AI chat agents and automation — each one a
+way in. Over time they can connect.
+
+START A PROJECT
+→
+VIEW WORK
+01 — VIDEO EDITING
+→
+02 — WEB DEVELOPMENT
+→
+03 — AI CHATBOTS
+→
+04 — AI AUTOMATION
+→
+THE PROBLEM · ARCHITECTURAL DIAGNOSIS
+Most businesses
+don't have a tool problem.
+[TOOL OVERLOAD]
+THE STRUCTURAL DEFICIT //
+They have a
+connection problem.
+
+Content, website, leads, conversations and operations live in different places. Arche starts where the friction is — then connects what already exists and builds what's missing.
+
+4 TOOLS ·
+0
+1
+2
+3
+CONNECTIONS
+DISCONNECTED
+ARCHE.STUDIO/INQUIRY
+WEBSITE
+[SUBMIT]
+New inquiry
+Inquiry captured
+CAPTURED
+INBOX (1)
+10:42 AM
+EMAIL
+INQUIRY@ACMECORP.COM
+Waiting
+Read · 1m
+SENT
+LEAD #2048
+QUALIFYING
+CRM
+$24,000 · HIGH INTENT
+Unassigned
+Assigned
+ASSIGNED
+PIPELINE.CSV
+ROW 142
+SHEET
+AUTO-SYNC ROW
+Pending
+Row synced
+LOGGED
+WEBSITE
+AI AGENT
+QUALIFIED LEAD
+CRM
+TARGET STATE · CONCEPTUAL MODEL
+CLICK ANY TOOL TO INSPECT. ESCAPE CLOSES.
+SERVICES
+Every business starts somewhere.
+01 / 04
+01
+01
+VideoEditing
+
+Raw material, cut into content that holds attention.
+
+RAW
+→
+DECISIONS
+→
+CONTENT
+EXPLORE VIDEO EDITING
+→
+PREVIEW · VIDEO — CLICK TO OPEN
+STAGE: RAW
+· RAW FOOTAGE
+01 / 07
+▶ PLAY
+REC [RAW LOG]
+● 24 FPS
+[ RAW SOURCE TAKES · 4K PRORES ]
+TC 00:14:22:08
+TAKE 03 SELECTED
+RATIO: KEEP 12%
+CLIP 03 : HIGH RETENTION
+TRIM: -04:12 DISCARDED
+IN: 00:01:04
+OUT: 00:08:19
+CUT DURATION: 07.25s
+RHYTHM: FAST PACING MATCHED
+GRAPHICS / ACCENT
+KINETIC PASS
+PUNCH IN // 115%
+EASE: CUBIC-OUT 320ms
+SUBTITLES: AUTO-SYNC
+ACCURACY 99.4%
+“Systems that turn ideas into leverage.”
+FORMAT: WORD-BY-WORD POP
+COLOR LUT: ARCHE FILM
+GAMMA 2.4
+WARM TONE + ACID ACCENTS
+CURVES: HIGHLIGHT ROLL-OFF APPLIED
+RENDER FINISHED
+100% COMPLETE
+✓
+MASTER READY FOR RELEASE
+MP4 H.265 / 4K
+SIZE: 142 MB
+TIMELINE SEGMENTS (HOVER TO JUMP)
+SELECT PASS
+01
+02
+03
+04
+05
+06
+DRAG PLAYHEAD ACROSS WAVEFORM
+STAGE: RAW
+RAW→
+SELECT→
+CUT→
+MOTION→
+CAPTIONS→
+GRADE→
+EXPORT
+UNCUT, UNPROCESSED CAMERA OUTPUT.
+VIDEO
+WEB
+CHATBOTS
+AUTOMATION
+RAW
+→
+STORY
+01 VIDEO EDITING
+02 WEB DEVELOPMENT
+03 AI CHATBOTS
+04 AI AUTOMATION
+SHOWCASE · 01 / 04 · AUTO
+03 // SPATIAL ARCHITECTURE
+·
+5-STAGE SYSTEM MODEL
+SYSTEM MODEL
+
+One fixed camera rail. Five clusters along a single depth axis: INPUT → INTELLIGENCE → SYSTEM → ACTION → OUTPUT. Scroll travels the rail.
+
+01
+02
+03
+04
+05
+01
+INPUT
+02
+INTELLIGENCE
+CAMERA RAIL
+01
+INPUT
+●
+02
+INTELLIGENCE
+03
+SYSTEM
+04
+ACTION
+05
+OUTPUT
+RAW SIGNAL — INGESTS INBOUND UNSTRUCTURED DATA, EVENTS & REQUESTS.
+01 // INPUT
+RAW INGESTION
+
+RAW SIGNAL — INGESTS INBOUND UNSTRUCTURED DATA, EVENTS & REQUESTS.
+
+SYSTEM CONVERGED — ONE CONTINUOUS PATH
+INPUT
+INTELLIGENCE
+SYSTEM
+ACTION
+OUTPUT
+INPUT → INTELLIGENCE → SYSTEM → ACTION → OUTPUT
+01
+02
+03
+04
+05
+SCROLL TO TRAVEL THE RAIL · HOVER OR TAP A CLUSTER FOR ITS ROLE
+
+WORK
+
+Built, labelled honestly.
+
+Internal builds and prototypes — not client case studies. Each one shows how a capability is designed to operate.
+
+ALL WORK
+→
+INTERNAL BUILD
+RAW
+→
+CUT
+→
+STORY
+01
+VIDEO EDITING · 2026
+CASE VIEW +
+Retention Edit System
+
+A short-form editing pipeline: selection scan, rhythm pass, caption system and grade — the same sequence applied to every edit.
+
+SHORT-FORM
+GRADING
+CAPTIONS
+EXPAND CASE VIEW
+→
+EXPLORE SERVICE →
+CONCEPT
+RAW
+→
+CUT
+→
+STORY
+02
+VIDEO EDITING · 2026
+CASE VIEW +
+Long-form Narrative Cut
+
+A talk recording restructured into a narrative edit — cold open, chapter logic, and a cutdown derived from the same timeline.
+
+LONG-FORM
+STRUCTURE
+SOUND
+EXPAND CASE VIEW
+→
+EXPLORE SERVICE →
+INTERNAL BUILD
+VISITOR
+→
+ACTION
+→
+LEAD
+03
+WEB DEVELOPMENT · 2026
+CASE VIEW +
+Studio Site System
+
+This website — a data-driven, motion-heavy single-bundle build with route transitions, a reveal grammar and a guided inquiry flow with a direct-email fallback.
+
+DESIGN
+BUILD
+MOTION
+EXPAND CASE VIEW
+→
+EXPLORE SERVICE →
+
+HOW WE WORK
+
+From first conversation to a system that keeps improving.
+
+01 · DISCOVER
+
+01
+Discover
+
+Understand the business and where work is lost.
+
+02
+Design
+
+Map the system before anything is built.
+
+03
+Build
+
+Production-grade implementation, no shortcuts.
+
+04
+Connect
+
+Join the new piece to the tools you already run — so nothing is orphaned.
+
+WEBSITE
+→
+AGENT
+→
+AUTOMATION
+→
+EXISTING TOOLS
+05
+Launch
+
+Ship, measure, verify against real usage.
+
+06
+Evolve
+
+Improve continuously as the business changes.
+
+APPROACH
+Good systems don't add more work.
+
+They remove it.
+
+01
+Systems thinking
+
+We design the connections between tools, content and people — not isolated deliverables.
+
+02
+AI where it earns its place
+
+Automation and agents only where they remove real work. No AI for the brochure.
+
+03
+Design + engineering
+
+Interface, motion and implementation are one language, not three handoffs.
+
+04
+Built to keep running
+
+Every engagement ends with something you can operate, measure and improve.
+
+01 // SYSTEMS THINKING
+01
+02
+03
+04
+AI
+RUNNING
+4 NODES · 1 HUB · LINKED
+AGENT ROUTE · VERIFIED
+0 HANDOFFS
+HEALTH: NOMINAL
+↳ DISCONNECTED NODES → INTEGRATED GRAPH
+01/04
+
+ASK ARCHE
+
+Discover the right service for your business.
+
+A guided discovery assistant: choose a starting request or describe your operational bottleneck in free text. The assistant shapes your requirement into a scoped project brief and connects it to the right engineering pipeline.
+
+ARCHE DISCOVERY ASSISTANT
+· READY
+RESET
+
+● ARCHE · DISCOVERY
+
+I'm the Arche discovery assistant. What is your team looking to build or solve?
+
+I NEED A WEBSITE.
+I WANT TO AUTOMATE MY BUSINESS.
+I NEED AN AI CHATBOT.
+I NEED AN AI AGENT.
+I NEED VIDEO EDITING.
+I WANT TO CONNECT MY EXISTING TOOLS.
+I'M NOT SURE WHAT I NEED.
+Ask Arche
+SEND
+→
+
+GUIDED DISCOVERY DEMONSTRATION — START A PROJECT BRIEF DIRECTLY →
+
+SYSTEM VIEW
+CONNECTED SYSTEM
+WEB
+AGENT
+AUTO
+CONTENT
+
+THE DISCOVERY CONVERSATION SHAPES THIS SYSTEM ARCHITECTURE VIEW.
+
+FAQ
+
+Working with Arche.
+
+Anything unanswered? Ask us directly — we're happy to talk it through.
+
+START A PROJECT
+→
+01
+What does Arche do?
+
+We build digital systems. Today that means four things: video editing, websites, AI chat agents and automation. You can hire us for one. Over time they can connect.
+
+02
+Which services are currently available?
+
+Exactly four: video editing, web development, AI chatbots and AI automation. That's the current offering — focused so each one ships to a high standard.
+
+03
+Can I hire Arche for only one service?
+
+Yes. Most engagements start with a single service. You don't need everything at once — start where the friction is.
+
+04
+Who do you work with?
+
+Small and growing teams who feel the cost of disconnected tools. We're a studio, not a consultancy with a hundred people — which is why the work stays close to the people who design it.
+
+05
+Can you work with our existing tools?
+
+That's the point of Connect. We extend the CRMs, inboxes, sheets and APIs you already run rather than replacing them.
+
+06
+How is pricing determined?
+
+Some work has a defined package. Custom work is quoted after a short conversation — scope, timeline and investment in writing before anything starts.
+
+07
+How long does a project take?
+
+Edits ship in days. Landing pages in about two weeks. Sites, automations and agents typically two to eight weeks depending on scope. Every quote includes a timeline.
+
+08
+What happens after I submit an inquiry?
+
+You'll get a reply within one working day. For packages we confirm scope and schedule. For custom work we book a short call, then send a written proposal.
+
+09
+Do you provide support after launch?
+
+Yes. Every build includes a support window. Most clients continue with a light maintenance or iteration arrangement afterwards — that's the Evolve step.
+
+STATUS
+SERVICE
+NODE
+SIGNAL
+WEBSITE
+AI AGENT
+AUTOMATION
+CONTENT
+ARCHE
+NEXT
+Let's build what actually connects.
+START A PROJECT
+→
+HELLO@ARCHE.STUDIO
+01 · HERO

@@ -1,0 +1,48 @@
+.hww { position: relative; background: var(--bg); color: var(--fg); padding-top: clamp(76px,10vw,150px); }
+.hww-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(32px,6vw,100px); align-items: start; }
+.hww-visual { position: sticky; top: 140px; top: max(100px, calc((100svh - min(38vw, 540px)) / 2)); }
+.hww-diagram { position: relative; max-width: 540px; margin: auto; }
+.hww-diagram .pv-root { max-width: none; }
+.hww-system { position: relative; aspect-ratio: 1; border-radius: 6px; background: var(--bg-2); overflow: hidden; }
+.hww-system > svg { width: 100%; height: calc(100% - 20px); stroke: var(--fg); stroke-width: .65; }
+.hww-diagram > .hww-overlay { height: calc(100% - 20px); }
+.hww-system > p { position: absolute; bottom: 12px; inset-inline: 0; text-align: center; font-size: 11px; color: var(--faint); }
+.hww-node-base { fill: var(--fg); stroke: none; }
+.hww-energy { fill: var(--accent); stroke: none; }
+.hww-hub { fill: var(--bg-2); stroke: var(--accent-deep); }
+.hww-perimeter, .hww-horizon, .hww-release, .hww-operating { stroke: var(--accent-deep); }
+.hww-release { stroke-width: 1.2; }
+.hww-horizon { stroke-width: .4; }
+.hww-breath { transform-origin: 50px 50px; animation: hww-breathe 5s ease-in-out infinite; }
+@keyframes hww-breathe { 0%,100% { transform: scale(.96); opacity: .4; } 50% { transform: scale(1.04); opacity: .8; } }
+.hww-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; stroke: var(--accent-deep); stroke-width: .65; }
+.hww-layer { opacity: 0; }
+.hww-heading { padding-bottom: clamp(36px,5vw,72px); display: grid; gap: 20px; }
+.hww-card { min-height: 36svh; padding: 28px 0 64px; border-top: 1px solid var(--line); scroll-margin-top: 120px; }
+.hww-card[data-active="true"] { border-top-color: var(--accent-deep); }
+.hww-select { display: flex; align-items: baseline; gap: 22px; width: 100%; min-height: 48px; text-align: left; cursor: pointer; color: inherit; background: none; border: 0; padding: 0; }
+.hww-select .mono { color: var(--accent-ink); flex: none; }
+.hww-select:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 6px; border-radius: 4px; }
+.hww-select:active { transform: scale(.97); transition: transform .18s var(--e-out); }
+.hww-card .body { margin-top: 18px; max-width: 48ch; }
+.hww-connections { display: flex; flex-wrap: wrap; gap: 10px; color: var(--accent-ink); margin-top: 22px; }
+.hww #approach { padding-top: 60px; }
+.hww-exit { height: 24svh; }
+.hww[data-running="false"] .pv-root *, .hww[data-running="false"] .pv-root { animation-play-state: paused !important; }
+@media (max-width: 767px) {
+  .hww-layout { display: block; }
+  .hww-visual { top: 76px; z-index: 4; margin-bottom: 28px; background: var(--bg); padding: 10px 0; }
+  .hww-diagram { width: min(40vw, 170px); }
+  .hww-system > p { font-size: 9px; bottom: 6px; }
+  .hww-heading { padding-top: 24px; }
+  .hww-card { position: sticky; top: calc(100px + min(40vw,170px)); min-height: 40svh; padding: 24px 16px 48px; border-radius: 6px 6px 0 0; background: var(--bg); }
+  .hww-steps, .hww #approach { padding-bottom: 20svh; }
+  .hww-card .body { font-size: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hww, .hww *, .hww *::before, .hww *::after { animation: none !important; transition: none !important; }
+  .hww-visual, .hww-card { position: static; }
+  .hww-card { min-height: 0; }
+  .hww-visual { margin-bottom: 32px; }
+  .hww-exit { height: 80px; background: linear-gradient(var(--solid), var(--solid-fg)); }
+}

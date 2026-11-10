@@ -73,12 +73,14 @@ async function selectService(index, innerSelector) {
 async function scrollPinned(selector, progress) {
   await page.evaluate(({ selector, progress }) => {
     const section = document.querySelector(selector);
-    const parent = section.parentElement;
-    const top = parent.getBoundingClientRect().top + window.scrollY;
-    const distance = parent.getBoundingClientRect().height - section.getBoundingClientRect().height;
-    window.scrollTo(0, top + distance * progress);
+    // Use the actual pin interval; parent rectangles may include an active pin
+    // transform or a handoff and are not the animation's scroll coordinates.
+    const trigger = window.ScrollTrigger.getAll().find(t => t.trigger === section && t.pin);
+    if (!trigger) throw new Error(`No pinned scene found for ${selector}`);
+    window.scrollTo(0, trigger.start + (trigger.end - trigger.start) * progress);
+    window.ScrollTrigger.update();
   }, { selector, progress });
-  await wait(600);
+  await wait(1100); // include the scene's 600ms scrub settling time
 }
 
 await goto();
@@ -293,30 +295,29 @@ await test("work: keyboard-accessible project details are honestly labelled", as
   await project.focus(); await page.keyboard.press("Enter");
   assert(await project.getAttribute("aria-expanded") === "false", "keyboard did not close the project");
 });
-await test("process and approach: every selected stage has a distinct state", async () => {
-  await reveal("#process .pr-step");
+await test("process and approach: one continuous diagram, six stages and four principles", async () => {
+  await reveal("#process [data-hww-beat]");
+  const diagram = page.locator(".hww [data-pv-diagram]");
+  assert(await diagram.count() === 1, "chapter duplicated its diagram");
   const models = [];
   for (let i = 0; i < 6; i++) {
-    const step = page.locator("#process .pr-step").nth(i);
-    await step.focus(); await page.keyboard.press("Enter");
-    const diagram = page.locator("#process [data-pv-diagram]").first();
-    assert(await diagram.getAttribute("data-state") === String(i), `process stage ${i + 1} did not update`);
-    models.push(await step.locator("h3").first().textContent());
+    const step = page.locator(`#process [data-hww-beat="${i}"] button`);
+    await step.focus(); await page.keyboard.press("Enter"); await wait(150);
+    assert(await diagram.getAttribute("data-state") === String(REDUCED ? 5 : i), `process stage ${i + 1} did not update`);
+    models.push(await step.textContent());
   }
   assert(new Set(models).size === 6, "process descriptions are not distinct");
-  if (MOBILE) {
-    const compact = page.locator("#process [data-pv-diagram]").last();
-    assert(await compact.isVisible(), "mobile process diagram is hidden");
-    const bounds = await compact.boundingBox();
-    assert(bounds && bounds.y < HEIGHT && bounds.y + bounds.height > 0, "mobile process diagram did not stay with the stages");
+  if (MOBILE && !REDUCED) {
+    const bounds = await diagram.boundingBox();
+    assert(bounds && bounds.y < HEIGHT && bounds.y + bounds.height > 0, "mobile diagram did not stay with the stages");
   }
-  await reveal("#approach .approach-principle");
   for (let i = 0; i < 4; i++) {
-    const principle = page.locator("#approach .approach-principle").nth(i);
-    await principle.focus(); await page.keyboard.press("Enter");
+    const principle = page.locator(`#approach [data-hww-beat="${i + 6}"] button`);
+    await principle.focus(); await page.keyboard.press("Enter"); await wait(150);
     assert(await principle.getAttribute("aria-pressed") === "true", `approach ${i + 1} did not activate`);
   }
 });
+
 if (await page.locator("#labs").count() > 0) {
   await test("labs: five playable, local sketches with keyboard controls", async () => {
     await reveal("#labs");

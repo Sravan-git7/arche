@@ -1,0 +1,306 @@
+[
+  {
+    "width": 1440,
+    "checkpoint": 0,
+    "beat": 0,
+    "ink": false,
+    "diagramTop": 180,
+    "state": 0
+  },
+  {
+    "width": 1440,
+    "checkpoint": 1,
+    "beat": 1,
+    "ink": false,
+    "diagramTop": 180,
+    "state": 1
+  },
+  {
+    "width": 1440,
+    "checkpoint": 2,
+    "beat": 2,
+    "ink": false,
+    "diagramTop": 180,
+    "state": 2
+  },
+  {
+    "width": 1440,
+    "checkpoint": 3,
+    "beat": 3,
+    "ink": false,
+    "diagramTop": 180,
+    "state": 3
+  },
+  {
+    "width": 1440,
+    "checkpoint": 4,
+    "beat": 4,
+    "ink": true,
+    "diagramTop": 180,
+    "state": 4
+  },
+  {
+    "width": 1440,
+    "checkpoint": 5,
+    "beat": 5,
+    "ink": true,
+    "diagramTop": 180,
+    "state": 5
+  },
+  {
+    "width": 1440,
+    "checkpoint": 6,
+    "beat": 6,
+    "ink": true,
+    "diagramTop": 180,
+    "state": 5
+  },
+  {
+    "width": 1440,
+    "checkpoint": 7,
+    "beat": 7,
+    "ink": true,
+    "diagramTop": 180,
+    "state": 5
+  },
+  {
+    "width": 1440,
+    "checkpoint": 8,
+    "beat": 8,
+    "ink": true,
+    "diagramTop": 180,
+    "state": 5
+  },
+  {
+    "width": 1440,
+    "checkpoint": 9,
+    "beat": 9,
+    "ink": true,
+    "diagramTop": 180,
+    "state": 5
+  },
+  {
+    "width": 1440,
+    "checkpoint": 8,
+    "beat": 8,
+    "ink": true,
+    "diagramTop": 180,
+    "state": 5
+  },
+  {
+    "width": 1440,
+    "checkpoint": 7,
+    "beat": 7,
+    "ink": true,
+    "diagramTop": 180,
+    "state": 5
+  },
+  {
+    "width": 1440,
+    "checkpoint": 6,
+    "beat": 6,
+    "ink": true,
+    "diagramTop": 180,
+    "state": 5
+  },
+  {
+    "width": 1440,
+    "checkpoint": 5,
+    "beat": 5,
+    "ink": true,
+    "diagramTop": 180,
+    "state": 5
+  },
+  {
+    "width": 1440,
+    "checkpoint": 4,
+    "beat": 4,
+    "ink": true,
+    "diagramTop": 180,
+    "state": 4
+  },
+  {
+    "width": 1440,
+    "checkpoint": 3,
+    "beat": 3,
+    "ink": false,
+    "diagramTop": 180,
+    "state": 3
+  },
+  {
+    "width": 1440,
+    "checkpoint": 2,
+    "beat": 2,
+    "ink": false,
+    "diagramTop": 180,
+    "state": 2
+  },
+  {
+    "width": 1440,
+    "checkpoint": 1,
+    "beat": 1,
+    "ink": false,
+    "diagramTop": 180,
+    "state": 1
+  },
+  {
+    "width": 1440,
+    "checkpoint": 0,
+    "beat": 0,
+    "ink": false,
+    "diagramTop": 180,
+    "state": 0
+  },
+  {
+    "width": 390,
+    "checkpoint": 0,
+    "beat": 0,
+    "ink": false,
+    "diagramTop": 76,
+    "state": 0
+  },
+  {
+    "width": 390,
+    "checkpoint": 1,
+    "beat": 1,
+    "ink": false,
+    "diagramTop": 76,
+    "state": 1
+  },
+  {
+    "width": 390,
+    "checkpoint": 2,
+    "beat": 2,
+    "ink": false,
+    "diagramTop": 76,
+    "state": 2
+  },
+  {
+    "width": 390,
+    "checkpoint": 3,
+    "beat": 3,
+    "ink": false,
+    "diagramTop": 76,
+    "state": 3
+  },
+  {
+    "width": 390,
+    "checkpoint": 4,
+    "beat": 4,
+    "ink": true,
+    "diagramTop": 76,
+    "state": 4
+  },
+  {
+    "width": 390,
+    "checkpoint": 5,
+    "beat": 5,
+    "ink": true,
+    "diagramTop": 76,
+    "state": 5
+  },
+  {
+    "width": 390,
+    "checkpoint": 6,
+    "beat": 6,
+    "ink": true,
+    "diagramTop": 76,
+    "state": 5
+  },
+  {
+    "width": 390,
+    "checkpoint": 7,
+    "beat": 7,
+    "ink": true,
+    "diagramTop": 76,
+    "state": 5
+  },
+  {
+    "width": 390,
+    "checkpoint": 8,
+    "beat": 8,
+    "ink": true,
+    "diagramTop": 76,
+    "state": 5
+  },
+  {
+    "width": 390,
+    "checkpoint": 9,
+    "beat": 9,
+    "ink": true,
+    "diagramTop": 76,
+    "state": 5
+  },
+  {
+    "width": 390,
+    "checkpoint": 8,
+    "beat": 8,
+    "ink": true,
+    "diagramTop": 76,
+    "state": 5
+  },
+  {
+    "width": 390,
+    "checkpoint": 7,
+    "beat": 7,
+    "ink": true,
+    "diagramTop": 76,
+    "state": 5
+  },
+  {
+    "width": 390,
+    "checkpoint": 6,
+    "beat": 6,
+    "ink": true,
+    "diagramTop": 76,
+    "state": 5
+  },
+  {
+    "width": 390,
+    "checkpoint": 5,
+    "beat": 5,
+    "ink": true,
+    "diagramTop": 76,
+    "state": 5
+  },
+  {
+    "width": 390,
+    "checkpoint": 4,
+    "beat": 4,
+    "ink": true,
+    "diagramTop": 76,
+    "state": 4
+  },
+  {
+    "width": 390,
+    "checkpoint": 3,
+    "beat": 3,
+    "ink": false,
+    "diagramTop": 76,
+    "state": 3
+  },
+  {
+    "width": 390,
+    "checkpoint": 2,
+    "beat": 2,
+    "ink": false,
+    "diagramTop": 76,
+    "state": 2
+  },
+  {
+    "width": 390,
+    "checkpoint": 1,
+    "beat": 1,
+    "ink": false,
+    "diagramTop": 76,
+    "state": 1
+  },
+  {
+    "width": 390,
+    "checkpoint": 0,
+    "beat": 0,
+    "ink": false,
+    "diagramTop": 76,
+    "state": 0
+  }
+]

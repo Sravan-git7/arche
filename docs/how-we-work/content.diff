@@ -1,0 +1,62 @@
+--- docs/how-we-work/content-before.txt	2026-11-05 17:32:53.051531409 +0000
++++ docs/how-we-work/content-after.txt	2026-11-09 15:09:03.705418390 +0000
+@@ -314,12 +314,11 @@
+ →
+ EXPLORE SERVICE →
+ 
++01 · DISCOVER
++
+ HOW WE WORK
+ 
+ From first conversation to a system that keeps improving.
+-
+-01 · DISCOVER
+-
+ 01
+ Discover
+ 
+@@ -341,12 +340,9 @@
+ Join the new piece to the tools you already run — so nothing is orphaned.
+ 
+ WEBSITE
+-→
+-AGENT
+-→
+-AUTOMATION
+-→
+-EXISTING TOOLS
++→ AGENT
++→ AUTOMATION
++→ EXISTING TOOLS
+ 05
+ Launch
+ 
+@@ -358,6 +354,7 @@
+ Improve continuously as the business changes.
+ 
+ APPROACH
++
+ Good systems don't add more work.
+ 
+ They remove it.
+@@ -382,20 +379,6 @@
+ 
+ Every engagement ends with something you can operate, measure and improve.
+ 
+-01 // SYSTEMS THINKING
+-01
+-02
+-03
+-04
+-AI
+-RUNNING
+-4 NODES · 1 HUB · LINKED
+-AGENT ROUTE · VERIFIED
+-0 HANDOFFS
+-HEALTH: NOMINAL
+-↳ DISCONNECTED NODES → INTEGRATED GRAPH
+-01/04
+-
+ ASK ARCHE
+ 
+ Discover the right service for your business.
