@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { Hero, Approach, ProcessSys, FinalCTA } from "../components/Sections";
+import { Hero, FinalCTA } from "../components/Sections";
+import { HowWeWork } from "../components/HowWeWork";
 import { Chapters } from "../components/Chapters";
 import { WorkIndex } from "../components/WorkIndex";
 import { FAQ } from "../components/FAQ";
@@ -73,12 +74,7 @@ export function Home() {
           </div>
         </section>
       </div>
-      <div data-chapter="Process">
-        <ProcessSys />
-      </div>
-      <div data-chapter="Approach">
-        <Approach />
-      </div>
+      <HowWeWork />
       <div data-chapter="Ask Arche">
         <ArcheAssistant />
       </div>
