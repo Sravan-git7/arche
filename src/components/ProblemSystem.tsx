@@ -113,52 +113,44 @@ function Copy({
 }) {
   const w = siteContent.whatWeDo;
   return (
-    <div className="flex flex-col max-w-[56ch]">
-      {/* Editorial eyebrow with technical pulse */}
-      <div className="flex items-center gap-[10px] mb-[clamp(14px,1.8vh,22px)]">
-        <span className="inline-block w-[6px] h-[6px] rounded-full bg-[var(--accent)]" />
-        <span className="mono text-[11px] uppercase tracking-[0.14em] text-[var(--accent-ink)] font-medium">
+    <div className="flex flex-col w-full">
+      {/* 1. Small architectural section label */}
+      <div className="flex items-center gap-[10px] mb-[clamp(16px,2vh,28px)]">
+        <span className="inline-block w-[7px] h-[7px] rounded-full bg-[var(--accent)]" />
+        <span className="mono text-[12px] uppercase tracking-[0.16em] text-[var(--accent-ink)] font-semibold">
           {w.label} · ARCHITECTURAL DIAGNOSIS
         </span>
       </div>
 
-      {/* PRIMARY STATEMENT: Expressive oversized sans-serif */}
+      {/* 2. Main statement: “Most businesses don't have a tool problem.” */}
       <div className="relative">
-        <div className="overflow-hidden">
-          <h2 className="pf-head-line text-[clamp(40px,4.4vw,66px)] font-medium leading-[0.94] tracking-[-0.045em] text-[var(--fg)]">
-            Most businesses
-          </h2>
-        </div>
-        <div className="overflow-hidden mt-[clamp(6px,0.9vh,10px)] flex items-baseline gap-[12px] flex-wrap">
-          <h2 className="pf-head-line text-[clamp(26px,2.8vw,42px)] font-normal leading-[1.04] tracking-[-0.035em] text-[var(--muted)]">
-            don't have a tool problem.
-          </h2>
-          <span className="mono text-[10px] text-[var(--faint)] tracking-widest uppercase border border-[var(--line)] px-[6px] py-[1.5px] rounded-[3px] select-none">
-            [TOOL OVERLOAD]
-          </span>
-        </div>
+        <h2 className="pf-head-line text-[clamp(36px,4.7vw,88px)] font-medium leading-[0.96] tracking-[-0.042em] text-[var(--fg)]">
+          <span>Most businesses</span>
+          <br className="hidden sm:inline" />{" "}
+          <span>don't have a tool problem.</span>
+        </h2>
       </div>
 
-      {/* ASYMMETRIC TURNING POINT: Indented editorial crescendo */}
-      <div className="mt-[clamp(22px,3vh,34px)] pl-[clamp(16px,2vw,32px)] border-l border-[var(--line)] relative">
-        <span className="mono text-[10px] uppercase tracking-[0.12em] text-[var(--faint)] mb-[6px] block">
+      {/* 3. Secondary statement: “They have a connection problem.” */}
+      <div className="mt-[clamp(24px,3.2vh,42px)] pl-[clamp(18px,2.2vw,34px)] border-l-2 border-[var(--line)] relative">
+        <span className="mono text-[11px] uppercase tracking-[0.16em] text-[var(--faint)] mb-[8px] block font-medium">
           THE STRUCTURAL DEFICIT //
         </span>
 
         <div className="overflow-hidden">
           <h2
             ref={lineBRef}
-            className="pf-head-line text-[clamp(34px,3.6vw,54px)] font-medium leading-[1.02] tracking-[-0.04em] transition-colors duration-300"
+            className="pf-head-line text-[clamp(32px,4.2vw,78px)] font-medium leading-[1.0] tracking-[-0.038em] transition-colors duration-300"
             style={{ color: "var(--faint)" }}
           >
-            <span className="block text-[clamp(19px,1.9vw,28px)] font-normal text-[var(--muted)] tracking-[-0.02em] leading-snug mb-[3px]">
+            <span className="block text-[clamp(18px,2.0vw,32px)] font-normal text-[var(--muted)] tracking-[-0.025em] leading-snug mb-[4px]">
               They have a
             </span>
             <span className="relative inline-block font-semibold">
               connection problem.
               <span
                 ref={connectionUnderlineRef}
-                className="origin-left pointer-events-none absolute bottom-[-4px] left-0 h-[3px] w-full"
+                className="origin-left pointer-events-none absolute bottom-[-4px] left-0 h-[4px] w-full"
                 style={{
                   background: "var(--accent)",
                   transform: "scaleX(0)",
@@ -170,10 +162,10 @@ function Copy({
           </h2>
         </div>
 
-        {/* Supporting Narrative Paragraph: Nestled directly under connection problem */}
+        {/* 4. Supporting Narrative Paragraph */}
         <p
           ref={bodyRef}
-          className="body mt-[clamp(16px,2vh,24px)] max-w-[44ch] text-[clamp(14px,0.95vw,16px)] leading-[1.65] text-[var(--muted)]"
+          className="body mt-[clamp(20px,2.6vh,34px)] max-w-[48ch] !text-[clamp(16.5px,1.3vw,24px)] !leading-[1.58] text-[var(--muted)]"
           data-r="meta"
         >
           {w.body}

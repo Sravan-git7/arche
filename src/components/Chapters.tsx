@@ -531,7 +531,7 @@ export function Chapters() {
                 aria-label={`Service ${s.n} of ${services.length} — show next service`}
                 data-cursor="NEXT"
               >
-                <span className="relative block select-none" style={{ fontSize: "clamp(52px,5.5vw,84px)", lineHeight: 1 }}>
+                <span className="relative block select-none" style={{ fontSize: "clamp(58px,6.2vw,92px)", lineHeight: 0.95 }}>
                   <span className="numeral outline-t block">
                     {s.n}
                   </span>
@@ -552,24 +552,24 @@ export function Chapters() {
 
               {/* Service Title */}
               <h3
-                className="d2"
+                className="d2 font-medium"
                 style={{
-                  fontSize: "clamp(34px,3.8vw,56px)",
-                  lineHeight: 1.02,
-                  letterSpacing: "-0.04em",
-                  marginBottom: "clamp(18px, 1.8vw, 22px)",
+                  fontSize: "clamp(38px,4.2vw,64px)",
+                  lineHeight: 0.98,
+                  letterSpacing: "-0.045em",
+                  marginBottom: "clamp(16px, 1.8vw, 22px)",
                 }}
               >
                 {s.title.split(" ").map((w, idx) => (
-                  <span key={idx} className="inline-block overflow-hidden mr-[0.28em] align-top pb-[0.05em] -mb-[0.05em]">
+                  <span key={idx} className="inline-block overflow-hidden mr-[0.26em] align-top pb-[0.05em] -mb-[0.05em]">
                     <span className="svc-title-word inline-block">{w}</span>{" "}
                   </span>
                 ))}
               </h3>
 
               {/* Description */}
-              <div className="overflow-hidden" style={{ marginBottom: "clamp(22px, 2.2vw, 26px)" }}>
-                <p className="svc-desc body max-w-[36ch]" style={{ lineHeight: 1.55 }}>
+              <div className="overflow-hidden" style={{ marginBottom: "clamp(20px, 2.2vw, 26px)" }}>
+                <p className="svc-desc body max-w-[34ch] text-[clamp(14.5px,1.05vw,17px)]" style={{ lineHeight: 1.55, color: "var(--muted)" }}>
                   {s.tagline}
                 </p>
               </div>

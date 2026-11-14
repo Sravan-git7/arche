@@ -8,7 +8,6 @@ export const INTRO_KEY = "arche_intro";
 export const isIntroActive = (): boolean => {
   if (typeof window === "undefined") return false;
   try {
-    if (prefersReducedMotion()) return false;
     return !sessionStorage.getItem(INTRO_KEY);
   } catch {
     return false;
@@ -19,12 +18,14 @@ export const isIntroActive = (): boolean => {
  * Arche branded intro (once per browser session) — Total about 2.9s.
  * 
  * - t0.0: lock scroll, set loading class on root, wait for document.fonts.ready (1.2s max)
- * - t0.0 to 0.9: centered arch logo mark from header, DrawSVG ease power2.inOut, 2px, paper color, 96px tall
- * - t0.7 to 1.15: lime dot falls 120px with back.out(1.6), squashes to scaleX 1.1 / scaleY 0.9 on impact for 0.1s
- * - t0.9 to 1.5: wordmark "Arche" rises letter by letter from masks (yPercent 120 to 0, stagger 0.045, expo.out)
- * - t1.5 to 1.7: hold
- * - t1.7 to 2.0: logo group moves up 24px and fades out
- * - t1.9 to 2.9: ARCH APERTURE. Growing arch {w, h} anchored at bottom center with top corner radius = w/2 until 60vw, then eased to 0
+ * - Monogram animation order (strict sequence):
+ *     1. A appears first (t0.0 -> t0.45) via left-to-right reveal
+ *     2. C appears second (t0.48 -> t0.88) after A is established, sweeping in
+ *     3. Central lime dot appears last (t0.90 -> t1.10) after C is complete
+ * - t0.95 to 1.45: wordmark "Arche" rises letter by letter from masks
+ * - t1.15 to 1.35: accent square settles
+ * - t1.65 to 1.95: logo group moves up 24px and fades out
+ * - t1.9 to 2.9: ARCH APERTURE (page reveal)
  * - t2.2: Hero reveal starts (event: arche:hero-reveal-start)
  * - t2.4: Nav fades in (event: arche:nav-reveal-start)
  */
@@ -100,62 +101,134 @@ export function Intro() {
         updateAperture();
       }
 
+      const prefersReduced = prefersReducedMotion();
+
       tl = gsap.timeline({
         defaults: { ease: "none" },
       });
+      if (typeof window !== "undefined") {
+        (window as any).__archeIntroTl = tl;
+      }
 
-      // Initial states
-      gsap.set(".intro-arch-path", { drawSVG: "0%" });
+      if (prefersReduced) {
+        // Reduced motion: show complete static logo immediately without animation delay
+        gsap.set(".intro-layer-full", { opacity: 1 });
+        gsap.set(".intro-layer-a", { opacity: 0 });
+        gsap.set(".intro-layer-c", { opacity: 0 });
+        gsap.set(".intro-layer-dot", { opacity: 0 });
+        gsap.set(".intro-char", { yPercent: 0 });
+        gsap.set(dotRef.current, { y: 0, opacity: 1, scale: 1 });
+        gsap.set(logoGroup.current, { y: 0, opacity: 1 });
+
+        tl.to(
+          logoGroup.current,
+          {
+            opacity: 0,
+            duration: 0.3,
+            ease: "power2.in",
+          },
+          0.6
+        );
+
+        tl.to(
+          aperture,
+          {
+            w: () => window.innerWidth,
+            h: () => window.innerHeight,
+            duration: 0.8,
+            ease: "power2.inOut",
+            onUpdate: updateAperture,
+            onComplete: () => {
+              completed = true;
+              if (heroWrapper) {
+                heroWrapper.style.clipPath = "";
+                heroWrapper.style.removeProperty("clip-path");
+                heroWrapper.style.willChange = "";
+              }
+              document.documentElement.classList.remove("arche-intro-loading");
+              document.body.classList.remove("arche-intro-loading");
+              getLenis()?.start();
+              try {
+                sessionStorage.setItem(INTRO_KEY, "1");
+                sessionStorage.setItem("arche:booted", "1");
+              } catch {}
+              window.dispatchEvent(new CustomEvent("arche:intro-done"));
+              setVisible(false);
+            },
+          },
+          0.7
+        );
+
+        tl.add(() => {
+          window.dispatchEvent(new CustomEvent("arche:hero-reveal-start", { detail: { isIntroMode: true } }));
+        }, 0.9);
+
+        tl.add(() => {
+          window.dispatchEvent(new CustomEvent("arche:nav-reveal-start"));
+        }, 1.1);
+
+        return;
+      }
+
+      // Initial states for sequential pixel reveal of original artwork:
+      // 1. Reveal A smoothly first
+      // 2. Once A is established, reveal C in its exact position and overlap
+      // 3. Reveal central lime dot last, along with any remaining source detail
+      gsap.set(".intro-layer-a", { opacity: 0, clipPath: "polygon(0% 0%, 0% 0%, 0% 100%, 0% 100%)" });
+      gsap.set(".intro-layer-c", { opacity: 0, clipPath: "polygon(50.14% 0%, 50.14% 0%, 50.14% 100%, 50.14% 100%)" });
+      gsap.set(".intro-layer-dot", { opacity: 0, scale: 0, transformOrigin: "69.25% 56.65%" });
+      gsap.set(".intro-layer-full", { opacity: 0 });
       gsap.set(dotRef.current, { y: -120, opacity: 0, scaleX: 1, scaleY: 1 });
       gsap.set(".intro-char", { yPercent: 120 });
       gsap.set(logoGroup.current, { y: 0, opacity: 1 });
 
-      // t0.0 to 0.9: centered arch logo mark from header, DrawSVG ease power2.inOut, 2px, paper color, 96px tall
+      // Step 1: t0.0 to 0.45 — Reveal A smoothly first (wipe left-to-right across A's pixels)
       tl.to(
-        ".intro-arch-path",
+        ".intro-layer-a",
         {
-          drawSVG: "100%",
-          duration: 0.9,
-          ease: "power2.inOut",
-        },
-        0
-      );
-
-      // t0.7 to 1.15: lime dot falls from 120px above to resting position beside wordmark with ease back.out(1.6)
-      tl.to(
-        dotRef.current,
-        {
-          y: 0,
           opacity: 1,
+          clipPath: "polygon(0% 0%, 50.14% 0%, 50.14% 100%, 0% 100%)",
           duration: 0.45,
-          ease: "back.out(1.6)",
+          ease: "power2.out",
         },
-        0.7
+        0.0
       );
 
-      // t1.15 to 1.25: squashes to scaleX 1.1 / scaleY 0.9 on impact for 0.1s
+      // Step 2: t0.48 to 0.88 — Once A is established, reveal C in its exact position and overlap
       tl.to(
-        dotRef.current,
+        ".intro-layer-c",
         {
-          scaleX: 1.1,
-          scaleY: 0.9,
-          duration: 0.05,
-          ease: "power1.in",
+          opacity: 1,
+          clipPath: "polygon(50.14% 0%, 100% 0%, 100% 100%, 50.14% 100%)",
+          duration: 0.40,
+          ease: "power2.out",
         },
-        1.15
-      );
-      tl.to(
-        dotRef.current,
-        {
-          scaleX: 1,
-          scaleY: 1,
-          duration: 0.05,
-          ease: "power1.out",
-        },
-        1.20
+        0.48
       );
 
-      // t0.9 to 1.5: wordmark "Arche" rises letter by letter from masks (yPercent 120 to 0, stagger 0.045, expo.out)
+      // Step 3: t0.90 to 1.10 — Reveal central lime dot last (along with remaining source detail)
+      tl.to(
+        ".intro-layer-dot",
+        {
+          opacity: 1,
+          scale: 1,
+          duration: 0.20,
+          ease: "back.out(2.4)",
+        },
+        0.90
+      );
+
+      // Final complete state: at t1.12, reveal the complete unmasked source artwork
+      tl.to(
+        ".intro-layer-full",
+        {
+          opacity: 1,
+          duration: 0.05,
+        },
+        1.12
+      );
+
+      // t0.95 to 1.42: wordmark "Arche" rises letter by letter from masks (yPercent 120 to 0, stagger 0.045, expo.out)
       tl.fromTo(
         ".intro-char",
         {
@@ -167,12 +240,22 @@ export function Intro() {
           stagger: 0.045,
           ease: "expo.out",
         },
-        0.9
+        0.95
       );
 
-      // t1.5 to 1.7: hold
+      // t1.15 to 1.35: trailing wordmark accent square settles beside wordmark
+      tl.to(
+        dotRef.current,
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.35,
+          ease: "back.out(1.6)",
+        },
+        1.15
+      );
 
-      // t1.7 to 2.0: logo group moves up 24px and fades out
+      // t1.65 to 1.95: logo group moves up 24px and fades out
       tl.to(
         logoGroup.current,
         {
@@ -181,7 +264,7 @@ export function Intro() {
           duration: 0.3,
           ease: "power2.in",
         },
-        1.7
+        1.65
       );
 
       // t1.9 to 2.9: ARCH APERTURE
@@ -259,31 +342,98 @@ export function Intro() {
         className="relative flex items-center justify-center gap-[clamp(10px,2vw,18px)] select-none px-4"
         style={{ transformOrigin: "50% 50%" }}
       >
-        {/* Arch logo mark from header: same SVG path, 2px stroke, paper color, 96px tall */}
-        <svg
-          width="96"
-          height="96"
-          viewBox="0 0 24 24"
-          fill="none"
-          className="flex-shrink-0"
-          style={{ overflow: "visible" }}
-          aria-hidden="true"
+        {/* Exact AC Monogram from source artwork public/arche logo.jpeg with sequential pixel reveal */}
+        <div
+          className="intro-ac-monogram relative select-none flex-shrink-0"
+          style={{
+            width: Math.round(88 * 1.1854),
+            height: 88,
+          }}
         >
-          <path
-            className="intro-arch-path"
-            d="M3 21V12.5C3 7.25 7.03 3 12 3C16.97 3 21 7.25 21 12.5V21"
-            stroke="var(--solid-fg)"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-          <path
-            className="intro-arch-path"
-            d="M9 21v-8.5C9 10.57 10.34 9 12 9s3 1.57 3 3.5V21"
-            stroke="var(--solid-fg)"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-        </svg>
+          {/* Layer 1: Monogram A (left half: x <= 50.14%) */}
+          <div
+            className="intro-layer-a absolute inset-0 overflow-hidden"
+            style={{
+              clipPath: "polygon(0% 0%, 50.14% 0%, 50.14% 100%, 0% 100%)",
+            }}
+          >
+            <img
+              src="/arche%20logo.jpeg"
+              alt="Arche AC Monogram - Layer A"
+              className="absolute pointer-events-none max-w-none"
+              style={{
+                width: `${(2048 / 1400) * 100}%`,
+                height: "auto",
+                left: `${(-368 / 1400) * 100}%`,
+                top: `${(-429 / 1400) * 100}%`,
+                mixBlendMode: "screen",
+              }}
+            />
+          </div>
+
+          {/* Layer 2: Monogram C (right half: x >= 50.14%, excluding central lime dot) */}
+          <div
+            className="intro-layer-c absolute inset-0 overflow-hidden"
+            style={{
+              clipPath: "polygon(50.14% 0%, 100% 0%, 100% 100%, 50.14% 100%)",
+              WebkitMaskImage: "radial-gradient(circle 8px at 69.25% 56.65%, transparent 95%, black 100%)",
+              maskImage: "radial-gradient(circle 8px at 69.25% 56.65%, transparent 95%, black 100%)",
+            }}
+          >
+            <img
+              src="/arche%20logo.jpeg"
+              alt="Arche AC Monogram - Layer C"
+              className="absolute pointer-events-none max-w-none"
+              style={{
+                width: `${(2048 / 1400) * 100}%`,
+                height: "auto",
+                left: `${(-368 / 1400) * 100}%`,
+                top: `${(-429 / 1400) * 100}%`,
+                mixBlendMode: "screen",
+              }}
+            />
+          </div>
+
+          {/* Layer 3: Central lime dot and remaining source detail (revealed last) */}
+          <div
+            className="intro-layer-dot absolute inset-0 overflow-hidden"
+            style={{
+              clipPath: "circle(6% at 69.25% 56.65%)",
+            }}
+          >
+            <img
+              src="/arche%20logo.jpeg"
+              alt="Arche AC Monogram - Central Dot"
+              className="absolute pointer-events-none max-w-none"
+              style={{
+                width: `${(2048 / 1400) * 100}%`,
+                height: "auto",
+                left: `${(-368 / 1400) * 100}%`,
+                top: `${(-429 / 1400) * 100}%`,
+                mixBlendMode: "screen",
+              }}
+            />
+          </div>
+
+          {/* Layer 4: Complete static source artwork, visible upon animation completion or for reduced motion */}
+          <div
+            className="intro-layer-full absolute inset-0 overflow-hidden"
+            style={{ opacity: prefersReducedMotion() ? 1 : 0 }}
+          >
+            <img
+              src="/arche%20logo.jpeg"
+              alt="Arche AC Monogram - Complete"
+              className="absolute pointer-events-none max-w-none"
+              style={{
+                width: `${(2048 / 1400) * 100}%`,
+                height: "auto",
+                left: `${(-368 / 1400) * 100}%`,
+                top: `${(-429 / 1400) * 100}%`,
+                mixBlendMode: "screen",
+              }}
+            />
+          </div>
+        </div>
 
         {/* Wordmark "Arche" and falling lime dot */}
         <div className="flex items-baseline gap-[clamp(6px,1.2vw,12px)]">

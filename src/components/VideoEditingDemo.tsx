@@ -384,72 +384,114 @@ export function VideoEditingDemo({
         </div>
       </div>
 
-      {/* Timeline Structure (Segments) */}
+      {/* Timeline Structure (Multi-track NLE Environment) */}
       <div className="flex flex-col gap-[6px]">
         <div className="flex items-center justify-between gap-[8px] text-[10px] font-mono opacity-60">
-          <span className="hidden sm:inline">TIMELINE SEGMENTS (HOVER TO JUMP)</span>
-          <span className="sm:hidden">SEGMENTS (TAP TO JUMP)</span>
-          <span className="flex-none whitespace-nowrap">SELECT PASS</span>
-        </div>
-        {/* Desktop non-drag hover jump + visual segment boxes */}
-        <div className="flex w-full gap-[4px] h-[32px]">
-          {SEGMENTS.map((seg, i) => {
-            const isHighlighted = i === activeSegmentIdx;
-            const isPast = i < activeSegmentIdx;
-            return (
-              <button
-                key={seg.id}
-                type="button"
-                onMouseEnter={() => {
-                  if (!preview && !isScrubbing) jumpToStage(seg.stageIndex);
-                }}
-                onClick={() => jumpToStage(seg.stageIndex)}
-                data-slab={`s${i + 1}`}
-                className="group relative h-full rounded-[2px] border transition-all duration-150 flex items-center justify-between px-[6px] overflow-hidden"
-                style={{
-                  width: seg.width,
-                  borderColor: isHighlighted
-                    ? "var(--accent-deep)"
-                    : isPast
-                    ? "rgba(12, 12, 13, 0.4)"
-                    : "var(--line)",
-                  background: isHighlighted
-                    ? "color-mix(in srgb, var(--accent-deep) 15%, var(--card))"
-                    : "var(--card)",
-                }}
-                data-cursor="SELECT"
-                aria-label={`Jump to ${STAGES[seg.stageIndex].label}`}
-              >
-                <span
-                  className="font-mono text-[8px] transition-colors"
-                  style={{ color: isHighlighted ? "var(--accent-ink)" : "var(--muted)" }}
-                >
-                  {seg.label}
-                </span>
-                {isHighlighted && (
-                  <span className="h-[4px] w-[4px] rounded-full bg-[var(--accent-deep)]" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Waveform Scrub Track */}
-      <div className="flex flex-col gap-[6px]">
-        <div className="flex justify-between items-center text-[10px] font-mono opacity-60">
-          <span>DRAG PLAYHEAD ACROSS WAVEFORM</span>
-          <span style={{ color: "var(--accent-ink)" }}>
-            STAGE: {currentStage.label}
+          <span className="hidden sm:inline">MULTI-TRACK TIMELINE (V2 / V1 / A1)</span>
+          <span className="sm:hidden">TIMELINE (TAP TO JUMP)</span>
+          <span className="flex-none whitespace-nowrap text-[9px]" style={{ color: "var(--accent-ink)" }}>
+            STAGE {stageIndex + 1}/7 · {currentStage.label}
           </span>
         </div>
 
-        <div
-          ref={trackRef}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          data-slab="grain"
-          className="vd-track relative h-[44px] w-full cursor-ew-resize rounded-[4px] border overflow-hidden p-[2px] touch-none"
+        {/* Track V2: Motion Graphics & Dynamic Captions Layer */}
+        <div className="flex items-center gap-[6px] h-[16px]">
+          <span className="mono text-[8px] text-[var(--faint)] w-[16px] flex-none">V2</span>
+          <div className="flex-1 flex gap-[4px] h-full">
+            <div
+              className="rounded-[2px] border text-[7.5px] font-mono px-[5px] flex items-center transition-all duration-200 overflow-hidden"
+              style={{
+                width: "48%",
+                borderColor: stageIndex >= 3 ? "var(--accent-deep)" : "var(--line)",
+                background: stageIndex >= 3 ? "color-mix(in srgb, var(--accent) 15%, var(--card))" : "var(--card)",
+                color: stageIndex >= 3 ? "var(--accent-ink)" : "var(--faint)",
+                opacity: stageIndex >= 3 ? 1 : 0.35,
+              }}
+            >
+              TITLE_OVERLAY // 115%
+            </div>
+            <div
+              className="rounded-[2px] border text-[7.5px] font-mono px-[5px] flex items-center transition-all duration-200 overflow-hidden"
+              style={{
+                width: "48%",
+                borderColor: stageIndex >= 4 ? "var(--accent-deep)" : "var(--line)",
+                background: stageIndex >= 4 ? "color-mix(in srgb, var(--accent) 15%, var(--card))" : "var(--card)",
+                color: stageIndex >= 4 ? "var(--accent-ink)" : "var(--faint)",
+                opacity: stageIndex >= 4 ? 1 : 0.35,
+              }}
+            >
+              DYNAMIC_CAPTIONS.SRT
+            </div>
+          </div>
+        </div>
+
+        {/* Track V1: A-Roll Primary Cuts */}
+        <div className="flex items-center gap-[6px] h-[30px]">
+          <span className="mono text-[8px] text-[var(--faint)] w-[16px] flex-none">V1</span>
+          <div className="flex-1 flex gap-[3px] h-full">
+            {SEGMENTS.map((seg, i) => {
+              const isHighlighted = i === activeSegmentIdx;
+              const isPast = i < activeSegmentIdx;
+              return (
+                <button
+                  key={seg.id}
+                  type="button"
+                  onMouseEnter={() => {
+                    if (!preview && !isScrubbing) jumpToStage(seg.stageIndex);
+                  }}
+                  onClick={() => jumpToStage(seg.stageIndex)}
+                  data-slab={`s${i + 1}`}
+                  className="group relative h-full rounded-[2px] border transition-all duration-150 flex items-center justify-between px-[5px] overflow-hidden"
+                  style={{
+                    width: seg.width,
+                    borderColor: isHighlighted
+                      ? "var(--accent-deep)"
+                      : isPast
+                      ? "rgba(12, 12, 13, 0.4)"
+                      : "var(--line)",
+                    background: isHighlighted
+                      ? "color-mix(in srgb, var(--accent-deep) 15%, var(--card))"
+                      : "var(--card)",
+                  }}
+                  data-cursor="SELECT"
+                  aria-label={`Jump to ${STAGES[seg.stageIndex].label}`}
+                >
+                  <span
+                    className="font-mono text-[8px] transition-colors"
+                    style={{ color: isHighlighted ? "var(--accent-ink)" : "var(--muted)" }}
+                  >
+                    {seg.label}
+                  </span>
+                  {isHighlighted && (
+                    <span className="h-[4px] w-[4px] rounded-full bg-[var(--accent-deep)]" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Waveform Scrub Track (Track A1) */}
+      <div className="flex flex-col gap-[6px]">
+        <div className="flex items-center gap-[6px]">
+          <span className="mono text-[8px] text-[var(--faint)] w-[16px] flex-none">A1</span>
+          <div className="flex-1 flex justify-between items-center text-[9px] font-mono opacity-60">
+            <span>AUDIO SYNC / WAVEFORM SCRUB</span>
+            <span style={{ color: "var(--accent-ink)" }}>
+              STAGE: {currentStage.label}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-[6px]">
+          <span className="w-[16px] flex-none" aria-hidden />
+          <div
+            ref={trackRef}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            data-slab="grain"
+            className="vd-track relative h-[40px] flex-1 cursor-ew-resize rounded-[4px] border overflow-hidden p-[2px] touch-none"
           style={{
             borderColor: isScrubbing ? "var(--accent-deep)" : "var(--line)",
             background: "var(--bg-2)",
@@ -529,6 +571,7 @@ export function VideoEditingDemo({
           </div>
         </div>
       </div>
+    </div>
 
       {/* Bottom Stage Progress Steps Bar (replaces static RAW -> STORY) */}
       <div

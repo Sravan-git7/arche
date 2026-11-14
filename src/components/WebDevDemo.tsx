@@ -123,7 +123,24 @@ function Core({ phase, preview = false }: { phase: number; preview?: boolean }) 
 
       {/* work surface */}
       <div className="wd-surface relative flex flex-1 flex-col overflow-hidden rounded-[5px] border" style={{ borderColor: "var(--line)", background: "var(--bg-2)" }}>
-        <div data-slab="s2" className="wd-frame absolute inset-0 flex flex-col gap-[10px] rounded-[4px] border bg-[var(--bg)] p-[14px] min-[900px]:gap-[9px] min-[900px]:p-[13px]" style={{ borderColor: "var(--line)" }}>
+        {/* Architectural drafting grid in phase 0 & 1 */}
+        {phase < 2 && (
+          <div className="pointer-events-none absolute inset-0 z-0 opacity-25">
+            <svg className="h-full w-full" preserveAspectRatio="none">
+              <defs>
+                <pattern id="wd-grid" width="32" height="32" patternUnits="userSpaceOnUse">
+                  <path d="M 32 0 L 0 0 0 32" fill="none" stroke="var(--line)" strokeWidth="0.8" />
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#wd-grid)" />
+            </svg>
+            <div className="absolute top-[8px] right-[10px] font-mono text-[8px] uppercase tracking-widest text-[var(--faint)]">
+              {phase === 0 ? "DISASSEMBLED MODULES // UNRESOLVED" : "12-COL STRUCTURAL SNAPPING // ALIGNED"}
+            </div>
+          </div>
+        )}
+
+        <div data-slab="s2" className="wd-frame relative z-10 flex flex-1 flex-col gap-[10px] rounded-[4px] border bg-[var(--bg)] p-[14px] min-[900px]:gap-[9px] min-[900px]:p-[13px]" style={{ borderColor: "var(--line)" }}>
           {/* headline block */}
           <div
             data-slab="s3"
@@ -131,6 +148,8 @@ function Core({ phase, preview = false }: { phase: number; preview?: boolean }) 
             style={{
               borderColor: phase >= 2 ? "var(--line)" : "var(--faint)",
               background: phase >= 2 ? "linear-gradient(140deg,#f7f5ef 0%, #eef0e3 54%, #e6e3da 100%)" : "transparent",
+              transform: phase === 0 ? "translate(-10px, -6px) rotate(-1.5deg)" : phase === 1 ? "translate(0, -2px) rotate(0deg)" : "none",
+              transition: "transform 0.65s var(--e-out), border-color 0.4s ease, background 0.4s ease",
             }}
           >
             <div
@@ -168,6 +187,8 @@ function Core({ phase, preview = false }: { phase: number; preview?: boolean }) 
               borderColor: phase >= 2 ? "var(--line)" : "var(--faint)",
               background: phase >= 2 ? "var(--bg)" : "transparent",
               minHeight: 0,
+              transform: phase === 0 ? "translate(10px, 8px) rotate(1.2deg)" : "none",
+              transition: "transform 0.65s var(--e-out), border-color 0.4s ease, background 0.4s ease",
             }}
           >
             <div
@@ -214,7 +235,13 @@ function Core({ phase, preview = false }: { phase: number; preview?: boolean }) 
           </div>
 
           {/* action row — structured early, interactive only when LIVE */}
-          <div className={`wd-part flex flex-none flex-wrap items-center justify-between gap-x-[14px] gap-y-[6px] ${live && !preview ? "" : "pointer-events-none"}`}>
+          <div
+            className={`wd-part flex flex-none flex-wrap items-center justify-between gap-x-[14px] gap-y-[6px] ${live && !preview ? "" : "pointer-events-none"}`}
+            style={{
+              transform: phase === 0 ? "translate(-4px, 8px)" : "none",
+              transition: "transform 0.65s var(--e-out)",
+            }}
+          >
             <button
               type="button"
               data-slab="engine"

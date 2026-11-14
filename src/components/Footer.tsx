@@ -10,7 +10,7 @@ export function Footer() {
       <div className="wrap py-[clamp(40px,4.6vw,70px)]">
         <div className="grid gap-[32px] md:grid-cols-12">
           <div className="flex flex-col gap-[12px] md:col-span-5">
-            <Wordmark size={22} />
+            <Wordmark size={22} onDark={true} />
             <p className="mono max-w-[30ch]">{f.note}</p>
             <p className="body-s max-w-[36ch]">{siteContent.brand.line}</p>
           </div>

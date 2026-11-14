@@ -224,14 +224,22 @@ export function AgentDemo({
                     {[0, 1, 2].map((i) => (
                       <span key={i} className="agent-thinking-dot h-[5px] w-[5px] rounded-full" style={{ background: "var(--accent-deep)", animationDelay: `${i * 120}ms` }} />
                     ))}
+                    <span className="mono text-[9px] uppercase tracking-wider text-[var(--accent-ink)] ml-[4px]">
+                      {item.status}...
+                    </span>
                   </div>
                 )}
 
                 {replying && (
                   <div className="agent-reply max-w-[91%]">
                     <div data-slab="engine" className="inline-flex max-w-full flex-col gap-[2px] rounded-[14px_14px_14px_4px] px-[11px] py-[8px]" style={{ background: "var(--fg)", color: "var(--bg)" }}>
-                      {item.lines.slice(0, turn.linesShown).map((line) => (
-                        <span data-slab="grain" key={line} className="agent-reply-line block text-[12.5px] leading-[1.43] tracking-[-.01em]">{line}</span>
+                      {item.lines.slice(0, turn.linesShown).map((line, lIdx) => (
+                        <span data-slab="grain" key={line} className="agent-reply-line block text-[12.5px] leading-[1.43] tracking-[-.01em]">
+                          {line}
+                          {turn.phase === "reply" && lIdx === turn.linesShown - 1 && turn.linesShown < item.lines.length && (
+                            <span className="inline-block w-[2px] h-[0.9em] ml-[2px] bg-[var(--accent)] align-middle animate-pulse" />
+                          )}
+                        </span>
                       ))}
                     </div>
                     <div data-slab="s3" className="agent-flow mt-[7px] inline-flex max-w-full flex-wrap items-center gap-[5px] rounded-full border px-[8px] py-[5px]" style={{ borderColor: "var(--line)", background: "var(--bg)" }} aria-label={item.flow.join(" to ")}>
