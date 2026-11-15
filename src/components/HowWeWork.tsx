@@ -19,12 +19,12 @@ const CAP_SIDE: Record<string, "left" | "right"> = {
   discover: "left",
   design: "right",
   build: "right",
-  connect: "right",
+  connect: "left",
   launch: "left",
   evolve: "left",
   systems: "left",
-  ai: "right",
-  "design-eng": "right",
+  ai: "left",
+  "design-eng": "left",
   running: "left",
 };
 
@@ -107,12 +107,8 @@ export function HowWeWork() {
       const routePath = q(".xp-route-path")[0] as unknown as SVGPathElement;
       const routeDot = q(".xp-route-dot")[0] as unknown as SVGCircleElement;
       const routeHalo = q(".xp-route-halo")[0] as unknown as SVGCircleElement;
-      const packet = q(".xp-packet")[0] as unknown as SVGCircleElement;
-      const packetHalo = q(".xp-packet-halo")[0] as unknown as SVGCircleElement;
-      const packetPath = q(".xp-packet-path")[0] as unknown as SVGPathElement;
 
       const routeLen = routePath.getTotalLength();
-      const packetLen = packetPath.getTotalLength();
 
       // Point a proxy value u∈[0,1] at a point along an SVG path.
       const pathProxy = (
@@ -130,19 +126,36 @@ export function HowWeWork() {
         },
       });
       const routeProxy = { u: 0 };
-      const packetProxy = { u: 0 };
       const routePos = pathProxy(routePath, routeLen, routeDot, routeHalo);
-      const packetPos = pathProxy(packetPath, packetLen, packet, packetHalo);
 
-      const packetRun = (t: number, d: number) => {
-        tl.fromTo(packet, { opacity: 0 }, { opacity: 1, duration: 1.1 }, t);
-        tl.fromTo(packetHalo, { opacity: 0 }, { opacity: 0.45, duration: 1.1 }, t);
-        tl.fromTo(packetProxy, { u: 0 }, {
+      // Two signal packets: leg one carries the enquiry from the form to the
+      // Inbox; leg two carries it from the Inbox into the CRM.
+      const buildPacket = (pathSel: string, dotSel: string, haloSel: string) => {
+        const path = q(pathSel)[0] as unknown as SVGPathElement;
+        const dot = q(dotSel)[0] as unknown as SVGCircleElement;
+        const halo = q(haloSel)[0] as unknown as SVGCircleElement;
+        const len = path.getTotalLength();
+        const proxy = { u: 0 };
+        const place = (u: number) => {
+          const pt = path.getPointAtLength(clamp01(u) * len);
+          dot.setAttribute("cx", String(pt.x));
+          dot.setAttribute("cy", String(pt.y));
+          halo.setAttribute("cx", String(pt.x));
+          halo.setAttribute("cy", String(pt.y));
+        };
+        return { proxy, dot, halo, place };
+      };
+      const p1 = buildPacket(".xp-packet-path", ".xp-packet", ".xp-packet-halo");
+      const p2 = buildPacket(".xp-packet-path-2", ".xp-packet-2", ".xp-packet-halo-2");
+      const packetRun = (p: ReturnType<typeof buildPacket>, t: number, d: number) => {
+        tl.fromTo(p.dot, { opacity: 0 }, { opacity: 1, duration: 1.1 }, t);
+        tl.fromTo(p.halo, { opacity: 0 }, { opacity: 0.45, duration: 1.1 }, t);
+        tl.fromTo(p.proxy, { u: 0 }, {
           u: 1, duration: d, ease: "power2.inOut",
-          onUpdate: () => packetPos.set(packetProxy.u),
+          onUpdate: () => p.place(p.proxy.u),
         }, t);
-        tl.to(packet, { opacity: 0, duration: 1.1 }, t + d + 0.6);
-        tl.to(packetHalo, { opacity: 0, duration: 1.1 }, t + d + 0.6);
+        tl.to(p.dot, { opacity: 0, duration: 1.1 }, t + d + 0.6);
+        tl.to(p.halo, { opacity: 0, duration: 1.1 }, t + d + 0.6);
       };
 
       // =================================================================
@@ -157,51 +170,64 @@ export function HowWeWork() {
       // ---------- initial states (before any scrub) ----------
       const entryX = el.offsetWidth <= 400 ? 96 : el.offsetWidth <= 860 ? 120 : 150;
       gsap.set(cam, { x: entryX, y: 60, z: 260, rotationX: 13, rotationY: -29, rotationZ: 0 });
-      gsap.set(q(".xp-page"), { opacity: 0.5 });
+      gsap.set(q(".xp-page"), { opacity: 0.55, filter: "saturate(0.35)" });
       gsap.set(q(".xp-route-dot, .xp-route-halo"), { opacity: 0 });
       gsap.set(routeDot, { attr: { r: 4.6 } });
       gsap.set(routeHalo, { attr: { r: 10 }, opacity: 0 });
-      gsap.set(packet, { opacity: 0, attr: { r: 4.2 } });
-      gsap.set(packetHalo, { opacity: 0, attr: { r: 9 } });
+      gsap.set(p1.dot, { opacity: 0, attr: { r: 4.2 } });
+      gsap.set(p1.halo, { opacity: 0, attr: { r: 9 } });
+      gsap.set(p2.dot, { opacity: 0, attr: { r: 4.2 } });
+      gsap.set(p2.halo, { opacity: 0, attr: { r: 9 } });
       gsap.set(q(".dock"), { x: 330, y: 40, z: -150, rotationY: -26, opacity: 0 });
       gsap.set(q(".xp-seam"), { opacity: 0 });
       gsap.set(q(".xp-cta-btn"), { opacity: 0, scale: 0.88, transformOrigin: "50% 50%" });
       gsap.set(q(".xp-cta-plan"), { opacity: 0 });
       gsap.set(q(".xp-cta-slot"), { opacity: 0.9 });
       gsap.set(q(".xp-cta-slot-pulse"), { opacity: 0 });
-      gsap.set(q(".xp-headline .xp-hl > span"), { yPercent: 112 });
-      gsap.set(q(".xp-headline"), { opacity: 0 });
+      gsap.set(q(".xp-void-tag"), { opacity: 0 });
       gsap.set(q(".xp-kicker"), { opacity: 0 });
-      gsap.set(q(".xp-card-icon svg"), { opacity: 0 });
-      gsap.set(q(".xp-art-caption i"), { opacity: 0 });
+      gsap.set(q(".xp-card-icon svg"), { opacity: 0.55 });
+      gsap.set(q(".xp-card-label"), { opacity: 0.5 });
       gsap.set(q(".xp-route-flash"), { opacity: 0 });
       gsap.set(q(".xp-update-frame"), { opacity: 0, scale: 0.96, transformOrigin: "50% 50%" });
-      gsap.set(q(".xp-art-a"), { opacity: 0 });
-      gsap.set(q(".xp-art-b"), { opacity: 0 });
       gsap.set(q(".xp-ai-chip"), { opacity: 0, y: 10 });
       gsap.set(q(".xp-ai-knob"), { x: 0 });
       gsap.set(q(".xp-ai-line"), { scaleX: 0, transformOrigin: "0% 50%" });
-      gsap.set(q(".xp-blueprint"), { opacity: 0, x: 72, y: -62, z: -175, rotationY: 13, scale: 0.86 });
       gsap.set(q(".xp-flare"), { x: -260, opacity: 0 });
       gsap.set(q(".xp-backglow"), { opacity: 0 });
       gsap.set(q(".xp-guides"), { opacity: 0 });
       gsap.set(q(".xp-scan"), { x: -150, opacity: 0 });
-      gsap.set(q(".xp-sub"), { opacity: 0.55 });
-      gsap.set(q(".xp-sub-2"), { opacity: 0.55 });
+      gsap.set(q(".xp-tagline"), { opacity: 0.6 });
+      gsap.set(q(".xp-nav-link"), { opacity: 0 });
+      gsap.set(q(".xp-word"), { opacity: 0.5 });
       gsap.set(q(".xp-chrome-pill svg, .xp-chrome-pill-bar"), { opacity: 0 });
+      gsap.set(q(".xp-panel-skel"), { opacity: 1 });
+      gsap.set(q(".xp-panel-plan"), { opacity: 0 });
+      gsap.set(q(".xp-panel-live"), { opacity: 0 });
+      gsap.set(q(".xp-form-inner"), { opacity: 1 });
+      gsap.set(q(".xp-confirm"), { opacity: 0, y: 10 });
+      gsap.set(q(".xp-check-ring"), { strokeDashoffset: 100 });
+      gsap.set(q(".xp-check-tick"), { strokeDashoffset: 100 });
+      gsap.set(q(".xp-email-text"), { clipPath: "inset(0% 100% 0% 0%)" });
+      gsap.set(q(".xp-field-caret"), { opacity: 0 });
+      gsap.set(q(".xp-field-check"), { opacity: 0 });
+      gsap.set(q(".xp-cta-old"), { opacity: 1 });
+      gsap.set(q(".xp-cta-new"), { opacity: 0 });
+      gsap.set(q(".xp-status-new"), { opacity: 1 });
+      gsap.set(q(".xp-status-logged"), { opacity: 0 });
+      gsap.set(q(".dock-enquiry"), { opacity: 0, y: 6 });
+      gsap.set(q(".xp-draft-row"), { opacity: 0 });
+      gsap.set(q(".xp-nav-underline-contact"), { scaleX: 0, transformOrigin: "0% 50%" });
       // scattered start offsets for the Design snap-together
       gsap.set(q(".xp-nav"), { x: 5, y: -3 });
-      gsap.set(q(".xp-head-bars"), { x: 7, y: -4 });
-      gsap.set(q(".xp-sub"), { x: -6 });
-      gsap.set(q(".xp-sub-2"), { x: 6 });
+      gsap.set(q(".xp-tagline"), { x: -6 });
       gsap.set(q(".xp-cta-slot"), { x: -6 });
       gsap.set(q(".xp-cta-plan"), { x: -6 });
       gsap.set(q(".xp-cta-btn"), { x: -6 });
-      gsap.set(q(".xp-art"), { x: 9, y: 7 });
+      gsap.set(q(".xp-panel"), { x: 10, y: -8 });
       gsap.set(q(".xp-card-col-1"), { x: -9, y: 6 });
       gsap.set(q(".xp-card-col-2"), { x: 7, y: -7 });
       gsap.set(q(".xp-card-col-3"), { x: -5, y: 8 });
-      gsap.set(q(".xp-kicker-bar"), { x: -8, y: 3 });
 
       // ---------- intro / masthead ----------
       tl.fromTo(".hww-mast-process", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 6, ease: "power3.out" }, 0.5);
@@ -211,33 +237,40 @@ export function HowWeWork() {
       // 01 · DISCOVER — a real gap in the experience (t 5 → 30)
       // =================================================================
       show(".hww-cap-discover", 8, 5);
-      hide(".hww-cap-discover", 23.5, 4);
+      hide(".hww-cap-discover", 21.5, 3);
       tl.to(cam, { x: 168, y: -10, z: 118, rotationX: 8.5, rotationY: -16, duration: 13, ease: "power2.inOut" }, 1);
       // the journey enters, travels, and stalls at the missing action
       tl.fromTo(routeProxy, { u: 0 }, { u: 0.46, duration: 8, ease: "power1.inOut", onUpdate: () => routePos.set(routeProxy.u) }, 6.5);
       tl.fromTo(".xp-route-dot", { opacity: 0 }, { opacity: 1, duration: 1.2 }, 6.2);
       tl.fromTo(".xp-route-halo", { opacity: 0 }, { opacity: 0.4, duration: 1.2 }, 6.2);
       tl.to(".xp-route-path", { strokeDashoffset: 54, duration: 8, ease: "power1.inOut" }, 6.5);
-      // stalled at the void: the dot dies, the dashed slot pulses
+      // stalled at the void: the dot dies, the missing step announces itself
       tl.to(".xp-route-dot", { opacity: 0.28, duration: 1.4, ease: "power1.in" }, 15.4);
       tl.to(".xp-route-halo", { opacity: 0, duration: 1.2 }, 15.4);
       tl.fromTo(".xp-cta-slot-pulse", { opacity: 0 }, { opacity: 1, duration: 1.5 }, 9);
+      tl.fromTo(".xp-void-tag", { opacity: 0 }, { opacity: 1, duration: 1.6 }, 10.5);
       tl.fromTo(".xp-cta-slot", { opacity: 0.55 }, { opacity: 1, duration: 3 }, 7);
-      // the frame of the page is visibly unfinished
-      tl.to(".xp-page", { opacity: 0.6, duration: 6 }, 6);
+      // the useful content is there; the finish is not
+      tl.to(".xp-page", { opacity: 0.66, duration: 6 }, 6);
 
       // =================================================================
       // 02 · DESIGN — the journey takes a deliberate, coherent form
       // =================================================================
       show(".hww-cap-design", 25, 5);
-      hide(".hww-cap-design", 42.5, 4);
-      tl.to(cam, { x: 6, y: -46, z: 26, rotationX: 25, rotationY: -3, duration: 17, ease: "power2.inOut" }, 24);
+      hide(".hww-cap-design", 40.5, 3);
+      tl.to(cam, { x: -150, y: -46, z: 26, rotationX: 25, rotationY: -3, duration: 17, ease: "power2.inOut" }, 24);
       // drafting guides fade in, everything snaps true
       tl.fromTo(".xp-guides", { opacity: 0 }, { opacity: 0.9, duration: 3.4 }, 26.5);
       tl.to(q(".xp-guide-v, .xp-guide-h"), { scaleY: 1, scaleX: 1, duration: 4, ease: "power3.out", stagger: 0.12 }, 26.5);
       tl.to(q(".xp-crop"), { scale: 1, duration: 3, ease: "power3.out", stagger: 0.08 }, 27);
-      tl.to(q(".xp-nav, .xp-head-bars, .xp-sub, .xp-sub-2, .xp-cta-slot, .xp-cta-plan, .xp-cta-btn, .xp-art, .xp-card-col-1, .xp-card-col-2, .xp-card-col-3, .xp-kicker-bar"),
+      tl.to(q(".xp-nav, .xp-tagline, .xp-cta-slot, .xp-cta-plan, .xp-cta-btn, .xp-panel, .xp-card-col-1, .xp-card-col-2, .xp-card-col-3"),
         { x: 0, y: 0, duration: 6.5, ease: "power3.out", stagger: 0.14 }, 27.5);
+      // the plan prescribes destinations, labelled services and the action
+      tl.to(q(".xp-nav-link"), { opacity: 0.85, duration: 2.4, stagger: 0.3 }, 28.5);
+      tl.to(q(".xp-card-label"), { opacity: 0.85, duration: 2.2, stagger: 0.2 }, 29);
+      tl.fromTo(".xp-panel-plan", { opacity: 0 }, { opacity: 1, duration: 2.6 }, 29);
+      tl.to(".xp-panel-skel", { opacity: 0.35, duration: 2.6 }, 29);
+      tl.to(".xp-void-tag", { opacity: 0, duration: 1.6 }, 26.5);
       // the route becomes a complete, intentional plan
       tl.to(routeProxy, { u: 1, duration: 8, ease: "power2.inOut", onUpdate: () => routePos.set(routeProxy.u) }, 27);
       tl.to(".xp-route-path", { strokeDashoffset: 0, duration: 8, ease: "power2.inOut" }, 27);
@@ -256,34 +289,30 @@ export function HowWeWork() {
       // 03 · BUILD — the interface becomes real and finished
       // =================================================================
       show(".hww-cap-build", 43.5, 5);
-      hide(".hww-cap-build", 61, 4);
+      hide(".hww-cap-build", 59, 3);
       tl.to(cam, { x: -150, y: 2, z: -52, rotationX: 6, rotationY: 15, duration: 16, ease: "power2.inOut" }, 43.5);
-      tl.to(".xp-page", { opacity: 1, duration: 7 }, 44);
+      tl.to(".xp-page", { opacity: 1, filter: "saturate(1)", duration: 7 }, 44);
       // the scan band sweeps through; each part resolves as it passes
       tl.fromTo(".xp-scan", { x: -160, opacity: 0 }, { x: 780, opacity: 1, duration: 17, ease: "none" }, 45.5);
       tl.to(".xp-scan", { opacity: 0, duration: 2.2 }, 62.5);
-      // nav resolves
-      tl.to(q(".xp-nav-skel i"), { opacity: 0, duration: 1.6, stagger: 0.2 }, 46.5);
-      tl.to(q(".xp-word, .xp-nav-link"), { opacity: 1, duration: 1.6, stagger: 0.15 }, 47);
+      // identity and chrome resolve
+      tl.to(".xp-word", { opacity: 1, duration: 1.6 }, 46.5);
+      tl.to(q(".xp-nav-link"), { opacity: 1, duration: 1.5, stagger: 0.15 }, 47);
       tl.to(q(".xp-chrome-pill svg, .xp-chrome-pill-bar"), { opacity: 0.9, duration: 1.8 }, 47.5);
-      // kicker resolves
-      tl.to(".xp-kicker-bar", { opacity: 0, duration: 1.4 }, 48);
       tl.to(".xp-kicker", { opacity: 1, duration: 1.4 }, 48.6);
-      // headline sets in, line by line
-      tl.to(q(".xp-head-bars i"), { opacity: 0, duration: 1.5, stagger: 0.35 }, 49);
-      tl.to(".xp-headline", { opacity: 1, duration: 0.8 }, 50.6);
-      tl.to(q(".xp-headline .xp-hl > span"), { yPercent: 0, duration: 2.2, ease: "power4.out", stagger: 0.32 }, 50.6);
-      tl.to(q(".xp-sub, .xp-sub-2"), { opacity: 1, duration: 1.6 }, 51);
+      tl.to(".xp-tagline", { opacity: 1, duration: 1.6 }, 51);
       // the planned action becomes the real button
       tl.to(".xp-cta-plan", { opacity: 0, duration: 1.8 }, 52);
       tl.to(".xp-cta-btn", { opacity: 1, scale: 1, duration: 2.1, ease: "back.out(1.6)" }, 52.6);
-      // artwork resolves from placeholder into the real panel
-      tl.to(".xp-art-skeleton", { opacity: 0, duration: 2.4 }, 53.5);
-      tl.to(".xp-art-a", { opacity: 1, duration: 2.4 }, 54.2);
-      tl.to(q(".xp-art-caption i"), { opacity: 0.9, duration: 1.4, stagger: 0.3 }, 55.5);
-      // cards gain their glyphs
+      // the form becomes the real thing: labelled fields, one live state
+      tl.to(".xp-panel-skel", { opacity: 0, duration: 2 }, 50.5);
+      tl.to(".xp-panel-plan", { opacity: 0, duration: 2 }, 50.5);
+      tl.to(".xp-panel-live", { opacity: 1, duration: 2.4 }, 51);
+      tl.to(".xp-field-emailbox", { boxShadow: "0 0 0 2px rgba(200,241,79,0.85)", duration: 2 }, 54);
+      tl.to(".xp-field-caret", { opacity: 1, duration: 0.8 }, 54.6);
+      // cards gain their glyphs and solid labels
       tl.to(q(".xp-card-icon svg"), { opacity: 1, duration: 1.5, stagger: 0.4 }, 55);
-      tl.to(q(".xp-card-bar"), { opacity: 1, duration: 1.5 }, 55.5);
+      tl.to(q(".xp-card-label"), { opacity: 1, duration: 1.5 }, 55.5);
       // the slab itself becomes a finished object
       tl.fromTo(".xp-face", { boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9), 0 30px 60px -18px rgba(12,12,13,0.3)" },
         { boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9), 0 46px 90px -16px rgba(12,12,13,0.46)", duration: 6 }, 52);
@@ -292,7 +321,7 @@ export function HowWeWork() {
       // 04 · CONNECT — the experience joins the tools around it
       // =================================================================
       show(".hww-cap-connect", 61.5, 5);
-      hide(".hww-cap-connect", 79.5, 4);
+      hide(".hww-cap-connect", 77, 3);
       tl.to(cam, { x: -64, y: -14, z: 132, rotationX: 10, rotationY: -25, duration: 16, ease: "power2.inOut" }, 62);
       // the tools seat into the slab, one by one — one joined machine
       const seat = (sel: string, t: number, seam: string) => {
@@ -304,16 +333,23 @@ export function HowWeWork() {
       seat(".dock-inbox", 63.5, ".xp-seam-inbox");
       seat(".dock-crm", 67, ".xp-seam-crm");
       seat(".dock-sheets", 70.5, ".xp-seam-sheets");
-      // the signal leaves the page and enters the system
-      packetRun(75, 5.5);
+      // the visitor presses send — one submission, from the real form
+      tl.to(".xp-submit", { scale: 0.93, transformOrigin: "50% 50%", duration: 0.5, yoyo: true, repeat: 1, ease: "power1.inOut" }, 74.2);
+      tl.to(".xp-field-caret", { opacity: 0, duration: 0.6 }, 74.5);
+      // the same enquiry arrives — Inbox first, CRM second, then the log
+      packetRun(p1, 75, 5.2);
+      packetRun(p2, 80.6, 2.0);
       tl.fromTo(".xp-route-flash", { opacity: 0 }, { opacity: 0.9, duration: 1, yoyo: true, repeat: 1 }, 75.4);
       tl.to(".xp-backglow", { opacity: 0.34, duration: 6 }, 73);
+      tl.to(".dock-inbox .dock-enquiry", { opacity: 1, y: 0, duration: 1.6 }, 80.4);
+      tl.to(".dock-crm .dock-enquiry", { opacity: 1, y: 0, duration: 1.6 }, 82.4);
+      tl.to(".dock-sheets .dock-enquiry", { opacity: 1, y: 0, duration: 1.6 }, 84);
 
       // =================================================================
       // 05 · LAUNCH — the complete experience, revealed (dark begins)
       // =================================================================
       show(".hww-cap-launch", 80.5, 5);
-      hide(".hww-cap-launch", 96.5, 4);
+      hide(".hww-cap-launch", 94, 3);
       tl.to(cam, { x: 30, y: -6, z: -168, rotationX: 2.4, rotationY: 0, duration: 16, ease: "power2.inOut" }, 80);
       tl.to(".xp-backglow", { opacity: 0.85, duration: 8 }, 81);
       tl.fromTo(".xp-unit", { scale: 0.96 }, { scale: 1.045, duration: 9, ease: "power2.inOut" }, 80.5);
@@ -321,28 +357,32 @@ export function HowWeWork() {
       tl.fromTo(".xp-flare", { x: -300, opacity: 0 }, { x: 1050, opacity: 0.9, duration: 8, ease: "power1.inOut" }, 83);
       tl.to(".xp-flare", { opacity: 0, duration: 1.6 }, 90.5);
       tl.fromTo(".xp-route-flash", { opacity: 0 }, { opacity: 1, duration: 1.1, yoyo: true, repeat: 1 }, 84.5);
-      packetRun(84, 6);
+      packetRun(p1, 84, 6);
       tl.to(q(".xp-seam"), { opacity: 1, duration: 2.4, stagger: 0.25 }, 84);
+      // the journey confirms on the page — the form resolves
+      tl.to(".xp-form-inner", { opacity: 0, y: -8, duration: 2 }, 86);
+      tl.to(".xp-confirm", { opacity: 1, y: 0, duration: 2.4 }, 87.4);
+      tl.to(".xp-check-ring", { strokeDashoffset: 0, duration: 2.6, ease: "power2.inOut" }, 87.6);
+      tl.to(".xp-check-tick", { strokeDashoffset: 0, duration: 1.8, ease: "power2.inOut" }, 89.4);
 
       // =================================================================
       // 06 · EVOLVE — part updates, the rest adapts, nothing breaks
       // =================================================================
       show(".hww-cap-evolve", 98, 5);
-      hide(".hww-cap-evolve", 111.5, 4);
+      hide(".hww-cap-evolve", 109.5, 3);
       tl.to(cam, { x: 0, y: 0, z: -38, rotationX: 5, rotationY: -9, duration: 14, ease: "power2.inOut" }, 97.5);
-      // focus frame lands on the artwork module
+      // focus frame brackets the shared action
       tl.to(".xp-update-frame", { opacity: 0.95, scale: 1, duration: 2.6 }, 98.5);
-      // the module refreshes in place: artwork A → B with a lime sweep
-      tl.to(".xp-art-a", { opacity: 0, duration: 3.4 }, 100.5);
-      tl.to(".xp-art-b", { opacity: 1, duration: 3.4 }, 101.2);
-      // the rest of the grid adapts around the wider module
-      tl.to(".xp-art", { width: 236, duration: 6, ease: "power3.inOut" }, 100);
-      tl.to(q(".xp-card-col-1, .xp-card-col-2, .xp-card-col-3"), { x: 24, duration: 6, ease: "power3.inOut" }, 100);
-      tl.to(".xp-sub-2", { width: 172, duration: 6, ease: "power3.inOut" }, 100);
+      // one shared label updates everywhere it lives — hero, nav, footer
+      tl.to(q(".xp-cta-old"), { opacity: 0, duration: 1.6, stagger: 0.15 }, 100.5);
+      tl.to(q(".xp-cta-new"), { opacity: 1, duration: 1.6, stagger: 0.15 }, 100.9);
+      tl.fromTo(q(".xp-cta-btn, .xp-nav-cta, .xp-foot-cta"),
+        { boxShadow: "0 0 0 0 rgba(200,241,79,0)" },
+        { boxShadow: "0 0 0 3px rgba(200,241,79,0.55)", duration: 1.4, yoyo: true, repeat: 1, stagger: 0.15 }, 100.5);
       tl.to(".xp-update-frame", { opacity: 0.55, duration: 3 }, 104.5);
       tl.to(".xp-update-frame", { opacity: 0, duration: 2.4 }, 119);
       // the system keeps flowing through the change
-      packetRun(103, 5.5);
+      packetRun(p1, 103, 5.5);
 
       // =================================================================
       // APPROACH — the same scene, widened to the whole system
@@ -350,46 +390,71 @@ export function HowWeWork() {
       show(".hww-mast-approach", 116, 4.5);
       hide(".hww-mast-approach", 123, 3.5);
       tl.to(cam, { x: -26, y: -30, z: 168, rotationX: 17, rotationY: -19, duration: 18, ease: "power2.inOut" }, 112.5);
-      packetRun(115, 7);
+      packetRun(p1, 115, 7);
 
       // ---- systems thinking ----
       show(".hww-cap-systems", 124.5, 5);
-      hide(".hww-cap-systems", 140, 4);
+      hide(".hww-cap-systems", 138.5, 3);
       tl.to(cam, { x: 40, y: -20, z: 90, rotationX: 13.5, rotationY: -13, duration: 16, ease: "power2.inOut" }, 124);
+      // trace the live journey, surface by surface: page → inbox → CRM → sheets
+      tl.fromTo(q(".xp-cta-btn, .xp-nav-cta"), { filter: "brightness(1)" }, { filter: "brightness(1.45)", duration: 0.9, yoyo: true, repeat: 1 }, 126);
+      packetRun(p1, 127, 4.6);
+      packetRun(p2, 132.2, 2.0);
+      tl.fromTo(".dock-inbox .dock-face", { boxShadow: "0 18px 40px -12px rgba(12,12,13,0.4)" },
+        { boxShadow: "0 0 0 2px rgba(200,241,79,0.8), 0 18px 40px -12px rgba(12,12,13,0.4)", duration: 1.1, yoyo: true, repeat: 1 }, 131.6);
+      tl.fromTo(".dock-crm .dock-face", { boxShadow: "0 18px 40px -12px rgba(12,12,13,0.4)" },
+        { boxShadow: "0 0 0 2px rgba(200,241,79,0.8), 0 18px 40px -12px rgba(12,12,13,0.4)", duration: 1.1, yoyo: true, repeat: 1 }, 134.2);
+      tl.fromTo(".dock-sheets .dock-face", { boxShadow: "0 18px 40px -12px rgba(12,12,13,0.4)" },
+        { boxShadow: "0 0 0 2px rgba(200,241,79,0.8), 0 18px 40px -12px rgba(12,12,13,0.4)", duration: 1.1, yoyo: true, repeat: 1 }, 135.6);
       tl.to(q(".xp-seam"), { opacity: 0.95, duration: 2.2, stagger: 0.3 }, 126);
       tl.to(q(".xp-seam"), { opacity: 0.6, duration: 2.2, stagger: 0.3 }, 129);
 
       // ---- AI where it earns its place ----
       show(".hww-cap-ai", 140.5, 5);
-      hide(".hww-cap-ai", 158.5, 4);
+      hide(".hww-cap-ai", 156.5, 3);
       tl.to(cam, { x: -150, y: -40, z: -26, rotationX: 6.5, rotationY: -27, duration: 16, ease: "power2.inOut" }, 140);
-      // one optional tool, exactly where it is useful: drafting the reply
+      // one optional tool inside the enquiry workflow: a reply draft for review
       tl.to(".xp-ai-chip", { opacity: 1, y: 0, duration: 2.4 }, 145.5);
       tl.to(".xp-ai-knob", { x: 13, duration: 1.4, ease: "power2.inOut" }, 149.5);
       tl.to(".xp-ai-line", { scaleX: 1, duration: 2.2, ease: "power2.inOut" }, 150);
+      tl.to(".xp-draft-row", { opacity: 1, duration: 1.6 }, 150.5);
+      // it goes back off — the enquiry flow runs fine without it
       tl.to(".xp-ai-knob", { x: 0, duration: 1.4, ease: "power2.inOut" }, 154.5);
-      tl.to(".xp-ai-chip", { opacity: 0.3, duration: 2 }, 155.5);
+      tl.to(".xp-ai-line", { scaleX: 0, duration: 1.6, ease: "power2.inOut" }, 154.5);
+      tl.to(".xp-draft-row", { opacity: 0, duration: 1.6 }, 154.8);
+      tl.to(".xp-ai-chip", { opacity: 0, duration: 2 }, 155.5);
       tl.to(q(".xp-seam"), { opacity: 0.8, duration: 1.6 }, 148);
 
       // ---- design + engineering ----
       show(".hww-cap-design-eng", 159, 5);
-      hide(".hww-cap-design-eng", 176.5, 4);
-      tl.to(cam, { x: -18, y: 2, z: -6, rotationX: 4, rotationY: -47, duration: 16, ease: "power2.inOut" }, 158.5);
-      // the draft lifts, finds its place, and folds into the built thing
-      tl.to(".xp-blueprint", { opacity: 0.8, duration: 3 }, 160.5);
-      tl.to(".xp-blueprint", { x: 0, y: 0, z: 0, rotationY: 0, scale: 1, duration: 6.5, ease: "power3.inOut" }, 166);
-      tl.to(".xp-blueprint", { opacity: 0, duration: 2.4 }, 170.5);
+      hide(".hww-cap-design-eng", 173.5, 3);
+      tl.to(cam, { x: -20, y: 2, z: 34, rotationX: 4, rotationY: -13, duration: 16, ease: "power2.inOut" }, 158.5);
+      // the same panel re-opens — one experience, alive under the hand
+      tl.to(".xp-confirm", { opacity: 0, y: 6, duration: 1.6 }, 159.3);
+      tl.to(".xp-form-inner", { opacity: 1, y: 0, duration: 1.8 }, 159.8);
+      // focus, type, verify, press
+      tl.to(".xp-field-emailbox", { boxShadow: "0 0 0 2px rgba(200,241,79,0.95)", duration: 1.2 }, 160.5);
+      tl.to(".xp-field-caret", { opacity: 1, duration: 0.6 }, 160.5);
+      tl.to(".xp-email-text", { clipPath: "inset(0% 0% 0% 0%)", duration: 3.2, ease: "steps(14)" }, 161.5);
+      tl.to(".xp-field-caret", { opacity: 0, duration: 0.6 }, 164.9);
+      tl.to(".xp-field-check", { opacity: 1, duration: 0.6 }, 165.3);
+      tl.fromTo(".xp-submit", { scale: 1 }, { scale: 0.93, duration: 0.45, yoyo: true, repeat: 1, ease: "power1.inOut" }, 166.6);
+      // the current location is announced in the nav
+      tl.to(".xp-nav-underline-contact", { scaleX: 1, duration: 1.8, ease: "power3.out" }, 168.2);
       tl.fromTo(".xp-face", { filter: "brightness(1)" }, { filter: "brightness(1.38)", duration: 2.6, yoyo: true, repeat: 1, ease: "power1.inOut" }, 168.5);
 
       // ---- built to keep running ----
       show(".hww-cap-running", 176.5, 5);
-      hide(".hww-cap-running", 191.5, 4);
+      hide(".hww-cap-running", 192.5, 4);
       tl.to(cam, { x: 24, y: -8, z: 88, rotationX: 5, rotationY: -3.5, duration: 15, ease: "power2.inOut" }, 176);
-      tl.to(".xp-ai-chip", { opacity: 0.3, duration: 1 }, 177);
-      packetRun(179.5, 5.5);
+      tl.to(".xp-ai-chip", { opacity: 0, duration: 1.2 }, 177);
+      // the shared enquiry record advances — Inbox, CRM and the log all agree
+      tl.to(q(".xp-status-new"), { opacity: 0, duration: 1.2, stagger: 0.25 }, 177.5);
+      tl.to(q(".xp-status-logged"), { opacity: 1, duration: 1.2, stagger: 0.25 }, 177.9);
+      packetRun(p1, 179.5, 5.5);
       tl.to(q(".xp-seam"), { opacity: 0.35, duration: 1.8, stagger: 0.2 }, 181);
       tl.to(q(".xp-seam"), { opacity: 0.95, duration: 1.8, stagger: 0.2 }, 185.5);
-      packetRun(187, 5.5);
+      packetRun(p2, 186.8, 2.2);
 
       // =================================================================
       // EXIT — paper returns only here; scene eases back
@@ -542,45 +607,89 @@ export function HowWeWork() {
                       <div className="xp-nav">
                         <div className="xp-nav-left">
                           <span className="xp-mark"><i /></span>
-                          <span className="xp-word" style={{ opacity: 0 }}>STUDIO</span>
+                          <span className="xp-word">STUDIO</span>
                         </div>
-                        <div className="xp-nav-skel" aria-hidden="true"><i style={{ width: 30 }} /><i style={{ width: 22 }} /><i style={{ width: 36 }} /></div>
                         <div className="xp-nav-links">
-                          <span className="xp-nav-link" style={{ opacity: 0 }}>WORK</span>
-                          <span className="xp-nav-link" style={{ opacity: 0 }}>SERVICES</span>
-                          <span className="xp-nav-link" style={{ opacity: 0 }}>CONTACT</span>
+                          <span className="xp-nav-link">WORK</span>
+                          <span className="xp-nav-link">SERVICES</span>
+                          <span className="xp-nav-link xp-nav-link-contact">CONTACT<span className="xp-nav-underline xp-nav-underline-contact" /></span>
                         </div>
+                        <span className="xp-nav-cta"><span className="xp-cta-label"><i className="xp-cta-old">Get in touch</i><i className="xp-cta-new">Start a project</i></span></span>
                       </div>
 
-                      {/* kicker */}
+                      {/* kicker — lands with the build */}
                       <span className="xp-kicker">WELCOME</span>
-                      <span className="xp-kicker-bar" />
 
-                      {/* headline — skeleton bars, then the real lines */}
-                      <div className="xp-head-bars" aria-hidden="true">
-                        <i style={{ width: 300 }} />
-                        <i style={{ width: 236 }} />
-                      </div>
+                      {/* headline — useful content, present from the start */}
                       <h4 className="xp-headline" aria-hidden="true">
                         <span className="xp-hl"><span>Good work,</span></span>
                         <span className="xp-hl"><span>done properly.</span></span>
                       </h4>
 
-                      {/* supporting lines */}
-                      <span className="xp-sub" />
-                      <span className="xp-sub-2" />
+                      {/* what this page offers */}
+                      <span className="xp-tagline">Websites, video and AI automation — one system.</span>
 
                       {/* the action slot (the gap) → planned → real button */}
                       <span className="xp-cta-slot"><span className="xp-cta-slot-pulse" /></span>
+                      <span className="xp-void-tag">NO CLEAR NEXT STEP</span>
                       <span className="xp-cta-plan" />
-                      <span className="xp-cta-btn">Get in touch<i /></span>
+                      <span className="xp-cta-btn"><span className="xp-cta-label"><i className="xp-cta-old">Get in touch</i><i className="xp-cta-new">Start a project</i></span><i className="xp-cta-dot" /></span>
 
-                      {/* artwork module */}
-                      <div className="xp-art">
-                        <div className="xp-art-skeleton" />
-                        <div className="xp-art-variant xp-art-a" />
-                        <div className="xp-art-variant xp-art-b" />
-                        <div className="xp-art-caption"><i style={{ width: 120 }} /><i style={{ width: 72 }} /></div>
+                      {/* ===== the enquiry panel — the page's contact form ===== */}
+                      <div className="xp-panel">
+                        {/* pre-build: the unfinished form shape */}
+                        <div className="xp-panel-skel" aria-hidden="true">
+                          <i className="xp-panel-skel-head" />
+                          <i className="xp-panel-skel-row" />
+                          <div className="xp-panel-skel-half"><i /><i /></div>
+                          <i className="xp-panel-skel-row xp-panel-skel-wide" />
+                        </div>
+                        {/* design: the planned form, dashed outline */}
+                        <div className="xp-panel-plan" aria-hidden="true">
+                          <span className="xp-panel-plan-tag">PROJECT ENQUIRY</span>
+                          <span className="xp-panel-plan-row" />
+                          <span className="xp-panel-plan-row xp-panel-plan-half" />
+                          <span className="xp-panel-plan-row xp-panel-plan-wide" />
+                        </div>
+                        {/* built: the live form, then its confirmation */}
+                        <div className="xp-panel-live">
+                          <div className="xp-form-inner">
+                            <div className="xp-panel-head">
+                              <span className="xp-panel-title">PROJECT ENQUIRY</span>
+                              <span className="xp-panel-note">WE REPLY BY EMAIL</span>
+                            </div>
+                            <div className="xp-fields-row">
+                              <div className="xp-field">
+                                <span className="xp-field-label">NAME</span>
+                                <span className="xp-field-box"><span className="xp-field-ph">Your name</span></span>
+                              </div>
+                              <div className="xp-field">
+                                <span className="xp-field-label">EMAIL</span>
+                                <span className="xp-field-box xp-field-emailbox">
+                                  <span className="xp-email-text">you@example.com</span>
+                                  <span className="xp-field-caret" />
+                                  <svg className="xp-field-check" viewBox="0 0 24 24" fill="none"><path d="M5 12.6l4.6 4.6L19 7.4" pathLength={100} strokeDasharray={100} /></svg>
+                                </span>
+                              </div>
+                            </div>
+                            <div className="xp-field xp-field-message">
+                              <span className="xp-field-label">MESSAGE</span>
+                              <span className="xp-field-box xp-field-messagebox"><span className="xp-field-ph">What are you building?</span></span>
+                            </div>
+                            <div className="xp-panel-foot">
+                              <span className="xp-submit">SEND ENQUIRY<i className="xp-submit-arrow" /></span>
+                            </div>
+                          </div>
+                          <div className="xp-confirm">
+                            <svg className="xp-confirm-check" viewBox="0 0 48 48" fill="none">
+                              <circle className="xp-check-ring" cx="24" cy="24" r="18" pathLength={100} strokeDasharray={100} />
+                              <path className="xp-check-tick" d="M15.5 24.5l6.4 6.4L33 18" pathLength={100} strokeDasharray={100} />
+                            </svg>
+                            <span className="xp-confirm-title">ENQUIRY RECEIVED</span>
+                            <span className="xp-confirm-sub">We&rsquo;ll get back to you by email.</span>
+                            <span className="xp-confirm-note">YOUR MESSAGE IS IN THE INBOX</span>
+                          </div>
+                        </div>
                       </div>
 
                       {/* three offering columns */}
@@ -591,7 +700,7 @@ export function HowWeWork() {
                             <svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" /></svg>
                           </span>
                         </div>
-                        <span className="xp-card-bar" />
+                        <span className="xp-card-label">VIDEO</span>
                         <span className="xp-card-bar xp-card-bar-short" />
                       </div>
                       <div className="xp-card-col xp-card-col-2">
@@ -601,7 +710,7 @@ export function HowWeWork() {
                             <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 9h18" /></svg>
                           </span>
                         </div>
-                        <span className="xp-card-bar" />
+                        <span className="xp-card-label">WEB</span>
                         <span className="xp-card-bar xp-card-bar-short" />
                       </div>
                       <div className="xp-card-col xp-card-col-3">
@@ -611,8 +720,15 @@ export function HowWeWork() {
                             <svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.7L20 10.6l-6.1 1.9L12 18.4l-1.9-5.9L4 10.6l6.1-1.9z" /></svg>
                           </span>
                         </div>
-                        <span className="xp-card-bar" />
+                        <span className="xp-card-label">AI AUTOMATION</span>
                         <span className="xp-card-bar xp-card-bar-short" />
+                      </div>
+
+                      {/* page footer — the shared action appears a third time */}
+                      <div className="xp-foot">
+                        <span className="xp-foot-word"><i />STUDIO</span>
+                        <span className="xp-foot-mid">VIDEO · WEB · AUTOMATION</span>
+                        <span className="xp-foot-cta"><span className="xp-cta-label"><i className="xp-cta-old">Get in touch</i><i className="xp-cta-new">Start a project</i></span><span className="xp-foot-arrow">→</span></span>
                       </div>
 
                       {/* the visitor's journey through the page */}
@@ -653,8 +769,7 @@ export function HowWeWork() {
                       <span className="xp-update-frame" />
                     </div>
 
-                    {/* glass + ink-room tint above everything in the face */}
-                    <div className="xp-face-tint-dark" />
+                    {/* glass above everything in the face */}
                     <div className="xp-sheen" />
                     <div className="xp-flare" />
                     <div className="xp-ai-chip">
@@ -683,8 +798,18 @@ export function HowWeWork() {
                         </span>
                         <span className="dock-name">INBOX</span>
                       </div>
-                      <div className="dock-bars"><i style={{ width: "88%" }} /><i style={{ width: "64%" }} /></div>
-                      <div className="dock-status"><i /><b /></div>
+                      <div className="dock-enquiry">
+                        <div className="dock-enq-row">
+                          <i className="dock-enq-dot" />
+                          <span className="dock-enq-title">ENQUIRY</span>
+                          <span className="xp-status"><b className="xp-status-new">NEW</b><b className="xp-status-logged">LOGGED</b></span>
+                        </div>
+                        <span className="dock-enq-src">VIA CONTACT FORM</span>
+                      </div>
+                      <div className="xp-draft-row">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M5 12.6l4.6 4.6L19 7.4" pathLength={100} /></svg>
+                        <span className="xp-draft-text">REPLY DRAFT · FOR REVIEW</span>
+                      </div>
                     </div>
                   </div>
 
@@ -699,8 +824,14 @@ export function HowWeWork() {
                         </span>
                         <span className="dock-name">CRM</span>
                       </div>
-                      <div className="dock-bars"><i style={{ width: "80%" }} /><i style={{ width: "56%" }} /></div>
-                      <div className="dock-status"><i /><b /></div>
+                      <div className="dock-enquiry">
+                        <div className="dock-enq-row">
+                          <i className="dock-enq-dot" />
+                          <span className="dock-enq-title">LEAD</span>
+                          <span className="xp-status"><b className="xp-status-new">NEW</b><b className="xp-status-logged">LOGGED</b></span>
+                        </div>
+                        <span className="dock-enq-src">VIA CONTACT FORM</span>
+                      </div>
                     </div>
                   </div>
 
@@ -715,8 +846,14 @@ export function HowWeWork() {
                         </span>
                         <span className="dock-name">SHEETS</span>
                       </div>
-                      <div className="dock-bars"><i style={{ width: "92%" }} /><i style={{ width: "60%" }} /></div>
-                      <div className="dock-status"><i /><b /></div>
+                      <div className="dock-enquiry">
+                        <div className="dock-enq-row">
+                          <i className="dock-enq-dot" />
+                          <span className="dock-enq-title">ENTRY</span>
+                          <span className="xp-status"><b className="xp-status-new">NEW</b><b className="xp-status-logged">LOGGED</b></span>
+                        </div>
+                        <span className="dock-enq-src">VIA CONTACT FORM</span>
+                      </div>
                     </div>
                   </div>
 
@@ -725,29 +862,19 @@ export function HowWeWork() {
                     <path
                       className="xp-packet-path"
                       pathLength={100}
-                      d="M 101 291 C 350 286, 520 110, 712 110"
+                      d="M 560 234 C 645 232, 666 175, 661 112"
                     />
-                    <circle className="xp-packet-halo" cx="101" cy="291" r="9" />
-                    <circle className="xp-packet" cx="101" cy="291" r="4.2" />
+                    <path
+                      className="xp-packet-path-2"
+                      pathLength={100}
+                      d="M 661 112 L 661 248"
+                    />
+                    <circle className="xp-packet-halo" cx="560" cy="234" r="9" />
+                    <circle className="xp-packet" cx="560" cy="234" r="4.2" />
+                    <circle className="xp-packet-halo-2" cx="661" cy="112" r="9" />
+                    <circle className="xp-packet-2" cx="661" cy="112" r="4.2" />
                   </svg>
 
-                  {/* ===== AI ASSIST — one optional tool, one useful place ===== */}
-                  {/* ===== blueprint ghost: design folded into the built thing ===== */}
-                  <div className="xp-blueprint" aria-hidden="true">
-                    <svg viewBox="0 0 660 472" fill="none">
-                      <rect x="4" y="4" width="652" height="464" rx="16" />
-                      <line x1="0" y1="42" x2="660" y2="42" />
-                      <line x1="26" y1="96" x2="300" y2="96" />
-                      <line x1="26" y1="136" x2="360" y2="136" />
-                      <line x1="26" y1="176" x2="280" y2="176" />
-                      <rect x="26" y="226" width="150" height="44" rx="22" className="xp-blueprint-accent" />
-                      <rect x="26" y="288" width="212" height="118" rx="12" />
-                      <rect x="250" y="288" width="110" height="118" rx="12" />
-                      <rect x="372" y="288" width="110" height="118" rx="12" />
-                      <rect x="494" y="288" width="110" height="118" rx="12" />
-                      <circle cx="96" cy="30" r="6" className="xp-blueprint-accent" />
-                    </svg>
-                  </div>
                 </div>
               </div>
             </div>
