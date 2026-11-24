@@ -14,24 +14,24 @@
    emphasis, and surgical lime (#9EE41A) indicators.
    ============================================================ */
 :root {
-  /* semantic — warm studio ivory canvas */
+  /* semantic — dark smoked-cypress studio canvas */
   --bg: transparent;
-  --bg-solid: #fbfbf6;
-  --bg-2: rgba(245, 242, 226, 0.70);
-  --fg: #0d0e0c;
-  --muted: #484c45;
-  --stone: #868a82;
-  --faint: rgba(13, 14, 12, 0.40);
-  --line: rgba(13, 14, 12, 0.08);
-  --card: rgba(245, 242, 226, 0.90);
+  --bg-solid: #111710;
+  --bg-2: rgba(255, 255, 255, 0.06);
+  --fg: #F4F1E0;
+  --muted: #C9CEC3;
+  --stone: #9CA396;
+  --faint: rgba(244, 241, 224, 0.55);
+  --line: rgba(255, 255, 255, 0.12);
+  --card: rgba(244, 241, 224, 0.95);
 
   /* Arché Leaf-Lime for readable typographic emphasis */
   --leaf-lime: #72b314;
 
   /* accent — surgical lime #9EE41A indicator */
   --accent: #9ee41a;
-  --accent-deep: #0d0e0c;
-  --accent-ink: #0d0e0c;
+  --accent-deep: #9ee41a;
+  --accent-ink: #9ee41a;
 
   /* fixed inks for buttons */
   --solid: #0d0e0c;
@@ -78,26 +78,35 @@
   color: var(--fg);
 }
 
-/* Refined Frosted-Glass Eyebrow Pill Badge (awmedia.marketing style in Arché cream-ivory) */
+/* Refined Frosted-Glass Eyebrow Pill Badge (Dark Smoked Glass for Cinema Environment) */
 .glass-eyebrow-pill {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.375rem 1rem;
   border-radius: 9999px;
-  background: rgba(244, 241, 224, 0.78);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(20, 20, 19, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: 
-    inset 0 1px 0 rgba(255, 253, 244, 0.92),
-    0 4px 12px -4px rgba(20, 20, 19, 0.06);
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 4px 16px -4px rgba(0, 0, 0, 0.35);
   font-family: var(--font-mono, monospace);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #232620;
+  color: #F4F1E0 !important;
+}
+
+.glass-eyebrow-pill span:not([class*="bg-"]) {
+  color: #F4F1E0 !important;
+}
+
+/* Crisp Cinema Depth Shadow for Light Headings on Dark Canvas */
+.cinema-headline-shadow {
+  filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.55)) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.40));
 }
 
 /* Refined Frosted-Glass Interactive Navigation Dock Box */
@@ -158,11 +167,11 @@
 
 /* Giant Process 01-04 Numeral Brushed Metallic Obsidian-to-Silver Shine */
 .process-numeral-shine {
-  background: linear-gradient(180deg, #090A08 0%, #1F221D 44%, #7A8075 100%);
+  background: linear-gradient(180deg, #FFFFFF 0%, #C8CEC2 55%, #585E54 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  color: #090A08;
+  color: #FFFFFF;
   display: inline-block;
   font-weight: 800;
   line-height: 0.9;
@@ -172,70 +181,53 @@
 .text-gradient-silver,
 .text-gradient-jet-silver,
 .text-gradient-charcoal-silver {
-  background: linear-gradient(180deg, #090A08 0%, #1F221D 44%, #7A8075 100%);
+  background: linear-gradient(180deg, #FFFFFF 0%, #C8CEC2 55%, #585E54 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  color: #090A08;
+  color: #FFFFFF;
 }
 
 .metallic-specular-text {
-  color: #11120F;
+  color: #F4F1E0;
   text-shadow: none;
   filter: none;
 }
 
-/* Primary Bold Headline Sculpted Glossy Ink (Reads deep black with subtle studio light-catch) */
+/* Primary Bold Headline Sculpted Glossy Ink (Directional 125deg Top-Left Studio Light Sheen) */
 .shiny-ink-text,
 .headline-primary-shine {
-  background: linear-gradient(180deg, #070807 0%, #121411 52%, #3B4037 100%);
+  background: linear-gradient(125deg, #FFFFFF 0%, #F7F7F2 35%, #D2D8CC 68%, #9EA698 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  color: #070807;
+  color: #FFFFFF;
   filter: none;
   text-shadow: none;
   display: inline;
 }
 
-/* Secondary Contrast Headline Sheen */
+/* Secondary Contrast Headline Sheen (Directional 125deg Silver-Ivory Sheen) */
 .headline-secondary-shine {
-  background: linear-gradient(180deg, #323630 0%, #5C6158 55%, #898E84 100%);
+  background: linear-gradient(125deg, #FFFFFF 0%, #D8DDD3 40%, #B8BFB2 70%, #8E9687 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  color: #323630;
+  color: #D8DDD3;
   filter: none;
   text-shadow: none;
   display: inline;
 }
 
-/* Hero Rotating Focal Verb Specular Sweep */
+/* Hero Rotating Focal Verb Luminous Lime Sheen with Ambient Glow */
 .verb-glint-shine {
-  background: linear-gradient(
-    115deg,
-    #070807 0%,
-    #070807 35%,
-    #6E7866 50%,
-    #070807 65%,
-    #070807 100%
-  );
-  background-size: 240% 100%;
+  background: linear-gradient(125deg, #D9FF7A 0%, #9EE41A 55%, #79B812 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  color: #070807;
+  color: #9EE41A;
   display: inline;
-  animation: verbSpecularSweep 4.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-
-@keyframes verbSpecularSweep {
-  0%, 65% {
-    background-position: 120% 0;
-  }
-  100% {
-    background-position: -120% 0;
-  }
+  filter: drop-shadow(0 0 24px rgba(158, 228, 26, 0.28));
 }
 
 .display-headline-heavy {
@@ -285,10 +277,11 @@
   position: sticky;
   background: #F4F1E0 !important;
   opacity: 1;
-  border: 1px solid rgba(20, 20, 19, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.55);
   box-shadow: 
-    inset 0 1px 0 rgba(255, 253, 244, 0.92),
-    0 10px 28px -14px rgba(20, 20, 19, 0.08);
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.95),
+    0 24px 54px -16px rgba(0, 0, 0, 0.55),
+    0 0 28px -8px rgba(158, 228, 26, 0.12);
 }
 
 /* Genuine Architectural Warm Cream-Ivory Card System matching Navbar */
@@ -299,13 +292,39 @@
   position: relative;
   --mx: -999px;
   --my: -999px;
-  background: linear-gradient(155deg, rgba(245, 242, 226, 0.90) 0%, rgba(238, 235, 216, 0.86) 100%);
-  border: 1px solid rgba(20, 20, 19, 0.10);
+  background: linear-gradient(155deg, rgba(245, 242, 226, 0.92) 0%, rgba(238, 235, 216, 0.88) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.55);
   box-shadow: 
-    inset 0 1px 0 rgba(255, 253, 244, 0.92),
-    0 10px 28px -14px rgba(20, 20, 19, 0.08);
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.95),
+    0 24px 54px -16px rgba(0, 0, 0, 0.55),
+    0 0 28px -8px rgba(158, 228, 26, 0.12);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+
+/* Smoked Cypress Liquid Glass - Architectural Secondary Surfaces */
+.smoked-cypress-glass {
+  position: relative;
+  --mx: -999px;
+  --my: -999px;
+  background: rgba(255, 255, 255, 0.035) !important;
+  border: 1px solid rgba(255, 255, 255, 0.11) !important;
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 20px 48px -12px rgba(0, 0, 0, 0.65) !important;
+  backdrop-filter: blur(22px) !important;
+  -webkit-backdrop-filter: blur(22px) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .smoked-cypress-glass:hover,
+  .smoked-cypress-glass[data-active="true"] {
+    background: rgba(255, 255, 255, 0.055) !important;
+    border-color: rgba(255, 255, 255, 0.18) !important;
+    box-shadow: 
+      inset 0 1px 0 rgba(255, 255, 255, 0.24),
+      0 24px 52px -12px rgba(0, 0, 0, 0.75) !important;
+  }
 }
 
 /* Tactile 3D Micro-tilt Card & Glass Sheen Sweep */
@@ -330,10 +349,11 @@
 
 .weighted-card {
   background: linear-gradient(155deg, rgba(245, 242, 226, 0.90) 0%, rgba(238, 235, 216, 0.86) 100%);
-  border: 1px solid rgba(20, 20, 19, 0.10);
+  border: 1px solid rgba(24, 36, 22, 0.12);
   box-shadow: 
     inset 0 1px 0 rgba(255, 253, 244, 0.92),
-    0 10px 28px -14px rgba(20, 20, 19, 0.08);
+    0 20px 44px -14px rgba(24, 36, 22, 0.24),
+    0 4px 12px -2px rgba(24, 36, 22, 0.10);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
 }
@@ -368,7 +388,8 @@
 
 /* Layer 1: Crisp 1.5px Masked Border Glow (220px radius) */
 .arche-glow-card::before,
-.frosted-crystal::before {
+.frosted-crystal::before,
+.smoked-cypress-glass::before {
   content: "";
   position: absolute;
   inset: -1.5px;
@@ -390,7 +411,8 @@
 
 /* Layer 2: Ultra-subtle 4.5% max lime surface tint (Clean highlights, zero muddy interior) */
 .arche-glow-card::after,
-.frosted-crystal::after {
+.frosted-crystal::after,
+.smoked-cypress-glass::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -412,17 +434,31 @@
   .arche-glow-card[data-active="true"]::before,
   .arche-glow-card[data-active="true"]::after,
   .frosted-crystal:hover::before,
-  .frosted-crystal:hover::after {
+  .frosted-crystal:hover::after,
+  .smoked-cypress-glass:hover::before,
+  .smoked-cypress-glass:hover::after,
+  .smoked-cypress-glass[data-active="true"]::before,
+  .smoked-cypress-glass[data-active="true"]::after {
     opacity: 1;
   }
 
-  .arche-glow-card:not(.sticky-service-card):hover,
-  .frosted-ivory-card:not(.sticky-service-card):hover {
+  .arche-glow-card:not(.sticky-service-card):not(.smoked-cypress-glass):hover,
+  .frosted-ivory-card:not(.sticky-service-card):not(.smoked-cypress-glass):hover {
     background: linear-gradient(155deg, rgba(248, 245, 230, 0.95) 0%, rgba(241, 238, 220, 0.92) 100%);
+    border-color: rgba(24, 36, 22, 0.18);
     transform: translateY(-2px);
     box-shadow: 
       inset 0 1px 0 rgba(255, 253, 244, 0.95),
-      0 18px 44px -14px rgba(20, 20, 19, 0.12);
+      0 26px 54px -16px rgba(24, 36, 22, 0.30),
+      0 6px 16px -2px rgba(24, 36, 22, 0.12);
+  }
+
+  .smoked-cypress-glass:hover {
+    background: rgba(255, 255, 255, 0.055);
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow: 
+      inset 0 1px 0 rgba(255, 255, 255, 0.24),
+      0 24px 52px -12px rgba(0, 0, 0, 0.75);
   }
 }
 
@@ -442,6 +478,14 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
     0 30px 70px -20px rgba(0, 0, 0, 0.65);
   border-radius: 28px;
+}
+
+/* Rich Deep Forest Cypress & Obsidian Rim Shadow for Inner Dark Console Frames & Work Thumbnails */
+.dark-console-frame,
+.obsidian-console-shadow {
+  background: linear-gradient(145deg, #1A2418 0%, #10120F 100%) !important;
+  border-color: rgba(37, 56, 33, 0.45) !important;
+  box-shadow: 0 24px 48px -16px rgba(20, 32, 18, 0.45) !important;
 }
 
 .smoked-glass-cell {
@@ -649,13 +693,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(244, 241, 224, 0.78);
+  background: rgba(14, 18, 13, 0.72);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(20, 20, 19, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.13);
   box-shadow: 
-    inset 0 1px 0 rgba(255, 253, 244, 0.85),
-    0 14px 36px -12px rgba(20, 20, 19, 0.10);
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 18px 42px -12px rgba(0, 0, 0, 0.65);
   --mx: -999px;
   --my: -999px;
   overflow: hidden;
@@ -675,8 +719,9 @@
   padding: 1.5px;
   background: radial-gradient(
     200px circle at var(--mx) var(--my),
-    #9EE41A 0%,
-    rgba(158, 228, 26, 0.3) 40%,
+    rgba(255, 255, 255, 0.45) 0%,
+    rgba(158, 228, 26, 0.35) 35%,
+    rgba(158, 228, 26, 0.12) 55%,
     transparent 72%
   );
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -695,7 +740,8 @@
   border-radius: inherit;
   background: radial-gradient(
     280px circle at var(--mx) var(--my),
-    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.10) 0%,
+    rgba(158, 228, 26, 0.05) 35%,
     transparent 65%
   );
   pointer-events: none;
@@ -770,11 +816,12 @@
 .btn-glossy-charcoal {
   position: relative;
   overflow: hidden;
-  background: #141413;
+  background: linear-gradient(145deg, #1A2418 0%, #10120F 100%);
+  border: 1px solid rgba(37, 56, 33, 0.45);
   color: #F4F4EE;
   box-shadow: 
     inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    0 4px 14px rgba(20, 20, 19, 0.14);
+    0 4px 14px rgba(20, 32, 18, 0.24);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -810,7 +857,8 @@
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #FBFBF6;
+  background-color: #090C08;
+  color: #F4F1E0;
 }
 
 body,
@@ -919,13 +967,13 @@ h1, h2, h3, .text-balance {
   line-height: 1.6;
   letter-spacing: -0.004em;
   margin: 0;
-  color: var(--muted);
+  color: #C9CEC3;
 }
 .body-s {
   font-size: 13.5px;
   line-height: 1.6;
   margin: 0;
-  color: var(--muted);
+  color: #A6ADA1;
 }
 .mono {
   font-family: var(--font-mono);
@@ -1070,9 +1118,16 @@ h1, h2, h3, .text-balance {
   transition-duration: 75ms;
 }
 .btn-ghost {
-  background: transparent;
-  color: var(--fg);
-  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.06);
+  color: #F4F1E0 !important;
+  border-color: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #FFFFFF !important;
+  border-color: rgba(158, 228, 26, 0.65);
 }
 .btn .arw {
   transition: transform 0.5s var(--e-out);
@@ -1103,14 +1158,14 @@ a:focus-visible {
   height: 4px;
   margin: -2px 0 0 -2px;
   background: #FFFFFF;
-  box-shadow: 0 0 3px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 10px 2px rgba(255, 255, 255, 0.75);
   opacity: 0;
   transition: opacity 0.15s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .cursor-dot.cursor-dot-hover {
   background: #9EE41A;
-  box-shadow: 0 0 8px rgba(158, 228, 26, 0.7);
+  box-shadow: 0 0 12px 2px rgba(158, 228, 26, 0.85);
 }
 
 .cursor-ring {
@@ -1122,14 +1177,14 @@ a:focus-visible {
   border-radius: 9999px;
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  margin: -16px 0 0 -16px;
-  background: rgba(20, 22, 18, 0.34);
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.30);
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.25), 0 4px 12px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  box-shadow: 0 0 24px 4px rgba(255, 255, 255, 0.18), inset 0 1px 2px rgba(255, 255, 255, 0.35);
   font-family: var(--font-mono);
   font-size: 16px;
   font-weight: 700;
@@ -1145,23 +1200,23 @@ a:focus-visible {
 }
 
 .cursor-ring.cursor-state-hover {
-  width: 42px;
-  height: 42px;
-  margin: -21px 0 0 -21px;
-  background: rgba(20, 22, 18, 0.42);
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(158, 228, 26, 0.65);
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.3), 0 0 14px rgba(158, 228, 26, 0.35);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.40), 0 0 20px 4px rgba(158, 228, 26, 0.35);
 }
 
 .cursor-ring.cursor-state-view {
   width: 56px;
   height: 56px;
   margin: -28px 0 0 -28px;
-  background: rgba(20, 22, 18, 0.52);
-  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(20, 24, 18, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(10px) saturate(160%);
   -webkit-backdrop-filter: blur(10px) saturate(160%);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3), 0 0 16px rgba(158, 228, 26, 0.25);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4), 0 0 20px rgba(158, 228, 26, 0.30);
   color: #9EE41A;
 }
 
@@ -3241,6 +3296,59 @@ img {
 .animate-progress-fill {
   animation: progressFill 2.2s linear forwards;
 }
+
+/* Monumental Dual-Row Editorial Capability Marquee (60fps GPU-only infinite glide) */
+@keyframes marqueeGlideLeft {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+
+@keyframes marqueeGlideRight {
+  0% { transform: translate3d(-50%, 0, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+
+.animate-marquee-left {
+  display: flex;
+  width: max-content;
+  animation: marqueeGlideLeft 60s linear infinite;
+  will-change: transform;
+}
+
+.animate-marquee-right {
+  display: flex;
+  width: max-content;
+  animation: marqueeGlideRight 64s linear infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee-left,
+  .animate-marquee-right {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+/* Monumental Phrase Hover Illumination (exact Trident Coaching editorial effect) */
+.monumental-marquee-item {
+  color: rgba(244, 241, 224, 0.22);
+  transition: color 220ms cubic-bezier(0.16, 1, 0.3, 1), text-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  user-select: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .monumental-marquee-item:hover {
+    color: #FFFFFF !important;
+    text-shadow: 0 0 24px rgba(255, 255, 255, 0.28), 0 0 44px rgba(255, 255, 255, 0.14);
+  }
+}
+
+.monumental-marquee-item:active {
+  color: #FFFFFF !important;
+}
+
 
 
 

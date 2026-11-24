@@ -225,7 +225,7 @@ export function HowWeWork() {
               <div className="mb-6">
                 <div className="glass-eyebrow-pill">
                   <span className="h-[5px] w-[5px] rounded-full bg-[#84CC16] shadow-[0_0_8px_#84CC16] flex-shrink-0" />
-                  <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#232620]">
+                  <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#F4F1E0]">
                     HOW WE WORK
                   </span>
                 </div>
@@ -234,27 +234,27 @@ export function HowWeWork() {
               {/* Display Headline with Masked Editorial Reveal */}
               <h2
                 ref={headingRef}
-                className="text-[clamp(2.25rem,3.6vw,3.25rem)] font-bold tracking-[-0.038em] leading-[0.98] mb-6 text-[#11120F]"
+                className="text-[clamp(2.25rem,3.6vw,3.25rem)] font-bold tracking-[-0.038em] leading-[0.98] mb-6 text-[#F4F1E0]"
                 style={{
                   fontFamily: "'Inter Tight', sans-serif",
                   fontVariationSettings: "'wght' 700",
                   fontWeight: 700,
-                  color: "#11120F",
+                  color: "#F4F1E0",
                   textShadow: "none",
                 }}
               >
                 <span className="block overflow-hidden py-0.5">
-                  <span className="editorial-line block text-[#11120F]">
+                  <span className="editorial-line block text-[#F4F1E0]">
                     <span className="shiny-ink-text">From brief</span>
                   </span>
                 </span>
                 <span className="block overflow-hidden py-0.5">
-                  <span className="editorial-line block text-[#11120F]">
+                  <span className="editorial-line block text-[#F4F1E0]">
                     <span className="shiny-ink-text">to live system,</span>
                   </span>
                 </span>
                 <span className="block overflow-hidden py-0.5">
-                  <span className="editorial-line block text-[#63685E]">
+                  <span className="editorial-line block text-[#92998D]">
                     <span className="headline-secondary-shine">in four clear stages.</span>
                   </span>
                 </span>
@@ -262,9 +262,9 @@ export function HowWeWork() {
             </div>
 
             {/* Giant Metallic Numeral (01 -> 02 -> 03 -> 04) with vertical obsidian-to-silver shine */}
-            <div className="mt-4 pt-4 border-t border-[#141413]/[0.08]">
+            <div className="mt-4 pt-4 border-t border-white/10">
               <div className="flex items-center justify-between mb-1">
-                <span className="font-mono text-xs font-semibold tracking-wider text-[#141413] flex items-center gap-1.5">
+                <span className="font-mono text-xs font-semibold tracking-wider text-[#F4F1E0] flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-[#72B314]" />
                   {PROCESS_STEPS[activeStep].phase}
                 </span>
@@ -326,37 +326,37 @@ export function HowWeWork() {
                   }}
                 >
                   <div className="flex items-center justify-between pb-4 border-b border-[#141413]/[0.08] mb-5">
-                    <span className="font-mono text-xs font-semibold tracking-widest text-[#141413] uppercase flex items-center gap-1.5">
+                    <span className="font-mono text-xs font-bold tracking-widest text-[#0B0C0A] uppercase flex items-center gap-1.5">
                       <span className="h-1.5 w-1.5 rounded-full bg-[#72B314]" />
                       {step.phase}
                     </span>
-                    <span className="font-mono text-xs text-[#868A82]">
+                    <span className="font-mono text-xs font-bold text-[#2E322B]">
                       0{idx + 1} / 04
                     </span>
                   </div>
 
-                  <h3 className="text-2xl sm:text-3xl font-semibold tracking-tight text-[#141413] mb-3">
+                  <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0B0C0A] mb-3">
                     {step.title}
                   </h3>
 
-                  <p className="text-base text-[#141413] leading-relaxed font-medium mb-3">
+                  <p className="text-[17px] text-[#0B0C0A] leading-relaxed font-bold mb-3">
                     {step.lead}
                   </p>
 
-                  <p className="text-sm text-[#595C56] leading-relaxed mb-6">
+                  <p className="text-[15.5px] text-[#1C1E1A] leading-[1.6] font-medium mb-6">
                     {step.desc}
                   </p>
 
                   {/* Deliverables List */}
                   <div className="pt-5 border-t border-[#141413]/[0.08]">
-                    <p className="font-mono text-[10.5px] tracking-wider uppercase text-[#595C56] mb-3">
+                    <p className="font-mono text-[12px] font-bold tracking-wider uppercase text-[#2E322B] mb-3">
                       Key Deliverables:
                     </p>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-2.5">
                       {step.deliverables.map((item) => (
-                        <div key={item} className="flex items-center gap-2.5 text-xs text-[#141413]">
+                        <div key={item} className="flex items-center gap-2.5 text-[14px] text-[#1C1E1A]">
                           <span className="h-1.5 w-1.5 rounded-full bg-[#72B314] shadow-[0_0_4px_#72B314]" />
-                          <span className="font-medium text-[#141413]">{item}</span>
+                          <span className="font-medium text-[#1C1E1A]">{item}</span>
                         </div>
                       ))}
                     </div>

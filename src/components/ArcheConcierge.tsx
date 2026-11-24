@@ -63,7 +63,7 @@ function renderFormattedMessage(text: string, isUser: boolean) {
             return (
               <strong
                 key={tIdx}
-                className={isUser ? "text-[#9EE41A] font-semibold" : "text-[#11120F] font-bold"}
+                className={isUser ? "text-[#9EE41A] font-semibold" : "text-[#0B0C0A] font-bold"}
               >
                 {token.slice(2, -2)}
               </strong>
@@ -73,7 +73,7 @@ function renderFormattedMessage(text: string, isUser: boolean) {
             return (
               <em
                 key={tIdx}
-                className={isUser ? "text-[#E6F4D0] italic font-normal" : "text-[#484C45] italic font-medium"}
+                className={isUser ? "text-[#E6F4D0] italic font-normal" : "text-[#1C1E1A] italic font-medium"}
               >
                 {token.slice(1, -1)}
               </em>
@@ -83,7 +83,7 @@ function renderFormattedMessage(text: string, isUser: boolean) {
             return (
               <em
                 key={tIdx}
-                className={isUser ? "text-[#E6F4D0] italic font-normal" : "text-[#484C45] italic font-medium"}
+                className={isUser ? "text-[#E6F4D0] italic font-normal" : "text-[#1C1E1A] italic font-medium"}
               >
                 {token.slice(1, -1)}
               </em>
@@ -275,16 +275,16 @@ export function ArcheConcierge({ className = "" }: { className?: string }) {
             }`}
           >
             {/* Timestamp label */}
-            <span className="font-mono text-[10px] text-[#868A82] mb-1 px-1">
+            <span className="font-mono text-[11.5px] font-semibold text-[#2E322B] mb-1 px-1">
               {m.sender === "user" ? "You" : "Arché Concierge"} · {m.timestamp}
             </span>
 
             {/* Bubble */}
             <div
-              className={`max-w-[88%] sm:max-w-[78%] rounded-2xl p-4 sm:p-5 text-sm leading-relaxed transition-all duration-200 ${
+              className={`max-w-[88%] sm:max-w-[78%] rounded-2xl p-4 sm:p-5 text-[15px] sm:text-[15.5px] leading-[1.6] font-medium transition-all duration-200 ${
                 m.sender === "user"
-                  ? "bg-[#141413] text-[#FBFBF6] rounded-tr-sm shadow-md"
-                  : "bg-white/90 text-[#141413] border border-[#141413]/10 rounded-tl-sm shadow-[0_2px_8px_rgba(20,20,19,0.04)]"
+                  ? "bg-[#0B0C0A] text-[#FBFBF6] rounded-tr-sm shadow-md"
+                  : "bg-white text-[#1C1E1A] border border-[#141413]/12 rounded-tl-sm shadow-[0_2px_8px_rgba(20,20,19,0.04)]"
               }`}
             >
               {renderFormattedMessage(m.text, m.sender === "user")}
@@ -298,7 +298,7 @@ export function ArcheConcierge({ className = "" }: { className?: string }) {
                       href={act.href}
                       target={act.isExternal ? "_blank" : undefined}
                       rel={act.isExternal ? "noopener noreferrer" : undefined}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-semibold tracking-wide bg-[#141413] text-[#FBFBF6] hover:bg-[#232620] hover:text-[#9EE41A] active:scale-[0.97] transition-all duration-150 cursor-pointer shadow-sm"
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-semibold tracking-wide bg-[#0B0C0A] text-[#FBFBF6] hover:bg-[#232620] hover:text-[#9EE41A] active:scale-[0.97] transition-all duration-150 cursor-pointer shadow-sm"
                     >
                       <span>{act.label}</span>
                     </a>
@@ -312,10 +312,10 @@ export function ArcheConcierge({ className = "" }: { className?: string }) {
         {/* 3-Dot Typing Indicator */}
         {isTyping && (
           <div className="flex flex-col items-start">
-            <span className="font-mono text-[10px] text-[#868A82] mb-1 px-1">
+            <span className="font-mono text-[11.5px] font-semibold text-[#2E322B] mb-1 px-1">
               Arché Concierge · Thinking...
             </span>
-            <div className="bg-white/85 border border-[#141413]/10 rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1.5 shadow-sm">
+            <div className="bg-white border border-[#141413]/12 rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1.5 shadow-sm">
               <span className="w-2 h-2 rounded-full bg-[#72B314] animate-bounce [animation-delay:-0.3s]" />
               <span className="w-2 h-2 rounded-full bg-[#72B314] animate-bounce [animation-delay:-0.15s]" />
               <span className="w-2 h-2 rounded-full bg-[#72B314] animate-bounce" />
@@ -327,10 +327,10 @@ export function ArcheConcierge({ className = "" }: { className?: string }) {
       {/* =========================================================
           PROMPT STARTERS CHIPS + INPUT BAR
           ========================================================= */}
-      <div className="p-4 sm:p-5 bg-[rgba(244,241,224,0.95)] border-t border-[#141413]/10 flex flex-col gap-3">
+      <div className="p-4 sm:p-5 bg-[rgba(244,241,224,0.98)] border-t border-[#141413]/10 flex flex-col gap-3">
         {/* 4 Smart Starter Chips (flex-wrap for clean multi-line display with zero scrollbars) */}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-[10px] font-semibold text-[#868A82] uppercase tracking-wider flex-shrink-0">
+          <span className="font-mono text-[11px] font-bold text-[#2E322B] uppercase tracking-wider flex-shrink-0">
             Suggested:
           </span>
           {STARTER_PROMPTS.map((prompt) => (
@@ -339,7 +339,7 @@ export function ArcheConcierge({ className = "" }: { className?: string }) {
               type="button"
               onClick={() => handleSend(prompt)}
               disabled={isTyping}
-              className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-sans text-[#232620] bg-white/70 hover:bg-white hover:text-[#141413] border border-[#141413]/10 shadow-[0_1px_3px_rgba(20,20,19,0.04)] active:scale-[0.97] transition-all duration-150 cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center px-3 py-1.5 rounded-full text-[12.5px] font-sans font-semibold text-[#1C1E1A] bg-white hover:bg-[#F4F1E0] hover:text-[#0B0C0A] border border-[#141413]/12 shadow-[0_1px_3px_rgba(20,20,19,0.04)] active:scale-[0.97] transition-all duration-150 cursor-pointer disabled:opacity-50"
             >
               {prompt}
             </button>
@@ -354,7 +354,7 @@ export function ArcheConcierge({ className = "" }: { className?: string }) {
             onChange={(e) => setInput(e.target.value)}
             disabled={isTyping}
             placeholder="Ask pricing, turnaround, CRM integration, scopes..."
-            className="w-full pl-4 pr-12 py-3 rounded-full bg-white text-[#141413] placeholder-[#868A82] text-base sm:text-sm font-sans border border-[#141413]/15 shadow-inner focus:outline-none focus:ring-2 focus:ring-[#72B314]/50 focus:border-[#72B314] transition-all duration-200"
+            className="w-full pl-4 pr-12 py-3 rounded-full bg-white text-[#0B0C0A] placeholder-[#2E322B]/75 text-base sm:text-[15px] font-medium border border-[#141413]/15 shadow-inner focus:outline-none focus:ring-2 focus:ring-[#72B314]/50 focus:border-[#72B314] transition-all duration-200"
           />
           <button
             type="submit"

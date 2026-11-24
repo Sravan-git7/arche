@@ -17,8 +17,13 @@ export function attachCardTilt(el: HTMLElement | null): () => void {
     return () => {};
   }
 
-  // Never tilt stacked service cards
-  if (el.classList.contains("sticky-service-card") || el.closest(".sticky-service-card")) {
+  // Never tilt stacked service cards or smoked glass surfaces
+  if (
+    el.classList.contains("sticky-service-card") ||
+    el.closest(".sticky-service-card") ||
+    el.classList.contains("smoked-cypress-glass") ||
+    el.closest(".smoked-cypress-glass")
+  ) {
     return () => {};
   }
 

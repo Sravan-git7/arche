@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { gsap, ScrollTrigger, prefersReducedMotion } from "../lib/gsap";
 import { oneRailStore } from "../lib/oneRailState";
 import { attachCardTilt } from "../motion/cardTilt";
+import { SlotButton } from "./SlotButton";
 
 export interface FAQItem {
   n: string;
@@ -101,13 +102,13 @@ function AccordionRow({
       ref={rowRef}
       data-cursor="hover"
       data-active={open ? "true" : undefined}
-      className={`faq-card frosted-ivory-card arche-glow-card shiny-border rounded-2xl transition-all duration-300 ${
+      className={`faq-card smoked-cypress-glass arche-glow-card shiny-border rounded-2xl transition-all duration-300 ${
         open
-          ? "shadow-[0_18px_44px_rgba(20,20,19,0.12)] -translate-y-0.5 bg-[#F4F1E0]"
-          : "hover:shadow-[0_8px_24px_rgba(20,20,19,0.05)] bg-[#F4F1E0]"
+          ? "shadow-[0_20px_48px_rgba(0,0,0,0.6)] -translate-y-0.5 bg-white/[0.055] border-white/20"
+          : "hover:bg-white/[0.045] hover:border-white/20"
       }`}
       style={{
-        borderLeft: open ? "3px solid #72B314" : "3px solid transparent",
+        borderLeft: open ? "3px solid #9EE41A" : "3px solid transparent",
       }}
     >
       <button
@@ -118,12 +119,12 @@ function AccordionRow({
         className="w-full flex items-center justify-between p-6 sm:p-7 text-left gap-4 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#9EE41A]"
       >
         <div className="flex items-center gap-4 sm:gap-6 flex-1">
-          <span className="font-mono text-xs font-semibold text-[#868A82] w-6 flex-shrink-0">
+          <span className="font-mono text-sm font-bold text-[#9EE41A] w-7 flex-shrink-0">
             {item.n}
           </span>
           <h3
-            className={`text-base sm:text-lg lg:text-xl font-semibold tracking-tight transition-colors duration-200 ${
-              open ? "text-[#141413]" : "text-[#141413]/85 hover:text-[#141413]"
+            className={`text-lg sm:text-xl lg:text-[21px] font-bold tracking-tight transition-colors duration-200 ${
+              open ? "text-[#F4F1E0]" : "text-[#F4F1E0]/95 hover:text-[#9EE41A]"
             }`}
           >
             {item.q}
@@ -134,8 +135,8 @@ function AccordionRow({
         <span
           className={`action-circle flex-shrink-0 ${
             open
-              ? "!bg-[#141413] !text-[#9EE41A] !border-[#141413] shadow-[0_0_12px_rgba(20,20,19,0.25)]"
-              : ""
+              ? "!bg-[#9EE41A] !text-[#0B0C0A] !border-[#9EE41A] shadow-[0_0_14px_rgba(158,228,26,0.4)]"
+              : "!bg-white/5 !border-white/15 !text-white group-hover:!border-[#9EE41A]"
           }`}
         >
           <span
@@ -155,8 +156,8 @@ function AccordionRow({
         className="overflow-hidden"
         style={{ height: 0, opacity: 0 }}
       >
-        <div ref={innerRef} className="px-6 pb-6 pt-1 sm:px-7 sm:pb-7 pl-14 sm:pl-20">
-          <p className="text-sm sm:text-base text-[#595C56] leading-relaxed max-w-[64ch]">
+        <div ref={innerRef} className="px-6 pb-6 pt-1 sm:px-7 sm:pb-7 pl-14 sm:pl-20 border-t border-white/10">
+          <p className="text-[15px] sm:text-[15.5px] text-[#C4CBC0] leading-[1.65] font-normal max-w-[66ch]">
             {item.a}
           </p>
         </div>
@@ -214,14 +215,14 @@ export function FAQ() {
         );
       }
 
-      // Pre-CTA editorial statement scrubbed word-by-word (#B4B9AE -> #0E100C via scrub: 0.5)
+      // Pre-CTA editorial statement scrubbed word-by-word (#4A5344 -> #F4F1E0 via scrub: 0.5)
       if (preCtaRef.current && !prefersReducedMotion()) {
         const words = preCtaRef.current.querySelectorAll(".pre-cta-word");
         gsap.fromTo(
           words,
-          { color: "#B4B9AE" },
+          { color: "#4A5344" },
           {
-            color: "#0E100C",
+            color: "#F4F1E0",
             duration: 1,
             stagger: 0.04,
             ease: "none",
@@ -230,6 +231,27 @@ export function FAQ() {
               start: "top 80%",
               end: "bottom 50%",
               scrub: 0.5,
+            },
+          }
+        );
+      }
+
+      // Staggered slide-in for FAQ cards (x: 24 -> 0, opacity: 0 -> 1, stagger: 0.08)
+      const faqCards = root.querySelectorAll(".faq-card");
+      if (faqCards.length) {
+        gsap.fromTo(
+          faqCards,
+          { x: 24, opacity: 0 },
+          {
+            x: 0,
+            opacity: 1,
+            duration: 0.65,
+            stagger: 0.08,
+            ease: "power3.out",
+            scrollTrigger: {
+              trigger: faqCards[0],
+              start: "top 88%",
+              once: true,
             },
           }
         );
@@ -247,7 +269,7 @@ export function FAQ() {
     <section
       ref={rootRef}
       id="faq"
-      className="relative w-full bg-transparent text-[#0D0E0C] py-14 md:py-20 px-6 md:px-12 select-none overflow-x-clip border-t border-[#0D0E0C]/[0.08]"
+      className="relative w-full bg-transparent text-[#F4F1E0] py-14 md:py-20 px-6 md:px-12 select-none overflow-x-clip border-t border-white/10"
     >
       <div className="relative z-10 w-full max-w-[1220px] mx-auto flex flex-col gap-16 md:gap-20">
         {/* =========================================================
@@ -260,7 +282,7 @@ export function FAQ() {
             <div className="mb-4">
               <div className="glass-eyebrow-pill">
                 <span className="h-[5px] w-[5px] rounded-full bg-[#84CC16] shadow-[0_0_8px_#84CC16] flex-shrink-0" />
-                <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#232620]">
+                <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#F4F1E0]">
                   QUESTIONS &amp; ANSWERS
                 </span>
               </div>
@@ -268,40 +290,41 @@ export function FAQ() {
 
             <h2
               ref={headingRef}
-              className="text-[clamp(2.75rem,5vw,4.5rem)] font-display font-bold tracking-[-0.038em] leading-[0.98] mb-5 text-[#11120F]"
+              className="text-[clamp(2.75rem,5vw,4.5rem)] font-display font-bold tracking-[-0.038em] leading-[0.98] mb-5 text-[#F4F1E0]"
               style={{
                 fontFamily: "'Inter Tight', sans-serif",
                 fontVariationSettings: "'wght' 700",
                 fontWeight: 700,
-                color: "#11120F",
+                color: "#F4F1E0",
                 textShadow: "none",
               }}
             >
               <span className="block overflow-hidden py-1">
-                <span className="editorial-line block text-[#11120F]">
+                <span className="editorial-line block text-[#F4F1E0]">
                   <span className="shiny-ink-text">Clear answers.</span>
                 </span>
               </span>
               <span className="block overflow-hidden py-1">
-                <span className="editorial-line block text-[#63685E]">
+                <span className="editorial-line block text-[#92998D]">
                   <span className="headline-secondary-shine">Zero ambiguity.</span>
                 </span>
               </span>
             </h2>
 
-            <p className="text-sm sm:text-base text-[#595C56] leading-relaxed max-w-[36ch]">
+            <p className="text-sm sm:text-base text-[#C9CEC3] leading-relaxed max-w-[36ch]">
               Everything you need to know about our system architecture, turnaround SLAs, and collaborative model.
             </p>
 
             {/* Subtle Link to Full Knowledge Hub & AI Concierge */}
-            <div className="mt-8 pt-5 border-t border-[#141413]/10">
-              <a
+            <div className="mt-8 pt-5 border-t border-white/10">
+              <SlotButton
                 href="#/faq"
-                className="group inline-flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-wider text-[#141413] hover:text-[#72B314] transition-colors"
+                variant="smoked-glass"
+                arrow="right"
+                className="!px-5 !py-2.5 !text-[12px] !font-medium !tracking-[0.06em]"
               >
-                <span>View all FAQs &amp; Ask Arché AI</span>
-                <span className="transition-transform duration-200 group-hover:translate-x-1">→</span>
-              </a>
+                View all FAQs &amp; Ask Arché AI
+              </SlotButton>
             </div>
           </div>
 
@@ -322,11 +345,11 @@ export function FAQ() {
             PRE-CTA EDITORIAL STATEMENT (Scrubbed Word-by-Word Reveal)
             ========================================================= */}
         <div ref={preCtaRef} className="max-w-[960px] mx-auto text-center px-4 my-2 sm:my-4">
-          <p className="font-display text-[clamp(24px,3.4vw,42px)] font-bold tracking-[-0.035em] leading-[1.22] text-center">
+          <p className="font-display text-[clamp(24px,3.4vw,42px)] font-bold tracking-[-0.035em] leading-[1.22] text-center text-[#F4F1E0]">
             {PRE_CTA_WORDS.map((w, i) => (
               <span
                 key={i}
-                className="pre-cta-word inline-block mr-[0.28em] text-[#B4B9AE] will-change-[color]"
+                className="pre-cta-word inline-block mr-[0.28em] text-[#4A5344] will-change-[color]"
               >
                 {w}
               </span>

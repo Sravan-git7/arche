@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { HeroDarkStudio } from "../components/HeroDarkStudio";
+import { CapabilityMarquee } from "../components/CapabilityMarquee";
 import { TheManifesto } from "../components/TheManifesto";
 import { Chapters } from "../components/Chapters";
 import { TheStudioDifference } from "../components/TheStudioDifference";
@@ -81,11 +82,14 @@ export function Home() {
   }, []);
 
   return (
-    <div className="w-full bg-transparent text-[#141413] overflow-x-clip">
+    <div className="w-full bg-transparent text-[#F4F1E0] overflow-x-clip">
       {/* Chapter 01: Hero */}
       <div data-chapter="Hero">
         <HeroDarkStudio />
       </div>
+
+      {/* Infinite Horizontal Capability Marquee */}
+      <CapabilityMarquee />
 
       {/* Chapter 02: The Tension (Scroll-Lit Manifesto) */}
       <div data-chapter="Tension">
@@ -112,7 +116,7 @@ export function Home() {
         <section
           ref={workSectionRef}
           id="work"
-          className="relative w-full py-14 md:py-20 bg-transparent text-[#0D0E0C] border-t border-[#0D0E0C]/[0.08] overflow-hidden"
+          className="relative w-full py-14 md:py-20 bg-transparent text-[#F4F1E0] border-t border-white/10 overflow-hidden"
         >
           <div className="wrap relative z-10">
             <div className="mb-[clamp(28px,3.5vw,48px)] flex flex-wrap items-end justify-between gap-[18px]">
@@ -121,7 +125,7 @@ export function Home() {
                 <div className="mb-4">
                   <div className="glass-eyebrow-pill">
                     <span className="h-[5px] w-[5px] rounded-full bg-[#84CC16] shadow-[0_0_8px_#84CC16] flex-shrink-0" />
-                    <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#232620]">
+                    <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#F4F1E0]">
                       SELECTED WORK · VERIFIED PROOFS
                     </span>
                   </div>
@@ -129,34 +133,39 @@ export function Home() {
 
                 <h2
                   ref={workHeadingRef}
-                  className="text-[clamp(2.75rem,5vw,4.5rem)] font-bold tracking-[-0.038em] leading-[0.98] text-[#11120F]"
+                  className="text-[clamp(2.75rem,5vw,4.5rem)] font-bold tracking-[-0.038em] leading-[0.98] text-[#F4F1E0]"
                   style={{
                     fontFamily: "'Inter Tight', sans-serif",
                     fontVariationSettings: "'wght' 700",
                     fontWeight: 700,
-                    color: "#11120F",
+                    color: "#F4F1E0",
                     textShadow: "none",
                   }}
                 >
                   <span className="block overflow-hidden py-1">
-                    <span className="editorial-line block text-[#11120F]">
+                    <span className="editorial-line block text-[#F4F1E0]">
                       <span className="shiny-ink-text">Built,</span>
                     </span>
                   </span>
                   <span className="block overflow-hidden py-1">
-                    <span className="editorial-line block text-[#63685E]">
+                    <span className="editorial-line block text-[#92998D]">
                       <span className="headline-secondary-shine">labelled honestly.</span>
                     </span>
                   </span>
                 </h2>
 
-                <p className="mt-3.5 max-w-[48ch] text-[#484C45] text-sm sm:text-base leading-relaxed">
+                <p className="mt-3.5 max-w-[48ch] text-[#C9CEC3] text-sm sm:text-base leading-relaxed">
                   Internal builds and prototypes — not client case studies. Each one shows how a capability is designed to operate.
                 </p>
               </div>
 
-              <SlotButton to="/work" variant="primary" arrow="right" className="!px-5 !py-2.5">
-                All work
+              <SlotButton
+                to="/work"
+                variant="smoked-glass"
+                arrow="right"
+                className="!px-5 !py-2.5 !text-[12px] !font-medium !tracking-[0.06em]"
+              >
+                See all work
               </SlotButton>
             </div>
 

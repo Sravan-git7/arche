@@ -72,15 +72,16 @@ export function PreFooterCTA() {
     <section
       ref={sectionRef}
       id="pre-footer-cta"
-      className="relative w-full py-24 md:py-32 overflow-x-clip bg-transparent text-[#0D0E0C] select-none"
+      className="relative w-full py-24 md:py-32 overflow-x-clip bg-transparent text-[#F4F1E0] select-none"
     >
-      {/* 1. Soft Wide Radial Studio Glow (#9EE41A / #DDF5A8) */}
+      {/* 1. Soft Wide Radial Studio Glow Behind Center */}
       <div
-        className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] md:w-[920px] h-[340px] md:h-[480px] rounded-full blur-[140px] opacity-[0.24] bg-[radial-gradient(ellipse_at_center,#9EE41A_0%,#DDF5A8_42%,transparent_72%)]"
+        className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] md:w-[920px] h-[340px] md:h-[480px] rounded-full blur-[140px] opacity-[0.14] bg-[radial-gradient(ellipse_at_center,#9EE41A_0%,#DDF5A8_42%,transparent_72%)]"
         aria-hidden="true"
       />
 
-      {/* 2. Full-Screen Floating 3D-Shaded Glass Sphere ("Ball Effect") at Section Center (z-0) */}
+      {/* 2. Full-Screen Floating 3D-Shaded Glass Sphere ("Ball Effect") at Section Center (z-0)
+          Directly matching awmedia.marketing's smoked-glass sphere with crisp rim highlight */}
       <div
         ref={orbWrapperRef}
         className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 animate-orb-float will-change-transform"
@@ -88,15 +89,17 @@ export function PreFooterCTA() {
       >
         <div
           ref={orbRef}
-          className="w-[190px] h-[190px] md:w-[215px] md:h-[215px] rounded-full will-change-transform"
+          className="w-[180px] h-[180px] md:w-[205px] md:h-[205px] rounded-full will-change-transform opacity-95"
           style={{
             background:
-              "radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.88) 0%, rgba(244, 241, 224, 0.45) 36%, rgba(158, 228, 26, 0.16) 68%, rgba(20, 20, 19, 0.14) 100%)",
-            backdropFilter: "blur(16px) saturate(140%)",
-            WebkitBackdropFilter: "blur(16px) saturate(140%)",
-            border: "1px solid rgba(255, 255, 255, 0.65)",
+              "radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.12) 18%, rgba(35, 45, 34, 0.55) 45%, rgba(14, 21, 12, 0.94) 75%, rgba(8, 12, 8, 0.99) 100%)",
+            backdropFilter: "blur(22px) saturate(140%)",
+            WebkitBackdropFilter: "blur(22px) saturate(140%)",
+            border: "1px solid rgba(255, 255, 255, 0.12)",
+            borderTop: "1.5px solid rgba(255, 255, 255, 0.55)",
+            borderLeft: "1.5px solid rgba(255, 255, 255, 0.40)",
             boxShadow:
-              "inset 0 6px 16px rgba(255, 255, 255, 0.60), inset 0 -8px 18px rgba(20, 20, 19, 0.10), 0 20px 45px -14px rgba(20, 20, 19, 0.12)",
+              "inset 1.5px 2px 4px rgba(255, 255, 255, 0.70), inset 0 0 0 1px rgba(255, 255, 255, 0.15), inset -3px -3px 10px rgba(0, 0, 0, 0.90), 0 24px 50px -12px rgba(0, 0, 0, 0.85), 0 0 40px -10px rgba(158, 228, 26, 0.14)",
           }}
         />
       </div>
@@ -107,7 +110,7 @@ export function PreFooterCTA() {
         <div className="mb-6 relative z-10">
           <div className="glass-eyebrow-pill">
             <span className="h-[5px] w-[5px] rounded-full bg-[#84CC16] shadow-[0_0_8px_#84CC16] animate-pulse flex-shrink-0" />
-            <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#232620]">
+            <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#F4F1E0]">
               NOW BOOKING NEXT ENGAGEMENTS
             </span>
           </div>
@@ -121,6 +124,7 @@ export function PreFooterCTA() {
               fontFamily: "'Inter Tight', sans-serif",
               fontVariationSettings: "'wght' 800",
               fontWeight: 800,
+              filter: "drop-shadow(0 6px 24px rgba(0, 0, 0, 0.65)) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45))",
             }}
           >
             <span className="block py-1">
@@ -133,7 +137,12 @@ export function PreFooterCTA() {
         </div>
 
         {/* Concise 2-Line Subtitle */}
-        <p className="mt-6 max-w-[54ch] text-base sm:text-lg text-[#484C45] leading-relaxed text-center relative z-10">
+        <p
+          className="mt-6 max-w-[54ch] text-base sm:text-lg text-[#D4D9CD] leading-relaxed text-center relative z-10"
+          style={{
+            filter: "drop-shadow(0 2px 6px rgba(0, 0, 0, 0.55))",
+          }}
+        >
           Replace fragmented agency silos with one high-performance creative and operational engine. From cinematic film and web to 24/7 AI agents and custom automation.
         </p>
 
@@ -141,7 +150,7 @@ export function PreFooterCTA() {
         <div className="mt-9 flex flex-wrap items-center justify-center gap-4 relative z-10">
           <SlotButton
             to="/contact"
-            variant="primary"
+            variant="hero-primary"
             arrow="right"
             className="!px-8 !py-3.5 !text-xs !tracking-[0.14em] !font-bold"
           >
@@ -150,7 +159,7 @@ export function PreFooterCTA() {
 
           <SlotButton
             to="/work"
-            variant="frosted-ivory"
+            variant="smoked-glass"
             arrow="right"
             className="!px-7 !py-3.5 !text-xs !tracking-[0.14em] !font-semibold"
           >
@@ -159,8 +168,8 @@ export function PreFooterCTA() {
         </div>
 
         {/* Clean Muted Hairline Metadata */}
-        <div className="mt-10 pt-5 border-t border-[#141413]/[0.08] w-full max-w-[560px] mx-auto text-center relative z-10">
-          <p className="font-mono text-[11px] font-medium tracking-[0.16em] uppercase text-[#6E7368]">
+        <div className="mt-10 pt-5 border-t border-white/10 w-full max-w-[560px] mx-auto text-center relative z-10">
+          <p className="font-mono text-[11px] font-medium tracking-[0.16em] uppercase text-[#92998D]">
             DIRECT FOUNDER ACCESS · ZERO AGENCY BLOAT · 1 WORKING-DAY RESPONSE
           </p>
         </div>

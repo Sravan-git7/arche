@@ -45,9 +45,9 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
     const ctx = gsap.context(() => {
       gsap.fromTo(
         words,
-        { color: "#A8ADA3", opacity: 0.35 },
+        { color: "#7B8376", opacity: 0.55 },
         {
-          color: "#0D0E0C",
+          color: "#F4F1E0",
           opacity: 1,
           stagger: 0.04,
           ease: "none",
@@ -120,13 +120,13 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
     return (
       <section className="flex min-h-[70svh] w-full items-center pt-32">
         <div className="wrap">
-          <h1 className="text-3xl font-bold text-[#11120F]">Service not found.</h1>
-          <p className="mt-3 text-[#595C56]">
+          <h1 className="text-3xl font-bold text-[#F4F1E0]">Service not found.</h1>
+          <p className="mt-3 text-[#CBD1C5]">
             The requested service vertical does not exist or has moved.
           </p>
           <Link
             to="/services"
-            className="inline-flex items-center gap-2 mt-6 rounded-full bg-[#141413] text-[#FBFBF6] px-6 py-3 font-mono text-xs font-semibold uppercase tracking-wider"
+            className="inline-flex items-center gap-2 mt-6 rounded-full bg-[#F4F1E0] text-[#0B0C0A] hover:bg-[#9EE41A] px-6 py-3 font-mono text-xs font-bold uppercase tracking-wider transition-all"
           >
             Explore All Services <span className="arw">→</span>
           </Link>
@@ -157,18 +157,18 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
       {/* CHAPTER 1: SERVICE HERO + INTERACTIVE LIVE STAGE                      */}
       {/* Top clearance pt-28 md:pt-32 well below floating navbar pill          */}
       {/* ==================================================================== */}
-      <section className="relative w-full pt-28 md:pt-32 pb-16 md:pb-24 border-b border-[#141413]/[0.08]">
+      <section className="relative w-full pt-28 md:pt-32 pb-16 md:pb-24 border-b border-white/10">
         <div className="wrap">
           {/* Breadcrumbs */}
           <div className="mb-6 flex items-center gap-2">
             <Link
               to="/services"
-              className="font-mono text-xs text-[#595C56] hover:text-[#141413] transition-colors"
+              className="font-mono text-xs text-[#92998D] hover:text-[#F4F1E0] transition-colors"
             >
               Services
             </Link>
-            <span className="font-mono text-xs text-[#141413]/30">/</span>
-            <span className="font-mono text-xs font-semibold text-[#141413]">
+            <span className="font-mono text-xs text-white/30">/</span>
+            <span className="font-mono text-xs font-semibold text-[#F4F1E0]">
               {service.shortName}
             </span>
           </div>
@@ -179,20 +179,20 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
             <div className="mb-5 inline-block">
               <div className="glass-eyebrow-pill">
                 <span className="h-[5px] w-[5px] rounded-full bg-[#84CC16] shadow-[0_0_8px_#84CC16] flex-shrink-0" />
-                <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#232620]">
+                <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#F4F1E0]">
                   {service.eyebrow}
                 </span>
               </div>
             </div>
 
             {/* Monumental Metallic Two-Tone Headline */}
-            <h1 className="text-[clamp(2.4rem,5vw,4.25rem)] font-bold tracking-[-0.038em] leading-[1.04] text-[#11120F]">
+            <h1 className="text-[clamp(2.4rem,5vw,4.25rem)] font-bold tracking-[-0.038em] leading-[1.04] text-[#F4F1E0]">
               <span className="shiny-ink-text">{service.heroHeadline1}</span>{" "}
               <span className="headline-secondary-shine">{service.heroHeadline2}</span>
             </h1>
 
             {/* Concise Value Promise */}
-            <p className="mt-5 max-w-[64ch] text-[#484C45] text-[clamp(16px,1.4vw,19px)] leading-relaxed font-sans">
+            <p className="mt-5 max-w-[64ch] text-[#C9CEC3] text-[clamp(16px,1.4vw,19px)] leading-relaxed font-sans">
               {service.valuePromise}
             </p>
 
@@ -223,11 +223,11 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
             <div className="flex items-center justify-between pb-3 px-2">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-[#9EE41A] animate-pulse" />
-                <span className="font-mono text-[10.5px] font-bold tracking-widest uppercase text-[#595C56]">
+                <span className="font-mono text-[11px] font-bold tracking-widest uppercase text-[#D4D9CD]">
                   {service.stageBadge}
                 </span>
               </div>
-              <span className="font-mono text-[10.5px] text-[#595C56]/80 hidden sm:inline">
+              <span className="font-mono text-[11px] font-semibold text-[#9CA396] hidden sm:inline">
                 INTERACTIVE CONSOLE · 60FPS
               </span>
             </div>
@@ -242,13 +242,13 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
       {/* CHAPTER 2: SCROLL-LIT PROBLEM STATEMENT + STICKY "WHAT'S INCLUDED"    */}
       {/* 12-column split: Left 7 cols scroll-lit scrub, Right 5 cols sticky    */}
       {/* ==================================================================== */}
-      <section className="relative w-full py-16 md:py-24 border-b border-[#141413]/[0.08]">
+      <section className="relative w-full py-16 md:py-24 border-b border-white/10">
         <div className="wrap">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
             {/* Left 7 Columns: Scroll-Lit Problem Statement */}
             <div className="lg:col-span-7 flex flex-col justify-start">
               <div className="mb-4">
-                <span className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-[#72B314]">
+                <span className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-[#9EE41A]">
                   • THE OPERATIONAL BOTTLENECK
                 </span>
               </div>
@@ -259,7 +259,7 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
                   {service.problemStatement.leadWords.map((word, idx) => (
                     <span
                       key={idx}
-                      className="lit-word inline-block mr-[0.28em] transition-colors duration-150 text-[#A8ADA3]"
+                      className="lit-word inline-block mr-[0.28em] transition-colors duration-150 text-[#7B8376]"
                     >
                       {word}
                     </span>
@@ -268,7 +268,7 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
               </div>
 
               {/* Two Studio Paragraphs */}
-              <div className="mt-8 flex flex-col gap-5 text-[#484C45] text-[clamp(15px,1.2vw,17.5px)] leading-relaxed font-sans">
+              <div className="mt-8 flex flex-col gap-5 text-[#D4D9CD] text-[clamp(15px,1.2vw,17.5px)] leading-relaxed font-sans">
                 {service.problemStatement.bodyParagraphs.map((para, i) => (
                   <p key={i}>{para}</p>
                 ))}
@@ -282,25 +282,25 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
                 <div className="flex items-center justify-between pb-3 border-b border-[#141413]/[0.08]">
                   <div className="glass-eyebrow-pill !py-1 !px-3">
                     <span className="h-[4px] w-[4px] rounded-full bg-[#84CC16]" />
-                    <span className="font-mono text-[10px] font-semibold tracking-wider uppercase text-[#232620]">
+                    <span className="font-mono text-[10px] font-semibold tracking-wider uppercase text-[#F4F1E0]">
                       WHAT'S INCLUDED
                     </span>
                   </div>
                   <div className="text-right">
-                    <span className="font-mono text-[11px] text-[#595C56] block">Starting from</span>
-                    <span className="font-bold text-base text-[#141413]">
+                    <span className="font-mono text-[12px] font-semibold text-[#2E322B] block">Starting from</span>
+                    <span className="font-bold text-base text-[#0B0C0A]">
                       {service.whatsIncludedCard.startingAt}{" "}
-                      <span className="text-xs font-normal text-[#595C56]">
+                      <span className="text-xs font-semibold text-[#2E322B]">
                         {service.whatsIncludedCard.unit}
                       </span>
                     </span>
                   </div>
                 </div>
 
-                <h3 className="text-xl font-bold text-[#141413] mt-4">
+                <h3 className="text-xl font-bold text-[#0B0C0A] mt-4">
                   {service.shortName} Suite
                 </h3>
-                <p className="text-xs text-[#595C56] mt-1 leading-relaxed">
+                <p className="text-[14px] text-[#1C1E1A] font-medium mt-1 leading-relaxed">
                   {service.whatsIncludedCard.summary}
                 </p>
 
@@ -324,10 +324,10 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
                         </svg>
                       </div>
                       <div>
-                        <h4 className="text-[13px] font-semibold text-[#141413]">
+                        <h4 className="text-[14.5px] font-bold text-[#0B0C0A]">
                           {item.name}
                         </h4>
-                        <p className="text-[11.5px] text-[#595C56] leading-snug mt-0.5">
+                        <p className="text-[13px] text-[#1C1E1A] font-medium leading-snug mt-0.5">
                           {item.detail}
                         </p>
                       </div>
@@ -344,7 +344,7 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
                   >
                     <span>Get Started →</span>
                   </button>
-                  <p className="text-center font-mono text-[10.5px] text-[#595C56] mt-2.5">
+                  <p className="text-center font-mono text-[12px] font-semibold text-[#2E322B] mt-2.5">
                     Guaranteed turnaround · 100% transparent INR scope
                   </p>
                 </div>
@@ -358,21 +358,21 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
       {/* CHAPTER 3: "WHAT THIS MEANS FOR YOUR BUSINESS" — 3 OUTCOME CARDS      */}
       {/* 3 weighted #F4F1E0 cards with giant metallic numerals 01 02 03        */}
       {/* ==================================================================== */}
-      <section className="relative w-full py-16 md:py-24 border-b border-[#141413]/[0.08]">
+      <section className="relative w-full py-16 md:py-24 border-b border-white/10">
         <div className="wrap">
           {/* Header */}
           <div className="max-w-[760px] mb-12">
             <div className="glass-eyebrow-pill mb-3">
               <span className="h-[4px] w-[4px] rounded-full bg-[#84CC16]" />
-              <span className="font-mono text-[10px] font-semibold tracking-wider uppercase text-[#232620]">
+              <span className="font-mono text-[10px] font-semibold tracking-wider uppercase text-[#F4F1E0]">
                 TANGIBLE ROI
               </span>
             </div>
-            <h2 className="text-[clamp(2.2rem,4vw,3.25rem)] font-bold tracking-[-0.035em] text-[#11120F] leading-[1.06]">
+            <h2 className="text-[clamp(2.2rem,4vw,3.25rem)] font-bold tracking-[-0.035em] text-[#F4F1E0] leading-[1.06]">
               <span className="shiny-ink-text">What this means</span>{" "}
               <span className="headline-secondary-shine">for your business.</span>
             </h2>
-            <p className="mt-3 text-[#595C56] text-base leading-relaxed">
+            <p className="mt-3 text-[#D4D9CD] text-base leading-relaxed">
               Every deliverable is engineered to drive tangible operational velocity and measurable revenue dividends.
             </p>
           </div>
@@ -397,11 +397,11 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
                     {outcome.n}
                   </span>
 
-                  <h3 className="text-xl font-bold text-[#141413] mt-5 tracking-tight group-hover:text-[#72B314] transition-colors">
+                  <h3 className="text-[21px] font-bold text-[#0B0C0A] mt-5 tracking-tight group-hover:text-[#72B314] transition-colors">
                     {outcome.title}
                   </h3>
 
-                  <p className="mt-3 text-sm text-[#484C45] leading-relaxed">
+                  <p className="mt-3 text-[15.5px] font-medium text-[#1C1E1A] leading-[1.6]">
                     {outcome.desc}
                   </p>
                 </div>
@@ -424,18 +424,18 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
       {/* CHAPTER 4: FILTERED WORK SHOWCASE RAIL                                */}
       {/* Relevant builds carousel with < > buttons and link to /work           */}
       {/* ==================================================================== */}
-      <section className="relative w-full py-16 md:py-24 border-b border-[#141413]/[0.08]">
+      <section className="relative w-full py-16 md:py-24 border-b border-white/10">
         <div className="wrap">
           {/* Header & Controls */}
           <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
             <div>
               <div className="glass-eyebrow-pill mb-2">
                 <span className="h-[4px] w-[4px] rounded-full bg-[#84CC16]" />
-                <span className="font-mono text-[10px] font-semibold tracking-wider uppercase text-[#232620]">
+                <span className="font-mono text-[10px] font-semibold tracking-wider uppercase text-[#F4F1E0]">
                   PROOF OF SYSTEM
                 </span>
               </div>
-              <h2 className="text-[clamp(1.8rem,3vw,2.5rem)] font-bold tracking-tight text-[#11120F]">
+              <h2 className="text-[clamp(1.8rem,3vw,2.5rem)] font-bold tracking-tight text-[#F4F1E0]">
                 <span className="shiny-ink-text">Relevant builds</span>{" "}
                 <span className="headline-secondary-shine">&amp; verified proofs.</span>
               </h2>
@@ -444,7 +444,7 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
             <div className="flex items-center gap-3">
               <Link
                 to="/work"
-                className="font-mono text-xs font-semibold text-[#141413] hover:text-[#72B314] transition-colors flex items-center gap-1 mr-2"
+                className="font-mono text-xs font-semibold text-[#F4F1E0] hover:text-[#9EE41A] transition-colors flex items-center gap-1 mr-2"
               >
                 <span>See all work ({projects.length})</span>
                 <span>→</span>
@@ -453,7 +453,7 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
                 type="button"
                 onClick={() => handleScrollWorkRail("left")}
                 aria-label="Scroll left"
-                className="w-10 h-10 rounded-full bg-[#F4F1E0] border border-[#141413]/15 hover:border-[#141413]/40 flex items-center justify-center text-[#141413] hover:bg-[#ECE9D6] transition-all cursor-pointer shadow-sm active:scale-95"
+                className="w-10 h-10 rounded-full bg-[#1C241B] border border-white/20 hover:border-[#9EE41A] flex items-center justify-center text-[#F4F1E0] hover:text-[#9EE41A] hover:bg-[#253222] transition-all cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.4)] active:scale-95"
               >
                 ←
               </button>
@@ -461,7 +461,7 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
                 type="button"
                 onClick={() => handleScrollWorkRail("right")}
                 aria-label="Scroll right"
-                className="w-10 h-10 rounded-full bg-[#F4F1E0] border border-[#141413]/15 hover:border-[#141413]/40 flex items-center justify-center text-[#141413] hover:bg-[#ECE9D6] transition-all cursor-pointer shadow-sm active:scale-95"
+                className="w-10 h-10 rounded-full bg-[#1C241B] border border-white/20 hover:border-[#9EE41A] flex items-center justify-center text-[#F4F1E0] hover:text-[#9EE41A] hover:bg-[#253222] transition-all cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.4)] active:scale-95"
               >
                 →
               </button>
@@ -494,18 +494,18 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
                   </div>
 
                   {/* Service tag & year */}
-                  <div className="flex items-center justify-between font-mono text-[10px] text-[#595C56] mb-1.5">
-                    <span className="uppercase tracking-wider font-semibold text-[#72B314]">
+                  <div className="flex items-center justify-between font-mono text-[11px] text-[#2E322B] mb-1.5 font-bold">
+                    <span className="uppercase tracking-wider text-[#5B8F0E]">
                       {p.serviceLabel}
                     </span>
                     <span>{p.year}</span>
                   </div>
 
-                  <h3 className="text-lg font-bold text-[#141413] group-hover:text-[#72B314] transition-colors">
+                  <h3 className="text-lg font-bold text-[#0B0C0A] group-hover:text-[#72B314] transition-colors">
                     {p.name}
                   </h3>
 
-                  <p className="mt-2 text-xs text-[#595C56] leading-relaxed line-clamp-3">
+                  <p className="mt-2 text-[14px] text-[#1C1E1A] font-medium leading-relaxed line-clamp-3">
                     {p.summary}
                   </p>
                 </div>
@@ -515,7 +515,7 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
                     {p.scope.slice(0, 2).map((s, i) => (
                       <span
                         key={i}
-                        className="px-2 py-0.5 rounded bg-[#E8E5D3] font-mono text-[9.5px] text-[#141413]"
+                        className="px-2 py-0.5 rounded bg-[#E8E5D3] font-mono text-[11px] font-semibold text-[#0B0C0A]"
                       >
                         {s}
                       </span>
@@ -523,7 +523,7 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
                   </div>
                   <Link
                     to="/work"
-                    className="font-mono text-xs font-semibold text-[#141413] group-hover:text-[#72B314] flex items-center gap-1"
+                    className="font-mono text-xs font-bold text-[#0B0C0A] group-hover:text-[#72B314] flex items-center gap-1"
                   >
                     <span>View build</span>
                     <span className="group-hover:translate-x-1 transition-transform">→</span>
@@ -539,24 +539,24 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
       {/* CHAPTER 5: "IS THIS RIGHT FOR YOU?" — STICKY-LEFT QUALIFIER           */}
       {/* 12-column split: Left 5 cols sticky, Right 7 cols checklist           */}
       {/* ==================================================================== */}
-      <section className="relative w-full py-16 md:py-24 border-b border-[#141413]/[0.08]">
+      <section className="relative w-full py-16 md:py-24 border-b border-white/10">
         <div className="wrap">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
             {/* Left 5 Cols Sticky */}
             <div className="lg:col-span-5 lg:sticky lg:top-28 self-start">
               <div className="glass-eyebrow-pill mb-3">
                 <span className="h-[4px] w-[4px] rounded-full bg-[#84CC16]" />
-                <span className="font-mono text-[10px] font-semibold tracking-wider uppercase text-[#232620]">
+                <span className="font-mono text-[10px] font-semibold tracking-wider uppercase text-[#F4F1E0]">
                   FIT &amp; QUALIFICATION
                 </span>
               </div>
 
-              <h2 className="text-[clamp(2.2rem,4vw,3.25rem)] font-bold tracking-[-0.035em] text-[#11120F] leading-[1.06]">
+              <h2 className="text-[clamp(2.2rem,4vw,3.25rem)] font-bold tracking-[-0.035em] text-[#F4F1E0] leading-[1.06]">
                 <span className="shiny-ink-text">{service.qualifier.headlineLead}</span>{" "}
                 <span className="headline-secondary-shine">{service.qualifier.headlineAccent}</span>
               </h2>
 
-              <p className="mt-4 text-[#595C56] text-base leading-relaxed">
+              <p className="mt-4 text-[#D4D9CD] text-base leading-relaxed">
                 {service.qualifier.leadIn}
               </p>
 
@@ -592,7 +592,7 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
                         />
                       </svg>
                     </div>
-                    <p className="text-[14.5px] sm:text-[15.5px] text-[#141413] font-medium leading-relaxed">
+                    <p className="text-[15.5px] sm:text-[16px] text-[#0B0C0A] font-semibold leading-relaxed">
                       {item}
                     </p>
                   </div>
@@ -607,20 +607,20 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
       {/* CHAPTER 6: REAL INR TIER COMPARISON TABLE (NO FAKE NUMBERS)           */}
       {/* Pulling exact rates, turnarounds, revisions from real pricingData      */}
       {/* ==================================================================== */}
-      <section id="packages" className="relative w-full py-16 md:py-24 border-b border-[#141413]/[0.08]">
+      <section id="packages" className="relative w-full py-16 md:py-24 border-b border-white/10">
         <div className="wrap">
           {/* Section Header */}
           <div className="max-w-[780px] mb-12">
             <div className="glass-eyebrow-pill mb-3">
               <span className="h-[4px] w-[4px] rounded-full bg-[#84CC16]" />
-              <span className="font-mono text-[10px] font-semibold tracking-wider uppercase text-[#232620]">
+              <span className="font-mono text-[10px] font-semibold tracking-wider uppercase text-[#F4F1E0]">
                 INVESTMENT &amp; SCOPE
               </span>
             </div>
-            <h2 className="text-[clamp(2.2rem,4vw,3.25rem)] font-bold tracking-[-0.035em] text-[#11120F] leading-[1.06]">
+            <h2 className="text-[clamp(2.2rem,4vw,3.25rem)] font-bold tracking-[-0.035em] text-[#F4F1E0] leading-[1.06]">
               <span className="shiny-ink-text">{service.tierComparison.sectionHeadline}</span>
             </h2>
-            <p className="mt-3 text-[#595C56] text-base leading-relaxed">
+            <p className="mt-3 text-[#D4D9CD] text-base leading-relaxed">
               {service.tierComparison.sectionSubtitle}
             </p>
           </div>
@@ -633,38 +633,38 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
                 className={`rounded-[28px] p-6 sm:p-8 flex flex-col justify-between transition-all duration-300 weighted-card relative ${
                   tier.popular
                     ? "bg-[#F4F1E0] border-2 border-[#72B314]/60 shadow-[0_20px_48px_rgba(114,179,20,0.12)]"
-                    : "bg-[#F4F1E0]/90 border border-[#141413]/[0.09] shadow-[0_12px_32px_rgba(20,20,19,0.04)]"
+                    : "bg-[#F4F1E0]/95 border border-[#141413]/[0.10] shadow-[0_12px_32px_rgba(20,20,19,0.04)]"
                 }`}
               >
                 {/* Popular Pill */}
                 {tier.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-[#141413] text-[#9EE41A] font-mono text-[10px] font-bold tracking-wider uppercase shadow-sm">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-[#0B0C0A] text-[#9EE41A] font-mono text-[10px] font-bold tracking-wider uppercase shadow-sm">
                     MOST POPULAR
                   </div>
                 )}
 
                 <div>
                   {/* Tier Title & Tagline */}
-                  <h3 className="text-xl font-bold text-[#141413]">{tier.name}</h3>
-                  <p className="text-xs text-[#595C56] mt-1">{tier.tagline}</p>
+                  <h3 className="text-[21px] font-bold text-[#0B0C0A]">{tier.name}</h3>
+                  <p className="text-[13px] text-[#2E322B] font-medium mt-1">{tier.tagline}</p>
 
                   {/* Price */}
                   <div className="mt-5 pb-5 border-b border-[#141413]/[0.08]">
                     <div className="flex items-baseline gap-1.5">
-                      <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#141413]">
+                      <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#0B0C0A]">
                         {tier.price}
                       </span>
-                      <span className="text-xs font-mono text-[#595C56]">/{tier.unit}</span>
+                      <span className="text-[12.5px] font-mono font-semibold text-[#2E322B]">/{tier.unit}</span>
                     </div>
 
                     {/* SLAs */}
-                    <div className="mt-3 flex flex-col gap-1 font-mono text-[11px] text-[#595C56]">
+                    <div className="mt-3 flex flex-col gap-1 font-mono text-[12px] text-[#1C1E1A] font-medium">
                       <div className="flex items-center gap-2">
-                        <span className="text-[#72B314]">⏱</span>
+                        <span className="text-[#5B8F0E] font-bold">⏱</span>
                         <span>{tier.turnaround}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-[#72B314]">↺</span>
+                        <span className="text-[#5B8F0E] font-bold">↺</span>
                         <span>{tier.revisions}</span>
                       </div>
                     </div>
@@ -672,13 +672,13 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
 
                   {/* Deliverables */}
                   <div className="mt-5 flex flex-col gap-2.5">
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-[#141413]/60 font-semibold">
+                    <span className="font-mono text-[11.5px] uppercase tracking-wider text-[#2E322B] font-bold">
                       INCLUDED IN SCOPE:
                     </span>
-                    <ul className="flex flex-col gap-2 text-xs text-[#141413]/85">
+                    <ul className="flex flex-col gap-2 text-[14px] text-[#1C1E1A] font-medium">
                       {tier.deliverables.map((del, i) => (
                         <li key={i} className="flex items-start gap-2">
-                          <span className="text-[#72B314] font-bold mt-0.5">✓</span>
+                          <span className="text-[#5B8F0E] font-bold mt-0.5">✓</span>
                           <span>{del}</span>
                         </li>
                       ))}
@@ -705,17 +705,18 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
           </div>
 
           {/* Bottom Note & Full Pricing Link */}
-          <div className="mt-10 p-5 rounded-2xl bg-[#F4F1E0]/80 border border-[#141413]/[0.08] flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-xs text-[#595C56] font-mono">
+          <div className="mt-10 p-5 rounded-2xl bg-white/[0.04] backdrop-blur-md border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-xs text-[#C9CEC3] font-mono">
               💡 {service.tierComparison.note}
             </p>
-            <Link
+            <SlotButton
               to="/pricing"
-              className="font-mono text-xs font-semibold text-[#141413] hover:text-[#72B314] flex items-center gap-1 flex-shrink-0 transition-colors"
+              variant="smoked-glass"
+              arrow="right"
+              className="!px-5 !py-2.5 !text-[12px] !font-medium !tracking-[0.06em]"
             >
-              <span>See full pricing breakdown</span>
-              <span>→</span>
-            </Link>
+              See full pricing breakdown
+            </SlotButton>
           </div>
         </div>
       </section>
@@ -732,24 +733,26 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
             <div className="lg:col-span-5 lg:sticky lg:top-28 self-start">
               <div className="glass-eyebrow-pill mb-3">
                 <span className="h-[4px] w-[4px] rounded-full bg-[#84CC16]" />
-                <span className="font-mono text-[10px] font-semibold tracking-wider uppercase text-[#232620]">
+                <span className="font-mono text-[10px] font-semibold tracking-wider uppercase text-[#F4F1E0]">
                   COMMON QUESTIONS
                 </span>
               </div>
-              <h2 className="text-[clamp(2.2rem,4vw,3.25rem)] font-bold tracking-[-0.035em] text-[#11120F] leading-[1.06]">
+              <h2 className="text-[clamp(2.2rem,4vw,3.25rem)] font-bold tracking-[-0.035em] text-[#F4F1E0] leading-[1.06]">
                 <span className="shiny-ink-text">Clear answers.</span> <br />
                 <span className="headline-secondary-shine">Zero ambiguity.</span>
               </h2>
-              <p className="mt-4 text-[#595C56] text-base leading-relaxed">
+              <p className="mt-4 text-[#D4D9CD] text-base leading-relaxed">
                 Everything you need to know about turnaround times, revisions, scope boundaries, and delivery protocols.
               </p>
               <div className="mt-6">
-                <Link
+                <SlotButton
                   to="/faq"
-                  className="font-mono text-xs font-semibold text-[#141413] hover:text-[#72B314] flex items-center gap-1 transition-colors"
+                  variant="smoked-glass"
+                  arrow="right"
+                  className="!px-5 !py-2.5 !text-[12px] !font-medium !tracking-[0.06em]"
                 >
-                  <span>View comprehensive studio FAQ &amp; Arché AI →</span>
-                </Link>
+                  View comprehensive studio FAQ &amp; Arché AI
+                </SlotButton>
               </div>
             </div>
 
@@ -771,21 +774,21 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
                       onClick={() => setOpenFaq(isOpen ? null : idx)}
                       className="w-full text-left p-5 sm:p-6 flex items-start justify-between gap-4 cursor-pointer"
                     >
-                      <span className="font-bold text-[15px] sm:text-[16px] text-[#141413] leading-snug">
+                      <span className="font-bold text-[17px] sm:text-[18px] text-[#0B0C0A] leading-snug">
                         {faq.q}
                       </span>
                       <span
                         className={`w-6 h-6 rounded-full flex items-center justify-center font-mono text-base font-bold transition-transform duration-200 flex-shrink-0 ${
                           isOpen
-                            ? "bg-[#141413] text-[#9EE41A] rotate-45"
-                            : "bg-[#E6E3D1] text-[#141413]"
+                            ? "bg-[#0B0C0A] text-[#9EE41A] rotate-45"
+                            : "bg-[#E6E3D1] text-[#0B0C0A]"
                         }`}
                       >
                         +
                       </span>
                     </button>
                     {isOpen && (
-                      <div className="px-5 sm:px-6 pb-6 pt-1 text-sm text-[#484C45] leading-relaxed border-t border-[#141413]/[0.06]">
+                      <div className="px-5 sm:px-6 pb-6 pt-1 text-[15px] sm:text-[15.5px] text-[#1C1E1A] font-medium leading-[1.6] border-t border-[#141413]/[0.08]">
                         {faq.a}
                       </div>
                     )}
@@ -796,27 +799,28 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
           </div>
 
           {/* Explore Our Other Services Cross-Links */}
-          <div className="pt-16 border-t border-[#141413]/[0.08]">
+          <div className="pt-16 border-t border-white/10">
             <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
               <div>
                 <div className="glass-eyebrow-pill mb-2">
                   <span className="h-[4px] w-[4px] rounded-full bg-[#84CC16]" />
-                  <span className="font-mono text-[10px] font-semibold tracking-wider uppercase text-[#232620]">
+                  <span className="font-mono text-[10px] font-semibold tracking-wider uppercase text-[#F4F1E0]">
                     THE CONNECTED SYSTEM
                   </span>
                 </div>
-                <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#11120F]">
+                <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#F4F1E0]">
                   <span className="shiny-ink-text">Explore our other</span>{" "}
                   <span className="headline-secondary-shine">core services.</span>
                 </h3>
               </div>
-              <Link
+              <SlotButton
                 to="/services"
-                className="font-mono text-xs font-semibold text-[#141413] hover:text-[#72B314] flex items-center gap-1"
+                variant="smoked-glass"
+                arrow="right"
+                className="!px-5 !py-2.5 !text-[12px] !font-medium !tracking-[0.06em]"
               >
-                <span>View all services (4)</span>
-                <span>→</span>
-              </Link>
+                View all services (4)
+              </SlotButton>
             </div>
 
             {/* 3 Cross-Link Cards */}
@@ -829,25 +833,25 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
                 >
                   <div>
                     <div className="flex items-center justify-between pb-3 border-b border-[#141413]/[0.08]">
-                      <span className="font-mono text-[10px] font-bold text-[#72B314] uppercase tracking-wider">
+                      <span className="font-mono text-[11px] font-bold text-[#5B8F0E] uppercase tracking-wider">
                         SERVICE {item.n}
                       </span>
-                      <span className="font-mono text-xs text-[#141413]/40 group-hover:text-[#72B314] group-hover:translate-x-1 group-hover:-translate-y-1 transition-all">
+                      <span className="font-mono text-xs text-[#0B0C0A]/60 group-hover:text-[#72B314] group-hover:translate-x-1 group-hover:-translate-y-1 transition-all">
                         ↗
                       </span>
                     </div>
 
-                    <h4 className="text-lg font-bold text-[#141413] mt-4 group-hover:text-[#72B314] transition-colors">
+                    <h4 className="text-[19px] font-bold text-[#0B0C0A] mt-4 group-hover:text-[#72B314] transition-colors">
                       {item.title}
                     </h4>
-                    <p className="text-xs text-[#595C56] mt-1.5 leading-relaxed">
+                    <p className="text-[13.5px] text-[#1C1E1A] font-medium mt-1.5 leading-relaxed">
                       {item.tagline}
                     </p>
                   </div>
 
-                  <div className="mt-6 pt-3 border-t border-[#141413]/[0.08] flex items-center justify-between font-mono text-[11px]">
-                    <span className="text-[#595C56]">From {item.startingAt}</span>
-                    <span className="font-semibold text-[#141413] group-hover:text-[#72B314]">
+                  <div className="mt-6 pt-3 border-t border-[#141413]/[0.08] flex items-center justify-between font-mono text-[12px]">
+                    <span className="text-[#2E322B] font-semibold">From {item.startingAt}</span>
+                    <span className="font-bold text-[#0B0C0A] group-hover:text-[#72B314]">
                       Explore →
                     </span>
                   </div>

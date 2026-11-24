@@ -794,11 +794,11 @@ export function VideoEditingDemo({
       <div className="relative w-full flex-none">
         <div
           data-slab="engine"
-          className="relative w-full overflow-hidden rounded-[10px] bg-[#111210]"
+          className="relative w-full overflow-hidden rounded-[10px] bg-gradient-to-br from-[#1A2418] to-[#10120F] dark-console-frame"
           style={{
             height: "196px",
-            boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 10px 28px -4px rgba(0, 0, 0, 0.35)",
-            border: "1px solid rgba(255, 255, 255, 0.08)",
+            boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 24px 48px -16px rgba(20, 32, 18, 0.45)",
+            border: "1px solid rgba(37, 56, 33, 0.35)",
           }}
         >
           <canvas

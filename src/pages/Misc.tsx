@@ -99,15 +99,15 @@ export function WorkPage() {
           <div className="mb-4">
             <div className="glass-eyebrow-pill">
               <span className="h-[5px] w-[5px] rounded-full bg-[#84CC16] shadow-[0_0_8px_#84CC16] flex-shrink-0" />
-              <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#232620]">
+              <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#F4F1E0]">
                 ARCHE LABS · VERIFIED PROOFS
               </span>
             </div>
           </div>
-          <h1 className="text-[clamp(2.75rem,5.2vw,4.5rem)] font-bold tracking-[-0.038em] leading-[0.98] text-[#11120F] max-w-[16ch]">
+          <h1 className="text-[clamp(2.75rem,5.2vw,4.5rem)] font-bold tracking-[-0.038em] leading-[0.98] text-[#F4F1E0] max-w-[16ch]">
             <span className="shiny-ink-text">What the thinking looks like.</span>
           </h1>
-          <p className="body mt-[22px] max-w-[54ch]" data-r="meta" data-r-delay="120">
+          <p className="body mt-[22px] max-w-[54ch] text-[#D4D9CD]" data-r="meta" data-r-delay="120">
             Internal builds, prototypes and experiments — labelled honestly. Not client case
             studies. Each one shows how a capability is designed to operate.
           </p>

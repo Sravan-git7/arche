@@ -316,20 +316,20 @@ export function TheProposition() {
                 <div
                   className="bento-card-unit frosted-ivory-card arche-glow-card shiny-border rounded-[24px] p-7 sm:p-8 flex flex-col justify-between min-h-[260px] group transition-all"
                 >
-                  <div className="flex items-center justify-between pb-4 border-b border-[#141413]/[0.08] text-[#595C56]">
-                    <span className="font-mono text-xs font-bold text-[#141413] tracking-wider">
+                  <div className="flex items-center justify-between pb-4 border-b border-[#0B0C0A]/[0.08] text-[#2E322B]">
+                    <span className="font-mono text-sm font-bold text-[#0B0C0A] tracking-wider">
                       {WHY_ITEMS.card01.n}
                     </span>
-                    <span className="font-mono text-[10.5px] uppercase tracking-widest text-[#868A82]">
+                    <span className="font-mono text-[11px] uppercase tracking-widest text-[#2E322B] font-semibold">
                       SYSTEM ARCHITECTURE
                     </span>
                   </div>
 
                   <div className="mt-6">
-                    <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-[#141413] leading-snug">
+                    <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0B0C0A] leading-snug">
                       {WHY_ITEMS.card01.title}
                     </h3>
-                    <p className="mt-3 text-sm text-[#595C56] leading-relaxed">
+                    <p className="mt-3 text-[15.5px] font-medium text-[#1C1E1A] leading-[1.6]">
                       {WHY_ITEMS.card01.desc}
                     </p>
                   </div>
@@ -339,20 +339,20 @@ export function TheProposition() {
                 <div
                   className="bento-card-unit frosted-ivory-card arche-glow-card shiny-border rounded-[24px] p-7 sm:p-8 flex flex-col justify-between min-h-[260px] group transition-all"
                 >
-                  <div className="flex items-center justify-between pb-4 border-b border-[#141413]/[0.08] text-[#595C56]">
-                    <span className="font-mono text-xs font-bold text-[#141413] tracking-wider">
+                  <div className="flex items-center justify-between pb-4 border-b border-[#0B0C0A]/[0.08] text-[#2E322B]">
+                    <span className="font-mono text-sm font-bold text-[#0B0C0A] tracking-wider">
                       {WHY_ITEMS.card02.n}
                     </span>
-                    <span className="font-mono text-[10.5px] uppercase tracking-widest text-[#868A82]">
+                    <span className="font-mono text-[11px] uppercase tracking-widest text-[#2E322B] font-semibold">
                       DELIVERY CERTAINTY
                     </span>
                   </div>
 
                   <div className="mt-6">
-                    <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-[#141413] leading-snug">
+                    <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0B0C0A] leading-snug">
                       {WHY_ITEMS.card02.title}
                     </h3>
-                    <p className="mt-3 text-sm text-[#595C56] leading-relaxed">
+                    <p className="mt-3 text-[15.5px] font-medium text-[#1C1E1A] leading-[1.6]">
                       {WHY_ITEMS.card02.desc}
                     </p>
                   </div>
@@ -363,35 +363,35 @@ export function TheProposition() {
               <div
                 className="bento-card-unit frosted-ivory-card arche-glow-card shiny-border rounded-[24px] p-7 sm:p-9 flex flex-col justify-between min-h-[220px] group transition-all"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#141413]/[0.08] text-[#595C56]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#0B0C0A]/[0.08] text-[#2E322B]">
                   <div className="flex items-center gap-3">
-                    <span className="font-mono text-xs font-bold text-[#141413] tracking-wider">
+                    <span className="font-mono text-sm font-bold text-[#0B0C0A] tracking-wider">
                       {WHY_ITEMS.card03.n}
                     </span>
-                    <span className="font-mono text-[10.5px] uppercase tracking-widest text-[#868A82]">
+                    <span className="font-mono text-[11px] uppercase tracking-widest text-[#2E322B] font-semibold">
                       COLLABORATION MODEL
                     </span>
                   </div>
                   {/* Naked Clean Micro-Label (Zero Pill Chips) */}
-                  <span className="font-mono text-[10.5px] uppercase tracking-widest text-[#72B314] font-semibold flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#72B314]" />
+                  <span className="font-mono text-[11px] uppercase tracking-widest text-[#5B8F0E] font-bold flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#5B8F0E]" />
                     DIRECT FOUNDER ACCESS · WEEKLY STAGING
                   </span>
                 </div>
 
                 <div className="mt-6 flex flex-col md:flex-row md:items-baseline justify-between gap-4">
                   <div className="max-w-[56ch]">
-                    <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-[#141413] leading-snug">
+                    <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-[#0B0C0A] leading-snug">
                       {WHY_ITEMS.card03.title}
                     </h3>
-                    <p className="mt-2.5 text-sm sm:text-base text-[#595C56] leading-relaxed">
+                    <p className="mt-2.5 text-[15.5px] font-medium text-[#1C1E1A] leading-[1.6]">
                       {WHY_ITEMS.card03.desc}
                     </p>
                   </div>
 
                   <Link
                     to="/contact"
-                    className="inline-flex items-center gap-1.5 font-mono text-xs text-[#141413] font-semibold hover:text-[#72B314] transition-colors flex-shrink-0"
+                    className="inline-flex items-center gap-1.5 font-mono text-xs text-[#0B0C0A] font-bold hover:text-[#5B8F0E] transition-colors flex-shrink-0"
                   >
                     Direct Access <span className="arw">→</span>
                   </Link>
@@ -435,20 +435,20 @@ export function TheProposition() {
               <div
                 className="bento-card-unit frosted-ivory-card arche-glow-card shiny-border rounded-[24px] p-7 sm:p-8 flex flex-col justify-between group transition-all"
               >
-                <div className="flex items-center justify-between pb-4 border-b border-[#141413]/[0.08] text-[#595C56]">
-                  <span className="font-mono text-xs font-bold text-[#141413] tracking-wider">
+                <div className="flex items-center justify-between pb-4 border-b border-[#0B0C0A]/[0.08] text-[#2E322B]">
+                  <span className="font-mono text-sm font-bold text-[#0B0C0A] tracking-wider">
                     {WHY_ITEMS.card04.n}
                   </span>
-                  <span className="font-mono text-[10.5px] uppercase tracking-widest text-[#868A82]">
+                  <span className="font-mono text-[11px] uppercase tracking-widest text-[#2E322B] font-semibold">
                     LONG-TERM OWNERSHIP
                   </span>
                 </div>
 
                 <div className="mt-5">
-                  <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-[#141413] leading-snug">
+                  <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0B0C0A] leading-snug">
                     {WHY_ITEMS.card04.title}
                   </h3>
-                  <p className="mt-2.5 text-sm text-[#595C56] leading-relaxed">
+                  <p className="mt-2.5 text-[15.5px] font-medium text-[#1C1E1A] leading-[1.6]">
                     {WHY_ITEMS.card04.desc}
                   </p>
                 </div>

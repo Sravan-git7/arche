@@ -184,17 +184,17 @@ export function WebDevInteractiveStage() {
                 </span>
               </h2>
 
-              <p className="mt-2 text-[12px] sm:text-[13px] text-[#595C56] leading-relaxed max-w-[440px]">
+              <p className="mt-2 text-[13px] sm:text-[14px] text-[#1C1E1A] font-medium leading-relaxed max-w-[440px]">
                 Sub-35ms responsive platforms engineered with React, fluid GSAP physics, and zero template bloat.
               </p>
 
               {/* Dual Action Pills */}
               <div className="mt-4 flex items-center gap-2.5">
-                <div className="px-3.5 py-1.5 rounded-full bg-[#141413] text-[#F4F4EE] text-[10.5px] font-semibold shadow-sm flex items-center gap-1">
+                <div className="px-3.5 py-1.5 rounded-full bg-[#0B0C0A] text-[#F4F4EE] text-[11px] font-bold shadow-sm flex items-center gap-1">
                   <span>Explore Architecture</span>
                   <span className="text-[#9EE41A]">→</span>
                 </div>
-                <div className="px-3.5 py-1.5 rounded-full border border-[#141413]/20 text-[#141413] text-[10.5px] font-semibold bg-white/40">
+                <div className="px-3.5 py-1.5 rounded-full border border-[#0B0C0A]/20 text-[#0B0C0A] text-[11px] font-bold bg-white/40">
                   Performance Audit
                 </div>
               </div>
@@ -203,36 +203,36 @@ export function WebDevInteractiveStage() {
             {/* 3. Rich 3-Column Bento / Proof Strip (max-w-[68%] clearing phone preview) */}
             <div className="mt-6 px-6 sm:px-8 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-[66%] sm:max-w-[68%]">
               {/* Card 1: 99 Lighthouse Performance */}
-              <div className="p-3 rounded-xl bg-[#EBE8D8] border border-[#141413]/[0.06] shadow-sm flex flex-col justify-between">
+              <div className="p-3 rounded-xl bg-[#EBE8D8] border border-[#0B0C0A]/[0.08] shadow-sm flex flex-col justify-between">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-[9px] font-bold text-[#72B314] uppercase tracking-wider">
+                  <span className="font-mono text-[9.5px] font-bold text-[#5B8F0E] uppercase tracking-wider">
                     01 · SPEED
                   </span>
-                  <div className="w-5 h-5 rounded-full border-2 border-[#72B314] flex items-center justify-center font-mono text-[8.5px] font-bold text-[#141413]">
+                  <div className="w-5 h-5 rounded-full border-2 border-[#5B8F0E] flex items-center justify-center font-mono text-[9px] font-bold text-[#0B0C0A]">
                     99
                   </div>
                 </div>
                 <div className="mt-2.5">
-                  <p className="text-[11.5px] font-bold text-[#141413] leading-tight">
+                  <p className="text-[12px] font-bold text-[#0B0C0A] leading-tight">
                     Lighthouse Performance
                   </p>
-                  <p className="text-[9.5px] text-[#595C56] mt-0.5 font-mono">Sub-second load</p>
+                  <p className="text-[10px] text-[#2E322B] font-semibold mt-0.5 font-mono">Sub-second load</p>
                 </div>
               </div>
 
               {/* Card 2: 34ms Interaction Speed */}
-              <div className="p-3 rounded-xl bg-[#EBE8D8] border border-[#141413]/[0.06] shadow-sm flex flex-col justify-between">
+              <div className="p-3 rounded-xl bg-[#EBE8D8] border border-[#0B0C0A]/[0.08] shadow-sm flex flex-col justify-between">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-[9px] font-bold text-[#72B314] uppercase tracking-wider">
+                  <span className="font-mono text-[9.5px] font-bold text-[#5B8F0E] uppercase tracking-wider">
                     02 · LATENCY
                   </span>
                   <span className="w-2 h-2 rounded-full bg-[#9EE41A] animate-pulse shadow-[0_0_6px_#9EE41A]" />
                 </div>
                 <div className="mt-2.5">
-                  <p className="text-[11.5px] font-bold text-[#141413] leading-tight">
+                  <p className="text-[12px] font-bold text-[#0B0C0A] leading-tight">
                     34ms Interaction Speed
                   </p>
-                  <p className="text-[9.5px] text-[#595C56] mt-0.5 font-mono">Zero layout shift</p>
+                  <p className="text-[10px] text-[#2E322B] font-semibold mt-0.5 font-mono">Zero layout shift</p>
                 </div>
               </div>
 
@@ -258,46 +258,46 @@ export function WebDevInteractiveStage() {
               {/* Architecture & Telemetry Row */}
               <div className="pt-5 border-t border-[#141413]/[0.08]">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="font-mono text-[10px] text-[#72B314] font-bold uppercase tracking-wider">
+                  <span className="font-mono text-[10px] text-[#5B8F0E] font-bold uppercase tracking-wider">
                     • 02 ARCHITECTURAL INTEGRITY
                   </span>
-                  <span className="font-mono text-[9.5px] text-[#595C56]">100% AUDITED</span>
+                  <span className="font-mono text-[9.5px] font-bold text-[#2E322B]">100% AUDITED</span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-[11px] text-[#141413]/90">
-                  <div className="p-2.5 rounded-lg bg-[#EAE7D6] border border-[#141413]/[0.05]">
-                    <span className="font-mono text-[9px] text-[#595C56] block">COMPOSITOR</span>
-                    <span className="font-semibold">60fps GPU Transforms</span>
+                <div className="grid grid-cols-2 gap-2 text-[11px] text-[#1C1E1A]">
+                  <div className="p-2.5 rounded-lg bg-[#EAE7D6] border border-[#0B0C0A]/[0.06]">
+                    <span className="font-mono text-[9px] font-bold text-[#2E322B] block">COMPOSITOR</span>
+                    <span className="font-bold text-[#0B0C0A]">60fps GPU Transforms</span>
                   </div>
-                  <div className="p-2.5 rounded-lg bg-[#EAE7D6] border border-[#141413]/[0.05]">
-                    <span className="font-mono text-[9px] text-[#595C56] block">BUNDLE SIZE</span>
-                    <span className="font-semibold">&lt; 35kB Initial Payload</span>
+                  <div className="p-2.5 rounded-lg bg-[#EAE7D6] border border-[#0B0C0A]/[0.06]">
+                    <span className="font-mono text-[9px] font-bold text-[#2E322B] block">BUNDLE SIZE</span>
+                    <span className="font-bold text-[#0B0C0A]">&lt; 35kB Initial Payload</span>
                   </div>
                 </div>
               </div>
 
               {/* Conversion & Lead Flow Row */}
-              <div className="mt-6 pt-5 border-t border-[#141413]/[0.08]">
+              <div className="mt-6 pt-5 border-t border-[#0B0C0A]/[0.08]">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="font-mono text-[10px] text-[#72B314] font-bold uppercase tracking-wider">
+                  <span className="font-mono text-[10px] text-[#5B8F0E] font-bold uppercase tracking-wider">
                     • 03 DIRECT INBOUND FUNNEL
                   </span>
-                  <span className="font-mono text-[9.5px] text-[#595C56]">CRM WEBHOOK</span>
+                  <span className="font-mono text-[9.5px] font-bold text-[#2E322B]">CRM WEBHOOK</span>
                 </div>
 
-                <div className="p-3 rounded-xl bg-[#EBE8D8] border border-[#141413]/[0.06] flex items-center justify-between">
+                <div className="p-3 rounded-xl bg-[#EBE8D8] border border-[#0B0C0A]/[0.08] flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <span className="w-5 h-5 rounded-full bg-[#141413] text-[#9EE41A] font-mono text-[9px] font-bold flex items-center justify-center">
+                    <span className="w-5 h-5 rounded-full bg-[#0B0C0A] text-[#9EE41A] font-mono text-[9px] font-bold flex items-center justify-center">
                       ✓
                     </span>
                     <div>
-                      <p className="text-[11.5px] font-bold text-[#141413] leading-tight">
+                      <p className="text-[12px] font-bold text-[#0B0C0A] leading-tight">
                         Demo Booking Confirmed · Fri 3:00 PM
                       </p>
-                      <p className="text-[9.5px] text-[#595C56]">HubSpot Contact &amp; Calendar Synced</p>
+                      <p className="text-[10px] font-semibold text-[#2E322B]">HubSpot Contact &amp; Calendar Synced</p>
                     </div>
                   </div>
-                  <span className="px-2 py-0.5 rounded bg-[#9EE41A]/20 text-[#3F630B] font-mono text-[9px] font-bold">
+                  <span className="px-2 py-0.5 rounded bg-[#9EE41A]/20 text-[#2E4609] font-mono text-[9px] font-bold">
                     ROUTED
                   </span>
                 </div>
@@ -340,35 +340,35 @@ export function WebDevInteractiveStage() {
 
             {/* Mobile Hero */}
             <div className="py-4">
-              <span className="inline-block px-1.5 py-0.5 rounded bg-[#E8E6D3] text-[#72B314] font-mono text-[7px] font-bold">
+              <span className="inline-block px-1.5 py-0.5 rounded bg-[#E8E6D3] text-[#5B8F0E] font-mono text-[7px] font-bold">
                 SUB-35MS WEB
               </span>
-              <h3 className="text-xs font-bold leading-tight mt-1 text-[#141413]">
+              <h3 className="text-xs font-bold leading-tight mt-1 text-[#0B0C0A]">
                 Digital experiences engineered for conversion.
               </h3>
-              <p className="text-[8.5px] text-[#595C56] mt-1 leading-snug">
+              <p className="text-[9px] font-medium text-[#1C1E1A] mt-1 leading-snug">
                 Zero template bloat. Seamless 60fps gestures and instant loading.
               </p>
-              <div className="mt-2.5 w-full py-1.5 rounded-full bg-[#141413] text-[#F4F4EE] text-[9px] font-semibold text-center">
+              <div className="mt-2.5 w-full py-1.5 rounded-full bg-[#0B0C0A] text-[#F4F4EE] text-[9px] font-bold text-center">
                 Start a Project →
               </div>
             </div>
 
             {/* Mobile Cards */}
             <div className="flex flex-col gap-1.5 my-2">
-              <div className="p-2 rounded-lg bg-[#EBE8D8] border border-[#141413]/05">
-                <span className="font-mono text-[7px] text-[#72B314] font-bold">01 · SPEED</span>
-                <p className="text-[9px] font-bold text-[#141413]">34ms FCP</p>
+              <div className="p-2 rounded-lg bg-[#EBE8D8] border border-[#0B0C0A]/[0.06]">
+                <span className="font-mono text-[7px] text-[#5B8F0E] font-bold">01 · SPEED</span>
+                <p className="text-[9.5px] font-bold text-[#0B0C0A]">34ms FCP</p>
               </div>
-              <div className="p-2 rounded-lg bg-[#EBE8D8] border border-[#141413]/05">
-                <span className="font-mono text-[7px] text-[#72B314] font-bold">02 · MOBILE-FIRST</span>
-                <p className="text-[9px] font-bold text-[#141413]">100svh Fluidity</p>
+              <div className="p-2 rounded-lg bg-[#EBE8D8] border border-[#0B0C0A]/[0.06]">
+                <span className="font-mono text-[7px] text-[#5B8F0E] font-bold">02 · MOBILE-FIRST</span>
+                <p className="text-[9.5px] font-bold text-[#0B0C0A]">100svh Fluidity</p>
               </div>
             </div>
 
             {/* Mobile Bottom Badge */}
-            <div className="pt-2 text-center border-t border-[#141413]/10">
-              <span className="font-mono text-[7px] text-[#595C56]">100% RESPONSIVE ARCHITECTURE</span>
+            <div className="pt-2 text-center border-t border-[#0B0C0A]/10">
+              <span className="font-mono text-[7.5px] font-semibold text-[#2E322B]">100% RESPONSIVE ARCHITECTURE</span>
             </div>
           </div>
         </div>

@@ -45,7 +45,7 @@ export default function App() {
 
     const handlePointerMove = (e: PointerEvent) => {
       const target = (e.target as HTMLElement | null)?.closest?.(
-        ".shiny-border, .arche-glow-card, .smoked-glass-cell, .frosted-crystal, .weighted-card, .tilt-card"
+        ".shiny-border, .arche-glow-card, .smoked-glass-cell, .frosted-crystal, .weighted-card, .tilt-card, .smoked-cypress-glass"
       ) as HTMLElement | null;
       if (!target) return;
       const rect = target.getBoundingClientRect();

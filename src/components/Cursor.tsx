@@ -3,18 +3,18 @@ import { gsap, prefersReducedMotion } from "../lib/gsap";
 import { hasFinePointer } from "../lib/interact";
 
 /**
- * Ultra-clean weightless & precise custom cursor (desktop fine pointer only).
+ * Ultra-clean weightless & precise custom cursor with awmedia-style white cursor glow.
  *
  * States:
- *  - Default: 22px transparent ring (1px solid rgba(20,20,19,0.22)) + 4px #141413 center dot.
- *  - Interactive: 34px transparent ring with 1.5px solid #72B314 (center dot hidden, 100% clear).
- *  - Work Thumbnails: 54px frosted-glass lens with crisp #9EE41A ↗ (data-cursor="view" only).
- *
- * Smoothly lerped via gsap.quickTo at 0.12s ease.
+ *  - 34px smoked translucent lens with 4px #FFFFFF center dot
+ *  - 240px subtle white ambient light follower trailing cursor via gsap.quickTo
+ *  - Interactive: expands smoothly on hover with lime specular border
+ *  - Work Thumbnails: 56px lens with crisp #9EE41A ↗ (data-cursor="view")
  */
 export function Cursor() {
   const dot = useRef<HTMLDivElement>(null);
   const ring = useRef<HTMLDivElement>(null);
+  const ambient = useRef<HTMLDivElement>(null);
   const label = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
@@ -22,16 +22,20 @@ export function Cursor() {
 
     const d = dot.current;
     const r = ring.current;
+    const a = ambient.current;
     const l = label.current;
     if (!d || !r || !l) return;
 
     gsap.set([d, r], { opacity: 0 });
+    if (a) gsap.set(a, { opacity: 0 });
 
-    // Precise lerping at 0.12s ease
-    const dx = gsap.quickTo(d, "x", { duration: 0.06, ease: "power3.out" });
-    const dy = gsap.quickTo(d, "y", { duration: 0.06, ease: "power3.out" });
+    // Precise lerping via gsap.quickTo
+    const dx = gsap.quickTo(d, "x", { duration: 0.05, ease: "power3.out" });
+    const dy = gsap.quickTo(d, "y", { duration: 0.05, ease: "power3.out" });
     const rx = gsap.quickTo(r, "x", { duration: 0.12, ease: "power3.out" });
     const ry = gsap.quickTo(r, "y", { duration: 0.12, ease: "power3.out" });
+    const ax = a ? gsap.quickTo(a, "x", { duration: 0.32, ease: "power2.out" }) : null;
+    const ay = a ? gsap.quickTo(a, "y", { duration: 0.32, ease: "power2.out" }) : null;
 
     let shown = false;
     let magnet: HTMLElement | null = null;
@@ -41,10 +45,15 @@ export function Cursor() {
       if (!shown) {
         shown = true;
         gsap.to([d, r], { opacity: 1, duration: 0.25 });
+        if (a) gsap.to(a, { opacity: 1, duration: 0.4 });
       }
 
       dx(e.clientX);
       dy(e.clientY);
+      if (ax && ay) {
+        ax(e.clientX);
+        ay(e.clientY);
+      }
 
       if (magnet) {
         const b = magnet.getBoundingClientRect();
@@ -62,22 +71,19 @@ export function Cursor() {
       const el = e.target as HTMLElement | null;
       if (!el) return;
 
-      const cursorAttr = (el.closest?.("[data-cursor]") as HTMLElement | null)?.dataset?.cursor?.toLowerCase();
-      // Work thumbnail images ONLY: data-cursor="view"
-      const isView = cursorAttr === "view";
+      const cursorTarget = el.closest?.("[data-cursor]") as HTMLElement | null;
+      const cursorAttr = cursorTarget?.dataset?.cursor?.toLowerCase();
+      // Work thumbnail images ONLY: data-cursor="view" on elements inside work showcase thumbnail trays
+      const isWorkThumbnail = Boolean(
+        el.closest?.(".work-thumbnail-frame, [data-work-thumbnail]") ||
+        (cursorAttr === "view" && Boolean(cursorTarget?.querySelector("img, video") || cursorTarget?.classList.contains("cursor-pointer") && cursorTarget?.closest(".aspect-\\[16\\/10\\]")))
+      );
+      const isView = cursorAttr === "view" && isWorkThumbnail && !el.closest?.("h1, h2, h3, h4, p, span.editorial-line, .faq-card");
       // Interactive clickable controls: buttons, links, inputs
-      const isHover = !isView && Boolean(el.closest?.("a, button, input, textarea, label, [role='button'], [role='slider']"));
+      const isHover = !isView && Boolean(el.closest?.("a, button, input, textarea, label, [role='button'], [role='slider'], [data-cursor='hover']"));
 
       // Ring magnetism reserved for primary CTAs
       magnet = (el.closest?.("[data-magnetic]") as HTMLElement | null) ?? null;
-
-      // Check if hovering dark/obsidian background
-      const darkEl = el.closest?.(".on-ink, .bg-\\[\\#141413\\], [data-theme='dark'], .video-grading-monitor, .navbar-smoked-obsidian");
-      if (darkEl) {
-        d.classList.add("on-dark");
-      } else {
-        d.classList.remove("on-dark");
-      }
 
       if (isView) {
         if (currentState !== "view") {
@@ -120,6 +126,7 @@ export function Cursor() {
     const leave = () => {
       shown = false;
       gsap.to([d, r], { opacity: 0, duration: 0.25 });
+      if (a) gsap.to(a, { opacity: 0, duration: 0.3 });
     };
 
     window.addEventListener("pointermove", move, { passive: true });
@@ -139,6 +146,15 @@ export function Cursor() {
 
   return (
     <>
+      {/* 240px Subtle White Ambient Light Follower over dark fluted-glass background */}
+      <div
+        ref={ambient}
+        className="pointer-events-none fixed top-0 left-0 w-[240px] h-[240px] -ml-[120px] -mt-[120px] rounded-full z-[1] will-change-transform hidden lg:block"
+        style={{
+          background: "radial-gradient(circle, rgba(255, 255, 255, 0.065) 0%, transparent 70%)",
+        }}
+        aria-hidden
+      />
       <div ref={dot} className="cursor-dot hidden lg:block" aria-hidden />
       <div
         ref={ring}

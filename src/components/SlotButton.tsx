@@ -3,8 +3,9 @@ import { Link } from "../lib/router";
 
 interface SlotButtonProps {
   to?: string;
+  href?: string;
   onClick?: (e: React.MouseEvent) => void;
-  variant?: "primary" | "secondary" | "lime" | "ghost" | "frosted-ivory";
+  variant?: "primary" | "secondary" | "lime" | "ghost" | "frosted-ivory" | "hero-primary" | "smoked-glass";
   className?: string;
   children: string;
   arrow?: "right" | "down" | "up" | "none";
@@ -21,6 +22,7 @@ interface SlotButtonProps {
  */
 export function SlotButton({
   to,
+  href,
   onClick,
   variant = "primary",
   className = "",
@@ -33,8 +35,12 @@ export function SlotButton({
 }: SlotButtonProps) {
   const getVariantStyles = () => {
     switch (variant) {
+      case "hero-primary":
+        return "bg-[#F4F1E0] text-[#11120F] font-bold border border-[#F4F1E0] hover:bg-[#9EE41A] hover:border-[#9EE41A] hover:shadow-[0_0_24px_rgba(158,228,26,0.45)] active:scale-[0.96]";
+      case "smoked-glass":
+        return "bg-white/[0.06] text-[#F4F1E0] border border-white/[0.16] backdrop-blur-md hover:bg-white/[0.12] hover:border-[#9EE41A]/70 hover:-translate-y-0.5 hover:shadow-[0_0_20px_rgba(158,228,26,0.30)] hover:text-white active:scale-[0.96]";
       case "primary":
-        return "bg-[#141413] text-[#FBFBF6] border border-[#141413] hover:border-[#9EE41A]/60 hover:shadow-[0_0_24px_rgba(158,228,26,0.24)] active:scale-[0.96]";
+        return "bg-gradient-to-br from-[#1A2418] to-[#10120F] text-[#FBFBF6] border border-[#253821]/80 hover:border-[#9EE41A]/60 hover:shadow-[0_0_24px_rgba(158,228,26,0.28)] active:scale-[0.96]";
       case "secondary":
       case "frosted-ivory":
         return "bg-[rgba(244,241,224,0.82)] text-[#141413] border border-[#141413]/12 backdrop-blur-md hover:-translate-y-[2px] hover:bg-[rgba(235,232,213,0.95)] hover:border-[#9EE41A] hover:shadow-[0_0_18px_rgba(158,228,26,0.28)] active:scale-[0.97]";
@@ -53,12 +59,12 @@ export function SlotButton({
   const content = (
     <>
       {/* Primary obsidian button: sleek internal diagonal specular light sweep */}
-      {variant === "primary" && (
+      {(variant === "primary" || variant === "hero-primary") && (
         <span
           className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] z-0"
           style={{
             background:
-              "linear-gradient(110deg, transparent 30%, rgba(158, 228, 26, 0.22) 50%, transparent 70%)",
+              "linear-gradient(110deg, transparent 30%, rgba(158, 228, 26, 0.28) 50%, transparent 70%)",
           }}
           aria-hidden="true"
         />
@@ -107,6 +113,21 @@ export function SlotButton({
       >
         {content}
       </Link>
+    );
+  }
+
+  if (href) {
+    return (
+      <a
+        href={href}
+        onClick={onClick}
+        aria-label={ariaLabel || children}
+        data-magnetic={magnetic ? "true" : undefined}
+        data-cursor={dataCursor}
+        className={`${baseStyles} ${getVariantStyles()} ${className}`}
+      >
+        {content}
+      </a>
     );
   }
 

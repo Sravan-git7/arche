@@ -6,6 +6,7 @@ import { gsap, ScrollTrigger, prefersReducedMotion } from "../lib/gsap";
 import { hasFinePointer } from "../lib/interact";
 import { SpotlightCard } from "./SpotlightCard";
 import { attachCardTilt } from "../motion/cardTilt";
+import { SlotButton } from "./SlotButton";
 
 const RATIO: Record<Project["ratio"], string> = {
   tall: "4 / 5",
@@ -159,7 +160,7 @@ export function ProjectRow({ p, i, isLast = false }: { p: Project; i: number; is
           tabIndex={0}
           aria-expanded={expanded}
           aria-label={`${expanded ? "Close" : "Open"} ${p.name} details`}
-          data-cursor={expanded ? "CLOSE" : "VIEW"}
+          data-cursor="hover"
           style={{ "--glow-x": "50%", "--glow-y": "50%" } as React.CSSProperties}
         >
           {/* Cursor spotlight glow */}
@@ -207,12 +208,22 @@ export function ProjectRow({ p, i, isLast = false }: { p: Project; i: number; is
           <div className="flex items-baseline justify-between gap-[14px]">
             <div className="flex items-baseline gap-[14px]">
               <span
-                className="numeral outline-t transition-[translate] duration-700 group-hover:translate-x-[10px]"
-                style={{ fontSize: "clamp(44px,6.5vw,96px)", transitionTimingFunction: "var(--e-out)" }}
+                className="font-extrabold tracking-tight select-none transition-[translate] duration-700 group-hover:translate-x-[10px]"
+                style={{
+                  fontSize: "clamp(44px,6.5vw,96px)",
+                  transitionTimingFunction: "var(--e-out)",
+                  background:
+                    "linear-gradient(180deg, rgba(244,241,224,0.65) 0%, rgba(146,153,141,0.22) 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  fontWeight: 800,
+                  fontFamily: "'Inter Tight', sans-serif",
+                  lineHeight: 1,
+                }}
               >
                 {p.n}
               </span>
-              <span className="mono" data-r="meta">
+              <span className="font-mono text-[11px] uppercase tracking-wider font-semibold text-[#9CA496]" data-r="meta">
                 {p.serviceLabel} · {p.year}
               </span>
             </div>
@@ -220,40 +231,42 @@ export function ProjectRow({ p, i, isLast = false }: { p: Project; i: number; is
               type="button"
               onClick={toggleExpand}
               aria-expanded={expanded}
-              className="mono btn btn-ghost text-[10px]"
-              data-cursor={expanded ? "CLOSE" : "VIEW"}
+              className="font-mono text-[11px] uppercase tracking-wider px-3.5 py-1.5 rounded-full bg-white/[0.05] border border-white/15 text-[#D4D9CD] hover:text-[#9EE41A] hover:border-[#9EE41A]/50 transition-all cursor-pointer"
+              data-cursor="hover"
             >
-              {expanded ? "Close detail ×" : "Case view +"}
+              {expanded ? "Close Detail ×" : "Case View +"}
             </button>
           </div>
 
-          <h3 className="d3" data-r="mask" data-r-delay="40">
-            {p.name}
+          <h3 className="text-[clamp(1.75rem,2.8vw,2.5rem)] font-bold tracking-tight leading-[1.1]" data-r="mask" data-r-delay="40">
+            <span className="shiny-ink-text">{p.name}</span>
           </h3>
 
-          <p className="body max-w-[46ch]" data-r="meta" data-r-delay="110">
+          <p className="text-[16px] leading-relaxed text-[#D2D8CC] max-w-[48ch]" data-r="meta" data-r-delay="110">
             {p.summary}
           </p>
 
-          <p className="font-mono text-[11px] text-[#595C56] tracking-wide" data-r="meta" data-r-delay="150">
+          <p className="font-mono text-[11px] text-[#9CA496] tracking-wide" data-r="meta" data-r-delay="150">
             {p.scope.join(" · ")}
           </p>
 
-          <div className="mt-[4px] flex items-center gap-[16px]">
-            <button
-              type="button"
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <SlotButton
               onClick={toggleExpand}
-              aria-expanded={expanded}
-              className="mono mono-fg inline-flex items-center gap-[8px] transition-colors duration-500 group-hover:text-[var(--accent-ink)]"
+              variant="hero-primary"
+              arrow="right"
+              className="!h-[40px] !px-5 !text-[11.5px] !font-bold"
             >
-              {expanded ? "Collapse details" : "Expand case view"}
-              <span className={`inline-block transition-transform duration-500 ${expanded ? "rotate-90" : "group-hover:translate-x-[5px]"}`}>
-                →
-              </span>
-            </button>
-            <Link to={`/services/${p.service}`} className="mono lnk text-[10.5px]">
-              Explore service →
-            </Link>
+              {expanded ? "Collapse Details" : "Expand Case View"}
+            </SlotButton>
+            <SlotButton
+              to={`/services/${p.service}`}
+              variant="smoked-glass"
+              arrow="right"
+              className="!h-[40px] !px-5 !text-[11.5px]"
+            >
+              Explore Service
+            </SlotButton>
           </div>
         </div>
       </div>
@@ -261,41 +274,48 @@ export function ProjectRow({ p, i, isLast = false }: { p: Project; i: number; is
       {/* In-Place Expanded Case View Drawer */}
       {expanded && (
         <div
-          className="demo-in mt-[12px] overflow-hidden rounded-[6px] border p-[clamp(20px,3vw,36px)]"
-          style={{ borderColor: "var(--accent-deep)", background: "var(--bg-2)" }}
+          className="demo-in mt-4 overflow-hidden rounded-xl border border-white/15 p-[clamp(20px,3vw,36px)] backdrop-blur-md shadow-2xl"
+          style={{ background: "rgba(18, 26, 17, 0.92)" }}
         >
-          <div className="flex items-start justify-between gap-[16px] border-b pb-[16px]" style={{ borderColor: "var(--line)" }}>
+          <div className="flex items-start justify-between gap-[16px] border-b border-white/10 pb-[16px]">
             <div>
               <div className="flex items-center gap-[10px] mb-[6px]">
-                <span className="mono mono-a">{tag}</span>
-                <span className="mono">·</span>
-                <span className="mono mono-fg">{p.name}</span>
+                <span className="font-mono text-[11px] font-semibold tracking-wider text-[#9EE41A] uppercase">{tag}</span>
+                <span className="text-[#9CA496]">·</span>
+                <span className="font-mono text-[11px] text-[#F4F1E0] tracking-wider uppercase">{p.name}</span>
               </div>
-              <h4 className="d4">System Specification & Scope</h4>
+              <h4 className="text-xl font-bold tracking-tight text-[#F4F1E0]">System Specification & Scope</h4>
             </div>
-            <button type="button" className="mono lnk" onClick={() => setExpanded(false)}>
+            <button
+              type="button"
+              className="font-mono text-xs uppercase tracking-wider text-[#D4D9CD] hover:text-[#9EE41A] transition-colors"
+              onClick={() => setExpanded(false)}
+            >
               Close ×
             </button>
           </div>
 
           <div className="mt-[20px] grid gap-[24px] md:grid-cols-3">
             <div>
-              <p className="mono mb-[6px]" style={{ color: "var(--accent-ink)" }}>Architecture</p>
-              <p className="body-s">
+              <p className="font-mono text-xs uppercase tracking-wider font-semibold text-[#9EE41A] mb-2">Architecture</p>
+              <p className="text-sm leading-relaxed text-[#D2D8CC]">
                 An example of a self-contained module and how it could connect to a wider business workflow.
               </p>
             </div>
             <div>
-              <p className="mono mb-[6px]" style={{ color: "var(--accent-ink)" }}>Honesty Verification</p>
-              <p className="body-s">
-                Classified as <strong className="text-[var(--fg)]">{tag}</strong>. Self-initiated work or a concept — not a client case study, testimonial or claimed result.
+              <p className="font-mono text-xs uppercase tracking-wider font-semibold text-[#9EE41A] mb-2">Honesty Verification</p>
+              <p className="text-sm leading-relaxed text-[#D2D8CC]">
+                Classified as <strong className="text-[#F4F1E0] font-semibold">{tag}</strong>. Self-initiated work or a concept — not a client case study, testimonial or claimed result.
               </p>
             </div>
             <div>
-              <p className="mono mb-[6px]" style={{ color: "var(--accent-ink)" }}>Execution Stack</p>
-              <div className="flex flex-wrap gap-[6px] mt-[6px]">
+              <p className="font-mono text-xs uppercase tracking-wider font-semibold text-[#9EE41A] mb-2">Execution Stack</p>
+              <div className="flex flex-wrap gap-[6px] mt-2">
                 {p.scope.map((s) => (
-                  <span key={s} className="mono rounded-full border px-[8px] py-[3px]" style={{ borderColor: "var(--line)", background: "var(--card)" }}>
+                  <span
+                    key={s}
+                    className="font-mono text-[11px] rounded-full border border-white/15 bg-white/[0.06] text-[#F4F1E0] px-3 py-1"
+                  >
                     {s}
                   </span>
                 ))}
@@ -355,21 +375,62 @@ export function WorkCarousel({ items }: { items: Project[] }) {
 
   const visibleItems = items.slice(startIndex, startIndex + visibleCount);
 
-  // Attach weighted 3D card tilt & push physics to work cards
+  // Attach weighted 3D card tilt & push physics to work cards + entrance motion
   useEffect(() => {
     if (!gridRef.current) return;
     const cards = gridRef.current.querySelectorAll<HTMLElement>(".frosted-crystal");
+    const thumbnails = gridRef.current.querySelectorAll<HTMLElement>(".work-thumbnail-frame");
     const cleanups: (() => void)[] = [];
     cards.forEach((c) => cleanups.push(attachCardTilt(c)));
+
+    if (!prefersReducedMotion()) {
+      const ctx = gsap.context(() => {
+        gsap.fromTo(
+          cards,
+          { x: 28, opacity: 0 },
+          {
+            x: 0,
+            opacity: 1,
+            duration: 0.75,
+            stagger: 0.12,
+            ease: "power3.out",
+            scrollTrigger: {
+              trigger: gridRef.current,
+              start: "top 85%",
+              once: true,
+            },
+          }
+        );
+
+        gsap.fromTo(
+          thumbnails,
+          { clipPath: "inset(12% 0 0 0)" },
+          {
+            clipPath: "inset(0% 0 0 0)",
+            duration: 0.85,
+            stagger: 0.12,
+            ease: "power3.out",
+            scrollTrigger: {
+              trigger: gridRef.current,
+              start: "top 85%",
+              once: true,
+            },
+          }
+        );
+      }, gridRef);
+
+      cleanups.push(() => ctx.revert());
+    }
+
     return () => cleanups.forEach((c) => c());
   }, [startIndex]);
 
   return (
     <div className="w-full">
       {/* Carousel Controls Header */}
-      <div className="flex items-center justify-between pb-6 mb-6 border-b border-[#141413]/10">
+      <div className="flex items-center justify-between pb-6 mb-6 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <span className="font-mono text-xs text-[#5C5F59] uppercase tracking-wider font-semibold">
+          <span className="font-mono text-xs text-[#92998D] uppercase tracking-wider font-semibold">
             SHOWCASE · {String(startIndex + 1).padStart(2, "0")}–{String(Math.min(items.length, startIndex + visibleCount)).padStart(2, "0")} OF {String(items.length).padStart(2, "0")}
           </span>
         </div>
@@ -380,7 +441,7 @@ export function WorkCarousel({ items }: { items: Project[] }) {
             disabled={startIndex === 0}
             data-cursor="hover"
             aria-label="Previous work slide"
-            className="btn-tactile w-10 h-10 rounded-full bg-[#E5E7DC] border border-[#141413]/15 backdrop-blur-md flex items-center justify-center text-[#141413] hover:bg-[#141413] hover:text-[#9EE41A] disabled:opacity-30 disabled:pointer-events-none transition-all"
+            className="btn-tactile w-10 h-10 rounded-full bg-white/[0.06] border border-white/15 backdrop-blur-md flex items-center justify-center text-[#F4F1E0] hover:bg-white/[0.12] hover:border-[#9EE41A]/70 hover:text-[#9EE41A] disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 shadow-sm cursor-pointer"
           >
             ←
           </button>
@@ -390,7 +451,7 @@ export function WorkCarousel({ items }: { items: Project[] }) {
             disabled={startIndex >= maxIndex}
             data-cursor="hover"
             aria-label="Next work slide"
-            className="btn-tactile w-10 h-10 rounded-full bg-[#E5E7DC] border border-[#141413]/15 backdrop-blur-md flex items-center justify-center text-[#141413] hover:bg-[#141413] hover:text-[#9EE41A] disabled:opacity-30 disabled:pointer-events-none transition-all"
+            className="btn-tactile w-10 h-10 rounded-full bg-white/[0.06] border border-white/15 backdrop-blur-md flex items-center justify-center text-[#F4F1E0] hover:bg-white/[0.12] hover:border-[#9EE41A]/70 hover:text-[#9EE41A] disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95 shadow-sm cursor-pointer"
           >
             →
           </button>
@@ -407,20 +468,25 @@ export function WorkCarousel({ items }: { items: Project[] }) {
             <SpotlightCard
               key={p.slug}
               data-cursor="hover"
-              className="frosted-crystal arche-glow-card shiny-border group relative flex flex-col justify-between p-5 rounded-2xl transition-all"
+              className="smoked-cypress-glass arche-glow-card shiny-border group relative flex flex-col justify-between p-5 rounded-2xl transition-all"
             >
               <div>
-                {/* Recessed Warm Limestone Tray wrapping Media Thumbnail */}
+                {/* Recessed Dark Smoked Glass Tray wrapping Media Thumbnail */}
                 <div
                   data-cursor="view"
-                  className="relative aspect-[16/10] w-full overflow-hidden rounded-xl border border-[#141413]/[0.08] p-1 cursor-pointer"
+                  className="relative aspect-[16/10] w-full overflow-hidden rounded-xl border border-white/10 p-1 cursor-pointer"
                   style={{
-                    background: "rgba(244, 241, 224, 0.70)",
+                    background: "rgba(18, 26, 17, 0.70)",
                     boxShadow:
-                      "inset 0 1px 0 rgba(255, 253, 244, 0.92), 0 8px 20px -6px rgba(20, 20, 19, 0.08)",
+                      "inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 8px 24px -6px rgba(0, 0, 0, 0.55)",
                   }}
                 >
-                  <div className="relative h-full w-full overflow-hidden rounded-lg bg-[#141413]/10">
+                  <div
+                    className="work-thumbnail-frame relative h-full w-full overflow-hidden rounded-lg bg-black/40 dark-console-frame"
+                    style={{
+                      boxShadow: "0 24px 48px -16px rgba(0, 0, 0, 0.75)",
+                    }}
+                  >
                     <img
                       src={p.img}
                       alt={p.name}
@@ -429,7 +495,7 @@ export function WorkCarousel({ items }: { items: Project[] }) {
                     />
 
                     {/* Smoked-Glass LIVE Badge */}
-                    <div className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#141413]/85 text-white border border-white/15 backdrop-blur-md shadow-sm">
+                    <div className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/80 text-white border border-white/15 backdrop-blur-md shadow-sm">
                       <span className="relative flex h-1.5 w-1.5">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#9EE41A] opacity-75" />
                         <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#9EE41A]" />
@@ -441,7 +507,7 @@ export function WorkCarousel({ items }: { items: Project[] }) {
 
                     {/* Honesty Pill Tag */}
                     <div className="absolute top-2.5 right-2.5 z-10">
-                      <span className="px-2 py-0.5 rounded-full bg-[#141413]/80 text-[#F4F4EE] border border-white/10 backdrop-blur-md font-mono text-[9px] tracking-wider uppercase">
+                      <span className="px-2 py-0.5 rounded-full bg-black/80 text-[#F4F4EE] border border-white/10 backdrop-blur-md font-mono text-[9px] tracking-wider uppercase">
                         {tag}
                       </span>
                     </div>
@@ -449,56 +515,56 @@ export function WorkCarousel({ items }: { items: Project[] }) {
                 </div>
 
                 {/* Meta Header */}
-                <div className="mt-4 flex items-center justify-between text-[#5C5F59] font-mono text-[11px] tracking-wider uppercase">
+                <div className="mt-4 flex items-center justify-between text-[#9CA496] font-mono text-[11.5px] font-semibold tracking-wider uppercase">
                   <span>{p.n} · {p.serviceLabel}</span>
                   <span>{p.year}</span>
                 </div>
 
                 {/* Project Title */}
-                <h3 className="mt-2 text-lg sm:text-xl font-semibold tracking-tight text-[#141413] group-hover:text-[#141413] transition-colors">
+                <h3 className="mt-2 text-xl sm:text-[22px] font-bold tracking-tight text-[#F4F1E0] group-hover:text-[#9EE41A] transition-colors">
                   {p.name}
                 </h3>
 
                 {/* Summary */}
-                <p className="mt-2 text-xs sm:text-sm text-[#5C5F59] leading-relaxed line-clamp-2">
+                <p className="mt-2 text-[14.5px] font-normal text-[#C4CBC0] leading-relaxed line-clamp-2">
                   {p.summary}
                 </p>
 
                 {/* Single-line clean muted scope caption */}
-                <p className="mt-3 font-mono text-[10.5px] text-[#595C56] tracking-wide">
+                <p className="mt-3 font-mono text-[11px] text-[#92998D] tracking-wide">
                   {p.scope.slice(0, 3).join(" · ")}
                 </p>
               </div>
 
               {/* Bottom Action Footer */}
-              <div className="mt-5 pt-3.5 border-t border-[#141413]/8 flex items-center justify-between">
+              <div className="mt-5 pt-3.5 border-t border-white/10 flex items-center justify-between">
                 <button
                   type="button"
                   onClick={() => setExpandedSlug(isExpanded ? null : p.slug)}
                   data-cursor="hover"
-                  className="font-mono text-[11px] font-semibold tracking-wider uppercase text-[#141413] hover:text-[#9EE41A] transition-colors inline-flex items-center gap-1.5"
+                  className="font-mono text-[11.5px] font-semibold tracking-wider uppercase text-[#D4D9CD] hover:text-[#9EE41A] transition-colors inline-flex items-center gap-1.5"
                 >
                   <span>{isExpanded ? "Hide Spec" : "View Spec"}</span>
                   <span className="text-[10px]">{isExpanded ? "▲" : "▼"}</span>
                 </button>
 
-                <div className="action-circle">
+                <div className="action-circle !bg-white/5 !border-white/15 !text-white group-hover:!border-[#9EE41A] group-hover:!text-[#9EE41A]">
                   <span className="action-circle-icon text-sm">↗</span>
                 </div>
               </div>
 
               {/* In-Card Spec Overlay if expanded */}
               {isExpanded && (
-                <div className="mt-3 p-3 rounded-xl bg-[#141413]/5 border border-[#141413]/10 text-xs text-[#5C5F59] space-y-1.5">
-                  <p className="font-mono text-[10px] font-semibold uppercase text-[#141413]">
+                <div className="mt-3 p-3.5 rounded-xl bg-white/[0.04] border border-white/10 text-[13px] text-[#C4CBC0] font-normal space-y-1.5">
+                  <p className="font-mono text-[11.5px] font-bold uppercase text-[#F4F1E0]">
                     System Architecture · {tag}
                   </p>
-                  <p className="text-[11px] leading-relaxed">
+                  <p className="text-[13px] leading-relaxed text-[#C4CBC0]">
                     Designed as a modular capability within Arché&apos;s single operating model.
                   </p>
                   <Link
                     to={`/services/${p.service}`}
-                    className="inline-block mt-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-[#141413] hover:text-[#9EE41A] underline"
+                    className="inline-block mt-1 font-mono text-[11px] font-bold uppercase tracking-wider text-[#9EE41A] hover:underline"
                   >
                     Explore Service Pipeline →
                   </Link>
@@ -534,15 +600,36 @@ export function WorkIndex({
   return (
     <div>
       {showFilters && !filter && (
-        <div className="mb-[clamp(24px,3vw,48px)] flex flex-wrap gap-[8px]">
-          <button className="chip" data-on={active === "all" ? "1" : "0"} onClick={() => setActive("all")}>
-            All Work
+        <div className="mb-[clamp(24px,3vw,48px)] flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setActive("all")}
+            className={`font-mono text-[11px] tracking-wider uppercase px-4 py-2 rounded-full transition-all duration-300 cursor-pointer ${
+              active === "all"
+                ? "bg-[#F4F1E0] text-[#11120F] font-bold shadow-[0_0_16px_rgba(244,241,224,0.30)] border border-[#F4F1E0]"
+                : "bg-white/[0.06] text-[#D2D8CC] border border-white/15 hover:bg-white/[0.12] hover:text-white hover:border-white/30"
+            }`}
+          >
+            All Work ({projects.length})
           </button>
-          {services.map((s) => (
-            <button key={s.slug} className="chip" data-on={active === s.slug ? "1" : "0"} onClick={() => setActive(s.slug)}>
-              {s.title}
-            </button>
-          ))}
+          {services.map((s) => {
+            const count = projects.filter((p) => p.service === s.slug).length;
+            const isSelected = active === s.slug;
+            return (
+              <button
+                key={s.slug}
+                type="button"
+                onClick={() => setActive(s.slug)}
+                className={`font-mono text-[11px] tracking-wider uppercase px-4 py-2 rounded-full transition-all duration-300 cursor-pointer ${
+                  isSelected
+                    ? "bg-[#F4F1E0] text-[#11120F] font-bold shadow-[0_0_16px_rgba(244,241,224,0.30)] border border-[#F4F1E0]"
+                    : "bg-white/[0.06] text-[#D2D8CC] border border-white/15 hover:bg-white/[0.12] hover:text-white hover:border-white/30"
+                }`}
+              >
+                {s.title} {count > 0 ? `(${count})` : ""}
+              </button>
+            );
+          })}
         </div>
       )}
       <div className="flex flex-col">

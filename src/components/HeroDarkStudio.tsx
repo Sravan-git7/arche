@@ -192,7 +192,7 @@ export function HeroDarkStudio() {
     <section
       ref={containerRef}
       id="hero"
-      className="relative w-full min-h-[88svh] max-h-[960px] pt-24 pb-8 bg-transparent text-[#0D0E0C] overflow-x-clip flex flex-col justify-between select-none"
+      className="relative w-full min-h-[100svh] pt-24 pb-12 bg-transparent text-[#0D0E0C] overflow-x-clip flex flex-col justify-between select-none"
     >
       {/* =========================================================
           100% CENTERED EDITORIAL HIERARCHY (AWMEDIA RHYTHM)
@@ -207,33 +207,34 @@ export function HeroDarkStudio() {
         ref={heroContentRef}
         className="relative z-10 w-full max-w-[1140px] mx-auto px-6 my-auto flex flex-col items-center justify-center text-center will-change-transform"
       >
-        {/* 1. FROSTED-GLASS EYEBROW PILL BADGE (awmedia.marketing style in Arché cream-ivory) */}
+        {/* 1. FROSTED-GLASS EYEBROW PILL BADGE */}
         <div
           ref={eyebrowRef}
           className="mb-4 cursor-default"
         >
           <div className="glass-eyebrow-pill">
             <span className="h-[5px] w-[5px] rounded-full bg-[#84CC16] shadow-[0_0_8px_#84CC16] flex-shrink-0" />
-            <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#232620]">
+            <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#F4F1E0]">
               ARCHÉ CREATIVE STUDIOS · FILM · WEB · AI · OPS
             </span>
           </div>
         </div>
 
-        {/* 2. MONUMENTAL 2-LINE CENTERED HEADLINE (DEEP JET-BLACK INK GRADIENT — ZERO GHOST OUTLINES) */}
+        {/* 2. MONUMENTAL 2-LINE CENTERED HEADLINE (ALABASTER METALLIC GRADIENT OVER DARK STAGE) */}
         <h1
-          className="text-[clamp(3.75rem,7.6vw,6.85rem)] font-bold tracking-[-0.042em] leading-[0.92] w-full max-w-[1140px] text-[#11120F]"
+          className="text-[clamp(3.75rem,7.6vw,6.85rem)] font-bold tracking-[-0.042em] leading-[0.92] w-full max-w-[1140px] text-[#F4F1E0]"
           style={{
             fontFamily: "'Inter Tight', sans-serif",
             fontVariationSettings: "'wght' 700",
             fontWeight: 700,
-            color: "#11120F",
+            color: "#F4F1E0",
             textShadow: "none",
+            filter: "drop-shadow(0 0 28px rgba(255, 255, 255, 0.10)) drop-shadow(0 6px 24px rgba(0, 0, 0, 0.55))",
           }}
         >
           {/* Line 1: Systems that make */}
           <span className="block py-1">
-            <span ref={line1Ref} className="block will-change-transform text-[#11120F]">
+            <span ref={line1Ref} className="block will-change-transform text-[#F4F1E0]">
               <span className="shiny-ink-text">Systems that make</span>
             </span>
           </span>
@@ -242,9 +243,9 @@ export function HeroDarkStudio() {
           <span className="block py-1 mt-1 sm:mt-2">
             <span
               ref={line2Ref}
-              className="inline-flex flex-wrap items-baseline justify-center gap-[0.25em] will-change-transform max-w-full text-[#11120F]"
+              className="inline-flex flex-wrap items-baseline justify-center gap-[0.25em] will-change-transform max-w-full text-[#F4F1E0]"
             >
-              <span className="text-[#11120F]"><span className="shiny-ink-text">businesses</span></span>
+              <span className="text-[#F4F1E0]"><span className="shiny-ink-text">businesses</span></span>
 
               {/* Strict single-line overflow-hidden container (1.05em height, relative) */}
               <span
@@ -253,7 +254,7 @@ export function HeroDarkStudio() {
               >
                 <span
                   ref={wordNodeRef}
-                  className="inline-flex items-baseline will-change-transform text-[#11120F]"
+                  className="inline-flex items-baseline will-change-transform text-[#F4F1E0]"
                   style={{
                     fontFamily: "'Inter Tight', sans-serif",
                     fontVariationSettings: "'wght' 700",
@@ -278,7 +279,7 @@ export function HeroDarkStudio() {
         {/* 3. CLEAN 2-LINE CENTERED SUBTITLE IN BALANCED 660px BREATHING ROOM */}
         <p
           ref={subcopyRef}
-          className="mt-5 sm:mt-6 max-w-[660px] text-[19px] text-[#3B3E38] leading-[1.55] font-sans font-normal"
+          className="mt-5 sm:mt-6 max-w-[660px] text-[19px] text-[#C9CEC3] leading-[1.55] font-sans font-normal"
         >
           Brand film, bespoke web flagships, autonomous AI agents, and operational automation—engineered together as one connected system.
         </p>
@@ -288,20 +289,20 @@ export function HeroDarkStudio() {
           ref={ctaGroupRef}
           className="mt-6 sm:mt-8 flex flex-wrap items-center justify-center gap-3.5"
         >
-          {/* Primary Solid Charcoal Pill with Slot-Roll */}
+          {/* Primary High-Contrast #F4F1E0 Pill with #11120F text */}
           <SlotButton
             to="/contact"
-            variant="primary"
+            variant="hero-primary"
             arrow="right"
             className="!px-7 !py-3.5 !text-[13.5px] sm:!text-[14px]"
           >
             Start a Project
           </SlotButton>
 
-          {/* Secondary Frosted Ivory Pill with Slot-Roll */}
+          {/* Secondary Smoked Translucent Glass Pill */}
           <SlotButton
             onClick={scrollToServices}
-            variant="frosted-ivory"
+            variant="smoked-glass"
             arrow="down"
             className="!px-7 !py-3.5 !text-[13.5px] sm:!text-[14px]"
           >
@@ -321,19 +322,19 @@ export function HeroDarkStudio() {
         data-hero-index-bar
         className="relative z-20 w-full max-w-[920px] mx-auto mt-6 mb-0 px-3 sm:px-4"
       >
-        <div className="rounded-2xl border border-[#141413]/[0.08] bg-[rgba(244,241,224,0.82)] backdrop-blur-md shadow-[0_4px_16px_rgba(20,20,19,0.04)] grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-[#141413]/[0.08] overflow-hidden">
+        <div className="rounded-2xl border border-white/10 bg-[#141C12]/80 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.40)] grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-white/10 overflow-hidden">
           {HERO_SERVICES.map((item) => (
             <button
               key={item.n}
               type="button"
               onClick={() => scrollToServiceCard(item.idx)}
-              className="group py-2.5 sm:py-3 px-3 sm:px-4 text-left flex items-center justify-between transition-colors hover:bg-[rgba(235,232,213,0.95)] cursor-pointer"
+              className="group py-2.5 sm:py-3 px-3 sm:px-4 text-left flex items-center justify-between transition-colors hover:bg-white/5 cursor-pointer"
             >
-              <div className="flex items-center gap-2 font-mono text-[11px] font-medium tracking-wider text-[#595C56] group-hover:text-[#141413] transition-colors">
-                <span className="text-[#141413] font-bold">{item.n} —</span>
+              <div className="flex items-center gap-2 font-mono text-[11px] font-medium tracking-wider text-[#C9CEC3] group-hover:text-white transition-colors">
+                <span className="text-[#9EE41A] font-bold">{item.n} —</span>
                 <span>{item.label}</span>
               </div>
-              <span className="font-mono text-xs text-[#141413]/30 group-hover:text-[#72B314] group-hover:translate-x-0.5 transition-all">
+              <span className="font-mono text-xs text-white/30 group-hover:text-[#9EE41A] group-hover:translate-x-0.5 transition-all">
                 →
               </span>
             </button>

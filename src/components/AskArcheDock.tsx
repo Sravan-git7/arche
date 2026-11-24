@@ -228,10 +228,10 @@ export function AskArcheDock() {
           ref={drawerRef}
           role="dialog"
           aria-label="Arché Studio Live Chat"
-          className="absolute bottom-[calc(100%+12px)] left-0 w-[360px] max-w-[92vw] rounded-[24px] bg-[#141413]/96 backdrop-blur-[24px] border border-white/15 p-0 shadow-[0_28px_70px_rgba(20,20,19,0.55)] text-[#F4F4EE] flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-3 duration-250"
+          className="absolute bottom-[calc(100%+12px)] left-0 w-[360px] max-w-[92vw] rounded-[24px] bg-[#141413]/96 backdrop-blur-[24px] border border-[#253821]/70 p-0 shadow-[0_28px_70px_rgba(20,32,18,0.55)] text-[#F4F4EE] flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-3 duration-250"
         >
           {/* Top Bar: AC square badge + Arché Studio + status + Close button */}
-          <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#0E0F0D]">
+          <div className="flex items-center justify-between p-4 border-b border-[#253821]/60 bg-gradient-to-br from-[#1A2418] to-[#0E0F0D]">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-[9px] bg-[#141413] flex items-center justify-center border border-[#9EE41A]/30 flex-shrink-0">
                 <AcMonogram size={18} onDark={true} />
@@ -439,7 +439,7 @@ export function AskArcheDock() {
       {/* =========================================================
           COMPACT FLOATING PILL (fixed bottom-5 left-5 z-50)
           ========================================================= */}
-      <div className="flex items-center gap-2.5 h-11 px-3.5 rounded-full bg-[#141413]/90 backdrop-blur-[20px] border border-white/14 shadow-[0_16px_36px_rgba(20,20,19,0.36)] select-none">
+      <div className="flex items-center gap-2.5 h-11 px-3.5 rounded-full bg-gradient-to-br from-[#1A2418]/95 to-[#10120F]/95 backdrop-blur-[20px] border border-[#253821]/80 shadow-[0_16px_36px_rgba(20,32,18,0.40)] select-none">
         {/* Pulsing #9EE41A dot + "Live chat" label */}
         <div
           onClick={() => setOpen((prev) => !prev)}

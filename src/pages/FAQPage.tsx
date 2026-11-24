@@ -4,6 +4,7 @@ import { useReveal, useParallax } from "../lib/reveal";
 import { attachCardTilt } from "../motion/cardTilt";
 import { ArcheConcierge } from "../components/ArcheConcierge";
 import { STUDIO_INFO } from "../data/services";
+import { gsap, prefersReducedMotion } from "../lib/gsap";
 
 export type FAQCategory =
   | "All"
@@ -138,16 +139,16 @@ function AccordionRow({
         className="w-full flex items-center justify-between p-5 sm:p-6 text-left gap-4 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#9EE41A]"
       >
         <div className="flex items-center gap-3 sm:gap-5 flex-1">
-          <span className="font-mono text-xs font-semibold text-[#868A82] w-6 flex-shrink-0">
+          <span className="font-mono text-sm font-bold text-[#2E322B] w-7 flex-shrink-0">
             {item.n}
           </span>
           <div className="flex flex-col gap-0.5">
-            <span className="font-mono text-[9.5px] uppercase tracking-wider text-[#72B314] font-medium">
+            <span className="font-mono text-[11px] uppercase tracking-wider text-[#5B8F0E] font-bold">
               {item.category}
             </span>
             <h3
-              className={`text-base sm:text-lg font-semibold tracking-tight transition-colors duration-200 ${
-                open ? "text-[#141413]" : "text-[#141413]/90 hover:text-[#141413]"
+              className={`text-lg sm:text-xl font-bold tracking-tight transition-colors duration-200 ${
+                open ? "text-[#0B0C0A]" : "text-[#0B0C0A]/95 hover:text-[#0B0C0A]"
               }`}
             >
               {item.q}
@@ -176,16 +177,16 @@ function AccordionRow({
       {open && (
         <div
           id={`faq-answer-${item.n}`}
-          className="px-5 pb-5 pt-1 sm:px-6 sm:pb-6 pl-14 sm:pl-16 border-t border-[#141413]/[0.06]"
+          className="px-5 pb-5 pt-1 sm:px-6 sm:pb-6 pl-14 sm:pl-16 border-t border-[#141413]/[0.08]"
         >
-          <p className="text-sm sm:text-base text-[#52554E] leading-relaxed max-w-[64ch]">
+          <p className="text-[15.5px] sm:text-[16px] text-[#1C1E1A] leading-[1.6] font-medium max-w-[66ch]">
             {item.a}
           </p>
           {item.q.includes("pricing") && (
-            <div className="mt-3">
+            <div className="mt-3.5">
               <a
                 href="#/pricing"
-                className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold uppercase tracking-wider text-[#141413] hover:text-[#72B314] transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs font-mono font-bold uppercase tracking-wider text-[#0B0C0A] hover:text-[#72B314] transition-colors"
               >
                 <span>Explore Full Pricing Architecture</span>
                 <span>→</span>
@@ -226,6 +227,34 @@ export function FAQPage() {
     setOpenIdx((prev) => (prev === idx ? null : idx));
   };
 
+  const guaranteesRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!guaranteesRef.current || prefersReducedMotion()) return;
+    const cards = guaranteesRef.current.querySelectorAll(".guarantee-card");
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        cards,
+        { y: 36, rotateX: 8, opacity: 0 },
+        {
+          y: 0,
+          rotateX: 0,
+          opacity: 1,
+          duration: 0.8,
+          stagger: 0.12,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: guaranteesRef.current,
+            start: "top 85%",
+            once: true,
+          },
+        }
+      );
+    }, guaranteesRef);
+
+    return () => ctx.revert();
+  }, []);
+
   // Generate valid FAQPage JSON-LD schema for SEO
   const faqSchema = useMemo(() => {
     return {
@@ -252,43 +281,43 @@ export function FAQPage() {
 
       <section
         id="faq-hub"
-        className="relative w-full bg-transparent text-[#0D0E0C] select-none pt-32 md:pt-36 pb-20 px-4 sm:px-6 md:px-12"
+        className="relative w-full bg-transparent text-[#F4F1E0] select-none pt-32 md:pt-36 pb-20 px-4 sm:px-6 md:px-12"
       >
         <div className="relative z-10 w-full max-w-[1240px] mx-auto flex flex-col gap-14 md:gap-18">
           {/* =========================================================
               HEADER & EYEBROW BLOCK
               ========================================================= */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-[#141413]/10">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-white/10">
             <div>
               <div className="mb-4">
                 <div className="glass-eyebrow-pill">
                   <span className="h-[5px] w-[5px] rounded-full bg-[#84CC16] shadow-[0_0_8px_#84CC16] flex-shrink-0" />
-                  <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#232620]">
+                  <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#F4F1E0]">
                     ARCHÉ CREATIVE STUDIOS · KNOWLEDGE &amp; AI CONCIERGE
                   </span>
                 </div>
               </div>
 
               <h1
-                className="text-[clamp(2.5rem,4.5vw,4.25rem)] font-display font-bold tracking-[-0.038em] leading-[0.98] text-[#11120F]"
+                className="text-[clamp(2.5rem,4.5vw,4.25rem)] font-display font-bold tracking-[-0.038em] leading-[0.98] text-[#F4F1E0]"
                 style={{
                   fontFamily: "'Inter Tight', sans-serif",
                   fontVariationSettings: "'wght' 700",
                   fontWeight: 700,
-                  color: "#11120F",
+                  color: "#F4F1E0",
                   textShadow: "none",
                 }}
               >
-                <span className="block text-[#11120F]">
+                <span className="block text-[#F4F1E0]">
                   <span className="shiny-ink-text">Clear answers.</span>
                 </span>
-                <span className="block mt-1 text-[#63685E]">
+                <span className="block mt-1 text-[#92998D]">
                   <span className="headline-secondary-shine">Zero ambiguity.</span>
                 </span>
               </h1>
             </div>
 
-            <p className="text-sm sm:text-base text-[#595C56] max-w-[44ch] leading-relaxed">
+            <p className="text-sm sm:text-base text-[#C9CEC3] max-w-[44ch] leading-relaxed">
               Search our complete agency knowledge base or interact directly with our AI Concierge grounded in live INR rates, scopes, and turnaround SLAs.
             </p>
           </div>
@@ -304,11 +333,11 @@ export function FAQPage() {
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
                   <span className="h-[6px] w-[6px] rounded-full bg-[#72B314] animate-pulse" />
-                  <span className="font-mono text-xs font-semibold uppercase tracking-wider text-[#141413]">
+                  <span className="font-mono text-xs font-semibold uppercase tracking-wider text-[#F4F1E0]">
                     Arché Studio Concierge · Grounded AI Engine
                   </span>
                 </div>
-                <span className="font-mono text-[11px] text-[#868A82]">
+                <span className="font-mono text-[11px] text-[#92998D]">
                   Real-Time Rates &amp; Scopes
                 </span>
               </div>
@@ -319,26 +348,27 @@ export function FAQPage() {
 
             {/* BOTTOM BLOCK: Search + Category Pills + Categorized Accordions */}
             <div className="w-full max-w-[980px] mx-auto flex flex-col gap-6">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs font-semibold uppercase tracking-wider text-[#141413]">
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center gap-2.5">
+                  <span className="h-2 w-2 rounded-full bg-[#72B314] shadow-[0_0_8px_#72B314] flex-shrink-0" />
+                  <h2 className="text-3xl md:text-4xl font-bold text-[#F4F1E0] tracking-tight">
                     Frequently Asked Questions
-                  </span>
+                  </h2>
                 </div>
-                <p className="text-xs sm:text-sm text-[#595C56]">
+                <p className="text-base text-[#D4D9CD] leading-relaxed max-w-[62ch]">
                   Filter by category or search verified answers covering contracts, delivery SLAs, and system integrations.
                 </p>
               </div>
 
               {/* Search Input Bar */}
               <div className="relative flex items-center">
-                <span className="absolute left-4 text-[#868A82] pointer-events-none">
+                <span className="absolute left-4 text-[#2E322B] pointer-events-none">
                   <svg
                     className="w-4 h-4"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
-                    strokeWidth="2"
+                    strokeWidth="2.2"
                   >
                     <path
                       strokeLinecap="round"
@@ -352,13 +382,13 @@ export function FAQPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search pricing, timelines, AI, revisions, CRM, ownership..."
-                  className="w-full pl-11 pr-10 py-3.5 rounded-2xl bg-[#F4F1E0]/85 text-[#141413] placeholder-[#868A82] text-base sm:text-sm font-sans border border-[#141413]/12 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#72B314]/50 focus:border-[#72B314] transition-all duration-200"
+                  className="w-full pl-11 pr-10 py-3.5 rounded-2xl bg-[#F4F1E0] text-[#0B0C0A] placeholder-[#2E322B]/75 text-base sm:text-[15px] font-medium border border-[#141413]/15 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#72B314]/50 focus:border-[#72B314] transition-all duration-200"
                 />
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-3.5 p-1 text-[#868A82] hover:text-[#141413] cursor-pointer"
+                    className="absolute right-3.5 p-1 text-[#2E322B] hover:text-[#0B0C0A] cursor-pointer"
                     title="Clear search"
                   >
                     <svg
@@ -385,10 +415,10 @@ export function FAQPage() {
                     key={cat}
                     type="button"
                     onClick={() => setSelectedCategory(cat)}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-medium tracking-wide transition-all duration-200 cursor-pointer whitespace-nowrap active:scale-[0.97] ${
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-mono font-semibold tracking-wide transition-all duration-200 cursor-pointer whitespace-nowrap active:scale-[0.97] ${
                       selectedCategory === cat
-                        ? "bg-[#141413] text-[#FBFBF6] shadow-sm border border-[#141413]"
-                        : "bg-[#F4F1E0]/80 text-[#595C56] hover:bg-[#F4F1E0] hover:text-[#141413] border border-[#141413]/10"
+                        ? "bg-[#0B0C0A] text-[#FBFBF6] shadow-sm border border-[#0B0C0A]"
+                        : "bg-[#F4F1E0] text-[#1C1E1A] hover:bg-white hover:text-[#0B0C0A] border border-[#141413]/12"
                     }`}
                   >
                     {cat}
@@ -397,12 +427,12 @@ export function FAQPage() {
               </div>
 
               {/* Accordion Count & State Indicator */}
-              <div className="flex items-center justify-between px-1 text-xs font-mono text-[#868A82]">
+              <div className="flex items-center justify-between px-1 text-[13px] font-mono text-[#2E322B] font-semibold">
                 <span>
                   Showing {filteredItems.length} of {FULL_FAQ_DATA.length} answers
                 </span>
                 {selectedCategory !== "All" && (
-                  <span className="text-[#72B314]">Category: {selectedCategory}</span>
+                  <span className="text-[#72B314] font-bold">Category: {selectedCategory}</span>
                 )}
               </div>
 
@@ -418,8 +448,8 @@ export function FAQPage() {
                     />
                   ))
                 ) : (
-                  <div className="p-8 rounded-2xl bg-[#F4F1E0]/60 border border-[#141413]/10 text-center">
-                    <p className="font-sans text-sm text-[#595C56]">
+                  <div className="p-8 rounded-2xl bg-[#F4F1E0] border border-[#141413]/15 text-center">
+                    <p className="font-sans text-[15.5px] font-medium text-[#1C1E1A]">
                       No answers matching "{searchQuery}". Try asking our AI Assistant above!
                     </p>
                     <button
@@ -428,7 +458,7 @@ export function FAQPage() {
                         setSearchQuery("");
                         setSelectedCategory("All");
                       }}
-                      className="mt-3 text-xs font-mono text-[#72B314] hover:underline cursor-pointer"
+                      className="mt-3 text-xs font-mono font-bold text-[#72B314] hover:underline cursor-pointer"
                     >
                       Reset filters
                     </button>
@@ -441,34 +471,40 @@ export function FAQPage() {
           {/* =========================================================
               4-PILLAR COMMERCIAL GUARANTEES STRIP
               ========================================================= */}
-          <div className="flex flex-col gap-5 pt-6 border-t border-[#141413]/10">
-            <div className="flex items-center gap-2">
-              <span className="h-[5px] w-[5px] rounded-full bg-[#72B314]" />
-              <span className="font-mono text-xs font-semibold uppercase tracking-wider text-[#141413]">
-                The Studio Standard · 04 Commercial Guarantees
-              </span>
+          <div
+            ref={guaranteesRef}
+            className="flex flex-col gap-5 pt-6 border-t border-white/10"
+            style={{ perspective: "1000px" }}
+          >
+            <div className="mb-2">
+              <div className="glass-eyebrow-pill">
+                <span className="h-[5px] w-[5px] rounded-full bg-[#84CC16] shadow-[0_0_8px_#84CC16] flex-shrink-0" />
+                <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#F4F1E0]">
+                  The Studio Standard · 04 Commercial Guarantees
+                </span>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
               {STUDIO_GUARANTEES.map((g) => (
                 <div
                   key={g.n}
-                  className="frosted-ivory-card arche-glow-card shiny-border rounded-2xl p-5 sm:p-6 flex flex-col justify-between transition-all duration-200"
+                  className="guarantee-card frosted-ivory-card arche-glow-card shiny-border rounded-2xl p-5 sm:p-6 flex flex-col justify-between transition-all duration-200"
                   style={{
                     background: "#F4F1E0",
-                    border: "1px solid rgba(20, 20, 19, 0.10)",
+                    border: "1px solid rgba(20, 20, 19, 0.12)",
                     boxShadow:
                       "inset 0 1px 0 rgba(255, 253, 244, 0.92), 0 4px 16px -4px rgba(20, 20, 19, 0.04)",
                   }}
                 >
                   <div>
-                    <span className="font-mono text-xs font-bold text-[#868A82]">
+                    <span className="font-mono text-[13px] font-bold text-[#2E322B]">
                       {g.n} ·
                     </span>
-                    <h4 className="text-base font-semibold text-[#141413] tracking-tight mt-1 mb-2">
+                    <h4 className="text-[18px] sm:text-[19px] font-bold text-[#0B0C0A] tracking-tight mt-1.5 mb-2 leading-snug">
                       {g.title}
                     </h4>
-                    <p className="text-xs sm:text-sm text-[#595C56] leading-relaxed">
+                    <p className="text-[15px] font-medium text-[#1C1E1A] leading-relaxed">
                       {g.desc}
                     </p>
                   </div>
@@ -489,17 +525,17 @@ export function FAQPage() {
                 "inset 0 1px 0 rgba(255, 253, 244, 0.92), 0 10px 28px -10px rgba(20, 20, 19, 0.08)",
             }}
           >
-            <div className="flex flex-col gap-1 text-center md:text-left">
-              <div className="flex items-center justify-center md:justify-start gap-2">
+            <div className="flex flex-col gap-1.5 text-center md:text-left">
+              <div className="flex items-center justify-center md:justify-start gap-2.5">
                 <span className="h-2 w-2 rounded-full bg-[#72B314] animate-pulse" />
-                <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-[#141413]">
+                <h3 className="text-[20px] md:text-[22px] font-bold text-[#0B0C0A] tracking-tight">
                   Still have a specific question?
-                </span>
+                </h3>
               </div>
-              <p className="text-sm text-[#595C56] max-w-[46ch]">
+              <p className="text-[15px] font-medium text-[#1C1E1A] max-w-[48ch] leading-relaxed">
                 Talk directly with the senior engineers and creative directors building your system.
               </p>
-              <span className="font-mono text-[10.5px] text-[#868A82]">
+              <span className="font-mono text-[13.5px] font-semibold text-[#2E322B] mt-0.5">
                 Replies within 1 working day · Zero sales pressure
               </span>
             </div>
@@ -525,7 +561,7 @@ export function FAQPage() {
 
               <a
                 href={`mailto:${STUDIO_INFO.email}`}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-transparent text-[#595C56] hover:text-[#141413] font-mono text-xs font-medium tracking-wide transition-colors cursor-pointer"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/70 text-[#141413] border border-[#141413]/15 hover:border-[#141413]/40 hover:bg-white font-mono text-xs font-semibold tracking-wide transition-all shadow-sm active:scale-[0.97] cursor-pointer"
               >
                 <span>Email Us</span>
               </a>

@@ -212,7 +212,7 @@ export function Chapters() {
     <section
       ref={rootRef}
       id="services"
-      className="relative w-full bg-transparent text-[#0D0E0C] pt-12 pb-6 px-4 sm:px-6 md:px-12 select-none overflow-x-clip"
+      className="relative w-full bg-transparent text-[#F4F1E0] pt-12 pb-6 px-4 sm:px-6 md:px-12 select-none overflow-x-clip"
     >
       <div className="relative z-10 w-full max-w-[1240px] mx-auto">
         {/* =========================================================
@@ -223,31 +223,31 @@ export function Chapters() {
           <div className="mb-4 flex justify-center">
             <div className="glass-eyebrow-pill">
               <span className="h-[5px] w-[5px] rounded-full bg-[#84CC16] shadow-[0_0_8px_#84CC16] flex-shrink-0" />
-              <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#232620]">
+              <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#F4F1E0]">
                 CAPABILITIES · 04 CONNECTED VERTICALS
               </span>
             </div>
           </div>
 
           <h2
-            className="text-[clamp(2.75rem,5vw,4.5rem)] font-bold tracking-[-0.038em] leading-[0.98] mb-4 text-[#11120F]"
+            className="text-[clamp(2.75rem,5vw,4.5rem)] font-bold tracking-[-0.038em] leading-[0.98] mb-4 text-[#F4F1E0]"
             style={{
               fontFamily: "'Inter Tight', sans-serif",
               fontVariationSettings: "'wght' 700",
               fontWeight: 700,
-              color: "#11120F",
+              color: "#F4F1E0",
               textShadow: "none",
             }}
           >
-            <span className="block text-[#11120F]">
+            <span className="block text-[#F4F1E0]">
               <span className="shiny-ink-text">Four verticals.</span>
             </span>
-            <span className="block mt-1 text-[#63685E]">
+            <span className="block mt-1 text-[#92998D]">
               <span className="headline-secondary-shine">Built as one system.</span>
             </span>
           </h2>
 
-          <p className="text-[clamp(15px,1.25vw,18px)] text-[#484C45] max-w-[54ch] mx-auto leading-relaxed font-sans">
+          <p className="text-[clamp(15px,1.25vw,18px)] text-[#C9CEC3] max-w-[54ch] mx-auto leading-relaxed font-sans">
             Cinema film, interactive web, autonomous AI agents, and operational automation. Engineered as connected components that multiply impact.
           </p>
         </div>
@@ -270,32 +270,33 @@ export function Chapters() {
                 top: STEPPED_TOPS[idx],
                 zIndex: (idx + 1) * 10,
                 background: "#F4F1E0",
+                border: "1px solid rgba(24, 36, 22, 0.12)",
                 boxShadow:
                   idx === 0
-                    ? "inset 0 1px 0 rgba(255, 253, 244, 0.92), 0 10px 28px -14px rgba(20, 20, 19, 0.08)"
-                    : "inset 0 1px 0 rgba(255, 253, 244, 0.92), 0 -14px 36px -10px rgba(20, 20, 19, 0.09), 0 16px 40px -16px rgba(20, 20, 19, 0.10)",
+                    ? "inset 0 1px 0 rgba(255, 253, 244, 0.92), 0 20px 44px -14px rgba(24, 36, 22, 0.24), 0 4px 12px -2px rgba(24, 36, 22, 0.10)"
+                    : "inset 0 1px 0 rgba(255, 253, 244, 0.92), 0 -14px 36px -10px rgba(24, 36, 22, 0.14), 0 20px 44px -14px rgba(24, 36, 22, 0.24)",
               }}
               className="sticky-service-card frosted-ivory-card arche-glow-card shiny-border w-full max-w-[1220px] mx-auto rounded-[28px] p-6 sm:p-8 lg:p-10 transition-all duration-300 flex flex-col gap-8"
             >
               {/* Card Header Top Row */}
-              <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-[#141413]/[0.08]">
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-[#182416]/[0.08]">
                 <div>
-                  <div className="flex items-center gap-2 mb-2 font-mono text-[11px] font-semibold tracking-widest text-[#868A82] uppercase">
-                    <span className="text-[#141413] font-bold">{svc.n} ·</span>
+                  <div className="flex items-center gap-2 mb-2 font-mono text-[12px] font-bold tracking-widest text-[#2E322B] uppercase">
+                    <span className="text-[#0B0C0A] font-bold">{svc.n} ·</span>
                     <span>{svc.roomName}</span>
                   </div>
 
-                  <h3 className="text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-[-0.025em] leading-[1.15] text-[#141413]">
+                  <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-[-0.025em] leading-[1.15] text-[#0B0C0A]">
                     {svc.headline}
                   </h3>
 
-                  <p className="text-sm sm:text-base text-[#595C56] max-w-[58ch] leading-relaxed mt-2">
+                  <p className="text-[16px] text-[#1C1E1A] font-medium max-w-[58ch] leading-[1.6] mt-2">
                     {svc.desc}
                   </p>
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-shrink-0">
-                  <div className="flex flex-wrap items-center gap-2 font-sans text-[12.5px] font-normal text-[#52554E]">
+                  <div className="flex flex-wrap items-center gap-2 font-sans text-[13.5px] font-semibold text-[#1C1E1A]">
                     {svc.highlights.map((h, i) => (
                       <span key={h} className="inline-flex items-center gap-2">
                         {i > 0 && <span className="h-1.5 w-1.5 rounded-full bg-[#72B314]" />}

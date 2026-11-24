@@ -6,6 +6,8 @@ import { attachCardTilt } from "../motion/cardTilt";
 interface MetricItem {
   n: string;
   stat: string;
+  target: number;
+  format: string;
   label: string;
   sub: string;
 }
@@ -14,24 +16,32 @@ const METRICS: MetricItem[] = [
   {
     n: "01",
     stat: "4",
+    target: 4,
+    format: "{val}",
     label: "Disciplines",
     sub: "Cinema, Code, Neural & Flow engineered under one roof.",
   },
   {
     n: "02",
     stat: "< 14",
+    target: 14,
+    format: "< {val}",
     label: "Days",
     sub: "Rapid staging links with zero radio silence from kickoff.",
   },
   {
     n: "03",
     stat: "24/7",
+    target: 24,
+    format: "{val}/7",
     label: "AI Coverage",
     sub: "Autonomous intake, qualification, and routing around the clock.",
   },
   {
     n: "04",
     stat: "100%",
+    target: 100,
+    format: "{val}%",
     label: "Custom Built",
     sub: "Yours to own with zero locked vendor templates or recurring fee traps.",
   },
@@ -82,15 +92,9 @@ const CONVICTIONS: ConvictionItem[] = [
  * - Paired with 3 clean horizontal architectural conviction cards below it
  * - Duplicate server photo and standalone metrics removed
  */
-const DIFF_INTRO_WORDS =
-  "We eliminated agency bloat, fragmented freelancers, and vague retainer hours. A single multidisciplinary studio built to move faster and convert better.".split(
-    " "
-  );
-
 export function TheStudioDifference() {
   const rootRef = useRef<HTMLElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const introStatementRef = useRef<HTMLParagraphElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<HTMLDivElement>(null);
 
@@ -138,28 +142,7 @@ export function TheStudioDifference() {
         );
       }
 
-      // 2b. Scroll-lit word-by-word intro statement (#B4B9AE -> #0E100C via scrub: 0.5)
-      if (introStatementRef.current) {
-        const words = introStatementRef.current.querySelectorAll(".diff-statement-word");
-        gsap.fromTo(
-          words,
-          { color: "#B4B9AE" },
-          {
-            color: "#0E100C",
-            duration: 1,
-            stagger: 0.04,
-            ease: "none",
-            scrollTrigger: {
-              trigger: introStatementRef.current,
-              start: "top 85%",
-              end: "bottom 55%",
-              scrub: 0.5,
-            },
-          }
-        );
-      }
-
-      // 3. Stat strip subtle reveal
+      // 3. Stat strip subtle reveal + live tabular count-up + hairline draw
       if (strip) {
         gsap.fromTo(
           strip,
@@ -176,19 +159,59 @@ export function TheStudioDifference() {
             },
           }
         );
+
+        const hairline = strip.querySelector(".stat-strip-hairline");
+        if (hairline) {
+          gsap.fromTo(
+            hairline,
+            { scaleX: 0 },
+            {
+              scaleX: 1,
+              duration: 1.1,
+              ease: "power3.out",
+              scrollTrigger: {
+                trigger: strip,
+                start: "top 85%",
+                once: true,
+              },
+            }
+          );
+        }
+
+        const statCounters = strip.querySelectorAll<HTMLElement>("[data-stat-counter]");
+        statCounters.forEach((el) => {
+          const target = parseFloat(el.getAttribute("data-stat-target") || "0");
+          const format = el.getAttribute("data-stat-format") || "{val}";
+          const obj = { val: 0 };
+          gsap.to(obj, {
+            val: target,
+            duration: 1.4,
+            ease: "power2.out",
+            scrollTrigger: {
+              trigger: strip,
+              start: "top 85%",
+              once: true,
+            },
+            onUpdate: () => {
+              const current = Math.round(obj.val);
+              el.textContent = format.replace("{val}", String(current));
+            },
+          });
+        });
       }
 
-      // 4. Staggered conviction cards reveal
+      // 4. Staggered conviction cards reveal (3D perspective card rise)
       if (cards) {
         const cardUnits = cards.querySelectorAll(".conviction-card");
         gsap.fromTo(
           cardUnits,
-          { y: 36, opacity: 0 },
+          { y: 36, rotateX: 8, opacity: 0 },
           {
             y: 0,
+            rotateX: 0,
             opacity: 1,
             duration: 0.8,
-            stagger: 0.1,
+            stagger: 0.12,
             ease: "power3.out",
             scrollTrigger: {
               trigger: cards,
@@ -203,16 +226,11 @@ export function TheStudioDifference() {
     return () => ctx.revert();
   }, []);
 
-  // Tactile 3D micro-tilt + inner parallax on conviction cards & stat strip
+  // Tactile 3D micro-tilt + inner parallax on conviction cards
   useEffect(() => {
     const cleanups: (() => void)[] = [];
     if (cardsRef.current) {
       cardsRef.current.querySelectorAll<HTMLElement>(".conviction-card").forEach((c) => {
-        cleanups.push(attachCardTilt(c));
-      });
-    }
-    if (stripRef.current) {
-      stripRef.current.querySelectorAll<HTMLElement>("[data-stat-card]").forEach((c) => {
         cleanups.push(attachCardTilt(c));
       });
     }
@@ -223,7 +241,7 @@ export function TheStudioDifference() {
     <section
       ref={rootRef}
       id="difference"
-      className="relative w-full bg-transparent text-[#0D0E0C] py-14 md:py-20 px-6 md:px-12 select-none overflow-x-clip border-t border-[#0D0E0C]/[0.08]"
+      className="relative w-full bg-transparent text-[#F4F1E0] py-14 md:py-20 px-6 md:px-12 select-none overflow-x-clip border-t border-white/10"
     >
       <div className="relative z-10 w-full max-w-[1240px] mx-auto">
         {/* Asymmetric Header Split Lockup */}
@@ -234,7 +252,7 @@ export function TheStudioDifference() {
             <div className="mb-4">
               <div className="glass-eyebrow-pill">
                 <span className="h-[5px] w-[5px] rounded-full bg-[#84CC16] shadow-[0_0_8px_#84CC16] flex-shrink-0" />
-                <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#232620]">
+                <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#F4F1E0]">
                   THE STUDIO DIFFERENCE
                 </span>
               </div>
@@ -242,81 +260,75 @@ export function TheStudioDifference() {
 
             <h2
               ref={headingRef}
-              className="text-[clamp(2.75rem,5vw,4.5rem)] font-bold tracking-[-0.038em] leading-[0.98] text-left text-[#11120F]"
+              className="text-[clamp(2.75rem,5vw,4.5rem)] font-bold tracking-[-0.038em] leading-[0.98] text-left text-[#F4F1E0]"
               style={{
                 fontFamily: "'Inter Tight', sans-serif",
                 fontVariationSettings: "'wght' 700",
                 fontWeight: 700,
-                color: "#11120F",
+                color: "#F4F1E0",
                 textShadow: "none",
               }}
             >
               <span className="block overflow-hidden py-1">
-                <span className="editorial-line block text-[#11120F]">
+                <span className="editorial-line block text-[#F4F1E0]">
                   <span className="shiny-ink-text">Why ambitious</span>
                 </span>
               </span>
               <span className="block overflow-hidden py-1">
-                <span className="editorial-line block text-[#63685E]">
+                <span className="editorial-line block text-[#92998D]">
                   <span className="headline-secondary-shine">teams build with Arché.</span>
                 </span>
               </span>
             </h2>
           </div>
 
-          {/* Right 5 cols (cols 8-12): Bottom-aligned scroll-lit studio statement */}
+          {/* Right 5 cols (cols 8-12): Crisp Light Sage-Ivory Studio Statement */}
           <div className="lg:col-span-5 pb-1">
-            <p
-              ref={introStatementRef}
-              className="text-sm sm:text-base leading-relaxed text-left max-w-[46ch]"
-            >
-              {DIFF_INTRO_WORDS.map((w, i) => (
-                <span
-                  key={i}
-                  className="diff-statement-word inline-block mr-[0.28em] text-[#B4B9AE] will-change-[color]"
-                >
-                  {w}
-                </span>
-              ))}
+            <p className="text-sm sm:text-base leading-relaxed text-left max-w-[46ch] text-[#CBD1C5] font-sans font-normal">
+              We eliminated agency bloat, fragmented freelancers, and vague retainer hours. A single multidisciplinary studio built to move faster and convert better.
             </p>
           </div>
         </div>
 
-        {/* 1. ONE Clean Unified 4-Column Hairline-Divided Stat Strip */}
+        {/* 1. ONE Clean Unified 4-Column Hairline-Divided Stat Strip (Smoked Cypress Liquid Glass) */}
         <div
           ref={stripRef}
-          className="frosted-ivory-card arche-glow-card shiny-border grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 rounded-3xl overflow-hidden mb-10 sm:mb-14 border border-[#141413]/[0.08]"
+          className="smoked-cypress-glass arche-glow-card shiny-border relative grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 rounded-3xl overflow-hidden mb-10 sm:mb-14"
         >
+          <div className="stat-strip-hairline absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#9EE41A]/50 to-transparent origin-left z-10" />
           {METRICS.map((m, idx) => (
             <div
               key={m.n}
               data-stat-card="true"
-              className={`p-7 sm:p-8 flex flex-col justify-between min-h-[220px] transition-all ${
-                idx < 3 ? "lg:border-r border-[#141413]/[0.08]" : ""
-              } ${idx % 2 === 0 ? "sm:border-r lg:border-r-0 border-[#141413]/[0.08]" : ""} ${
-                idx < 2 ? "border-b sm:border-b-0 lg:border-b-0 border-[#141413]/[0.08]" : ""
+              className={`bg-transparent p-7 sm:p-8 flex flex-col justify-between min-h-[220px] transition-all ${
+                idx < 3 ? "lg:border-r border-white/10" : ""
+              } ${idx % 2 === 0 ? "sm:border-r lg:border-r-0 border-white/10" : ""} ${
+                idx < 2 ? "border-b sm:border-b-0 lg:border-b-0 border-white/10" : ""
               }`}
             >
               <div>
-                <div className="flex items-center justify-between font-mono text-[11px] tracking-widest uppercase pb-3 border-b border-[#141413]/[0.08] text-[#595C56]">
-                  <span className="font-bold text-[#141413]">{m.n}</span>
-                  <span className="text-[10px] tracking-wider text-[#8A8D86]">SPEC</span>
+                <div className="flex items-center justify-between font-mono text-[11px] tracking-widest uppercase pb-3 border-b border-white/10 text-[#C4CBC0]">
+                  <span className="font-bold text-[#F4F1E0]">{m.n}</span>
+                  <span className="text-[11px] tracking-wider text-[#92998D] font-semibold">SPEC</span>
                 </div>
 
                 <div className="mt-6">
                   <span
-                    className="block font-display text-[clamp(2.5rem,3.6vw,3.25rem)] font-bold tracking-[-0.035em] text-[#0D0E0C] leading-none"
+                    data-stat-counter="true"
+                    data-stat-target={m.target}
+                    data-stat-format={m.format}
+                    className="block font-display text-[clamp(2.5rem,3.6vw,3.25rem)] font-bold tracking-[-0.035em] text-[#F4F1E0] leading-none"
                     style={{ fontVariationSettings: "'wght' 700", fontWeight: 700 }}
                   >
                     {m.stat}
                   </span>
-                  <span className="block mt-2.5 text-[15px] font-semibold text-[#0D0E0C] tracking-tight">
+                  <span className="block mt-2.5 text-[16px] font-bold text-[#F4F1E0] tracking-tight">
                     {m.label}
                   </span>
                 </div>
               </div>
 
-              <p className="mt-5 text-xs text-[#595C56] leading-relaxed">
+              <p className="mt-5 text-[14px] text-[#C4CBC0] font-normal leading-relaxed">
                 {m.sub}
               </p>
             </div>
@@ -326,6 +338,7 @@ export function TheStudioDifference() {
         {/* 2. Three Clean Horizontal Architectural Conviction Cards */}
         <div
           ref={cardsRef}
+          style={{ perspective: "1000px" }}
           className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8"
         >
           {CONVICTIONS.map((c) => (
@@ -336,27 +349,27 @@ export function TheStudioDifference() {
             >
               <div>
                 <div className="flex items-center justify-between pb-4 border-b border-[#141413]/[0.08] mb-5 font-mono text-xs">
-                  <span className="text-[#141413] font-bold">{c.n} · CONVICTION</span>
-                  <span className="text-[#8A8D86] text-[11px] uppercase tracking-wider font-semibold">
+                  <span className="text-[#0B0C0A] font-bold">{c.n} · CONVICTION</span>
+                  <span className="text-[#2E322B] text-[12px] uppercase tracking-wider font-bold">
                     {c.meta}
                   </span>
                 </div>
 
-                <h3 className="text-xl sm:text-2xl font-bold tracking-[-0.025em] leading-[1.15] text-[#141413] mb-2.5">
+                <h3 className="text-xl sm:text-2xl font-bold tracking-[-0.025em] leading-[1.15] text-[#0B0C0A] mb-2.5">
                   {c.title}
                 </h3>
 
-                <p className="text-sm font-semibold text-[#141413] leading-relaxed mb-3">
+                <p className="text-[16px] font-bold text-[#0B0C0A] leading-relaxed mb-3">
                   {c.lead}
                 </p>
 
-                <p className="text-sm text-[#595C56] leading-relaxed">
+                <p className="text-[15.5px] text-[#1C1E1A] font-medium leading-[1.6]">
                   {c.desc}
                 </p>
               </div>
 
               <div className="pt-6 mt-6 border-t border-[#141413]/[0.08] flex items-center justify-between">
-                <span data-proof-cue className="font-mono text-[10.5px] uppercase tracking-widest text-[#595C56] font-semibold">
+                <span data-proof-cue className="font-mono text-[12px] uppercase tracking-widest text-[#2E322B] font-bold">
                   {c.proof}
                 </span>
                 <span className="h-1.5 w-1.5 rounded-full bg-[#9EE41A] shadow-[0_0_6px_#9EE41A]" />
