@@ -1,78 +1,95 @@
 import { chromium } from "playwright";
+import fs from "fs";
+import path from "path";
 
 async function measureParts() {
   const browser = await chromium.launch({
-    channel: 'chrome',
+    channel: "chrome",
     headless: true,
-    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+    args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
   });
-  const page = await browser.newPage();
-  await page.goto("http://localhost:5173/");
 
-  const parts = await page.evaluate(async () => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.src = "/arche%20logo.jpeg";
-      img.onload = () => {
-        const c = document.createElement("canvas");
-        c.width = img.width;
-        c.height = img.height;
-        const ctx = c.getContext("2d");
-        ctx.drawImage(img, 0, 0);
+  const page = await browser.newPage({ viewport: { width: 1200, height: 1000 } });
+  const logoPngB64 = "data:image/png;base64," + fs.readFileSync("public/arche logo.png").toString("base64");
 
-        // Entire artwork: x: 368 to 1768, y: 429 to 1610 (width 1400, height 1181)
-        // Let's analyze where A, C, and dot lie within this artwork box:
-        // Relative to artwork box:
-        // W = 1400, H = 1181.
-        // Let's locate the neck / transition between A and C:
-        // Around x = 1070 (in image coordinates).
-        // Relative to artwork box (left = 368):
-        // x_div = (1070 - 368) / 1400 = 702 / 1400 = 50.14% of the artwork width!
-        // The left 50.14% is A.
-        // The right 49.86% contains C and the central lime dot.
-        
-        // Where is the central lime dot?
-        // Let's find all high green/lime pixels (g > 150, r > 100, b < 100) inside the counter of C:
-        // In image coordinates:
-        const idata = ctx.getImageData(0, 0, img.width, img.height);
-        const data = idata.data;
-        let dotMinX = 2048, dotMinY = 2048, dotMaxX = 0, dotMaxY = 0;
-        let cMinX = 2048, cMinY = 2048, cMaxX = 0, cMaxY = 0;
+  const html = `<!DOCTYPE html><html><body><img id="png" src="${logoPngB64}" /></body></html>`;
+  fs.writeFileSync("scripts/measure-parts.html", html);
+  await page.goto(`file:///${path.resolve("scripts/measure-parts.html").replace(/\\/g, "/")}`);
+  await page.waitForLoadState("networkidle");
 
-        for (let y = 429; y <= 1610; y++) {
-          for (let x = 368; x <= 1768; x++) {
-            const idx = (y * 2048 + x) * 4;
-            const r = data[idx], g = data[idx+1], b = data[idx+2];
-            // Check for lime dot (circular spot near x: 1200..1400, y: 950..1150)
-            if (x >= 1200 && x <= 1400 && y >= 950 && y <= 1150) {
-              if (g > 160 && r > 120 && b < 100) {
-                if (x < dotMinX) dotMinX = x;
-                if (x > dotMaxX) dotMaxX = x;
-                if (y < dotMinY) dotMinY = y;
-                if (y > dotMaxY) dotMaxY = y;
-              }
-            }
+  const results = await page.evaluate(() => {
+    const img = document.getElementById("png");
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+    const data = ctx.getImageData(0, 0, img.naturalWidth, img.naturalHeight).data;
+
+    const W = img.naturalWidth;
+    const H = img.naturalHeight;
+
+    // Classify pixels
+    // Lime: g > 140 && g > r * 0.9 && b < 160 && (g - b) > 40
+    // A: ivory pixels on the left
+    // C: ivory pixels on the right
+    // Let's find the exact neck / boundary between A and C:
+    // Notice A and C meet where the crossbar of A touches or overlaps C.
+    // Let's inspect columns between x = 220 and x = 270 (normalized to 500)
+    const colStats = [];
+    for (let x = 200; x <= 300; x++) {
+      let ivory = 0;
+      let lime = 0;
+      for (let y = 135; y <= 364; y++) {
+        const idx = (y * W + x) * 4;
+        const a = data[idx + 3];
+        if (a > 20) {
+          const r = data[idx], g = data[idx+1], b = data[idx+2];
+          if (g > 140 && g > r * 0.9 && b < 160 && (g - b) > 40) {
+            lime++;
+          } else {
+            ivory++;
           }
         }
+      }
+      colStats.push({ x, ivory, lime, total: ivory + lime });
+    }
 
-        // Relative coordinates to artwork box [368, 429, 1400, 1181]:
-        resolve({
-          artworkBox: { minX: 368, minY: 429, w: 1400, h: 1181 },
-          dotBoxInImage: { minX: dotMinX, minY: dotMinY, maxX: dotMaxX, maxY: dotMaxY },
-          dotBoxRelPercent: {
-            x: ((dotMinX - 368) / 1400) * 100,
-            y: ((dotMinY - 429) / 1181) * 100,
-            w: ((dotMaxX - dotMinX + 1) / 1400) * 100,
-            h: ((dotMaxY - dotMinY + 1) / 1181) * 100,
-            cx: (((dotMinX + dotMaxX) / 2 - 368) / 1400) * 100,
-            cy: (((dotMinY + dotMaxY) / 2 - 429) / 1181) * 100
+    // Lime bounding box
+    let lx1 = W, ly1 = H, lx2 = 0, ly2 = 0;
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const idx = (y * W + x) * 4;
+        if (data[idx + 3] > 20) {
+          const r = data[idx], g = data[idx+1], b = data[idx+2];
+          if (g > 140 && g > r * 0.9 && b < 160 && (g - b) > 40) {
+            if (x < lx1) lx1 = x;
+            if (x > lx2) lx2 = x;
+            if (y < ly1) ly1 = y;
+            if (y > ly2) ly2 = y;
           }
-        });
-      };
-    });
+        }
+      }
+    }
+
+    return {
+      colStats,
+      lime: { lx1, ly1, lx2, ly2, w: lx2 - lx1 + 1, h: ly2 - ly1 + 1 }
+    };
   });
 
-  console.log("Parts:", JSON.stringify(parts, null, 2));
+  console.log("Lime BBox:", results.lime);
+  // Find local minimum in colStats
+  let minCol = results.colStats[0];
+  for (const c of results.colStats) {
+    if (c.total < minCol.total) {
+      minCol = c;
+    }
+  }
+  console.log("Local minimum between A and C in [200, 300]:", minCol);
+  console.log("All cols around minimum:");
+  console.log(results.colStats.filter(c => c.x >= 230 && c.x <= 270));
+
   await browser.close();
 }
 

@@ -15,6 +15,7 @@ node_modules/rollup/node_modules/
 .DS_Store
 *.log
 *.png
+!public/arche logo.png
 arche-preview*
 scripts/audit_artifacts/
 audit_deliverables/
@@ -32,4 +33,10 @@ scripts/test-*.mjs
 
 node_modules/
 dist/
+
+# Environment variables & secrets (NEVER commit keys to git)
+.env
+.env.local
+.env.*.local
+
 

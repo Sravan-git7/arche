@@ -1,12 +1,18 @@
+import { useEffect } from "react";
 import { Cursor } from "./components/Cursor";
 import { Intro } from "./components/Intro";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
+import { PreFooterCTA } from "./components/PreFooterCTA";
+import { GlobalStudioBackground } from "./components/GlobalStudioBackground";
+import { AskArcheDock } from "./components/AskArcheDock";
 import { Home } from "./pages/Home";
-import { ServiceDetail } from "./pages/ServiceDetail";
-import { ServicesIndex, WorkPage } from "./pages/Misc";
+import { ServicesIndexPage } from "./pages/ServicesIndexPage";
+import { ServicePage } from "./pages/ServicePage";
+import { WorkPage } from "./pages/Misc";
 import { PricingPage } from "./pages/PricingPage";
 import { ContactPage } from "./pages/Contact";
+import { FAQPage } from "./pages/FAQPage";
 import { RouteWipe, useRoute } from "./lib/router";
 import { SmoothScroll } from "./motion/SmoothScroll";
 import { useMagnetic } from "./lib/interact";
@@ -19,21 +25,49 @@ import { useMagnetic } from "./lib/interact";
  *   /services              services index
  *   /services/:slug        dedicated service pages
  *   /work                  portfolio index
+ *   /pricing               investment & pricing architecture
  *   /contact               start-a-project inquiry
  *
- * Page transitions run through <RouteWipe/>; smooth scroll via Lenis;
- * reveal grammar is booted per page so ScrollTriggers rebuild cleanly.
+ * All routes share the unified root App layout:
+ * - SmoothScroll (Lenis 60fps)
+ * - Global botanical green-mist + fluted-glass background (fixed inset-0 z-0)
+ * - Custom dual-contrast halo cursor
+ * - Header (nav-pill glass) & Footer
+ * - AskArcheDock (interactive live chat & WhatsApp partner dock)
  */
 export default function App() {
   useMagnetic();
   const route = useRoute();
 
+  // Global passive pointermove listener to update --mx and --my on .shiny-border elements at 60fps
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      const target = (e.target as HTMLElement | null)?.closest?.(
+        ".shiny-border, .arche-glow-card, .smoked-glass-cell, .frosted-crystal, .weighted-card, .tilt-card"
+      ) as HTMLElement | null;
+      if (!target) return;
+      const rect = target.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      target.style.setProperty("--mx", `${x}px`);
+      target.style.setProperty("--my", `${y}px`);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove, { passive: true });
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+    };
+  }, []);
+
   let page = <Home />;
-  if (route === "/services") page = <ServicesIndex />;
-  else if (route.startsWith("/services/")) page = <ServiceDetail slug={route.split("/")[2]} />;
+  if (route === "/services") page = <ServicesIndexPage />;
+  else if (route.startsWith("/services/")) page = <ServicePage slug={route.split("/")[2]} />;
   else if (route === "/pricing") page = <PricingPage />;
   else if (route === "/work") page = <WorkPage />;
   else if (route === "/contact") page = <ContactPage />;
+  else if (route === "/faq") page = <FAQPage />;
 
   return (
     <SmoothScroll>
@@ -41,7 +75,6 @@ export default function App() {
         className="skip-link"
         href="#main"
         onClick={(e) => {
-          // A real hash jump would be read as a route by the hash router.
           e.preventDefault();
           const main = document.getElementById("main");
           main?.focus({ preventScroll: true });
@@ -52,13 +85,17 @@ export default function App() {
       </a>
       <Intro />
       <Cursor />
+      <GlobalStudioBackground />
       <div className="film-grain" aria-hidden="true" />
       <RouteWipe />
       <Header />
-      <main id="main" key={route} tabIndex={-1} className="relative w-full">
+      <main id="main" key={route} tabIndex={-1} className="relative z-10 w-full">
         {page}
+        {route !== "/contact" && <PreFooterCTA />}
+        <Footer />
       </main>
-      <Footer />
+      {/* Global Grounded Live Chat & WhatsApp Dock — unified across all routes */}
+      <AskArcheDock />
     </SmoothScroll>
   );
 }

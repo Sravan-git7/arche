@@ -2,30 +2,39 @@ import { AcMonogram } from "./AcMonogram";
 
 /**
  * Arche wordmark. The symbol is the interwoven AC monogram, set against the grotesk logotype.
- * A single accent square marks the "system active" state, echoing the node language used site-wide.
+ * Supports badge={true} for the obsidian rounded badge.
  */
 export function Wordmark({
-  size = 20,
+  size = 28,
+  monogramScale = 1.25,
   accent = true,
   onDark = false,
+  badge = true,
 }: {
   size?: number;
+  monogramScale?: number;
   accent?: boolean;
   onDark?: boolean;
+  badge?: boolean;
 }) {
+  const monogramH = Math.round(size * monogramScale);
+  const dotSize = Math.max(5, Math.round(size * 0.22));
+
   return (
     <span
-      className="inline-flex items-baseline gap-[9px] select-none"
+      className="inline-flex items-center gap-[10px] select-none"
       style={{ lineHeight: 1 }}
       aria-label="Arche"
     >
-      <AcMonogram size={Math.round(size * 0.82)} onDark={onDark} style={{ alignSelf: "center" }} />
+      <AcMonogram size={monogramH} onDark={onDark} badge={badge} style={{ alignSelf: "center" }} />
       <span
         style={{
           fontFamily: "var(--font-display)",
           fontSize: size,
-          fontWeight: 600,
-          letterSpacing: "-0.05em",
+          fontWeight: 700,
+          letterSpacing: "-0.04em",
+          color: onDark ? "#F4F4EE" : "#141413",
+          transition: "color .4s ease",
         }}
       >
         Arche
@@ -33,11 +42,13 @@ export function Wordmark({
       {accent && (
         <span
           style={{
-            width: 5,
-            height: 5,
-            background: "var(--accent)",
+            width: dotSize,
+            height: dotSize,
+            background: "#9EE41A",
+            borderRadius: "9999px",
+            boxShadow: "0 0 6px rgba(158,228,26,0.6)",
             alignSelf: "flex-start",
-            marginTop: 2,
+            marginTop: Math.max(2, Math.round(size * 0.08)),
           }}
         />
       )}

@@ -19,7 +19,7 @@ export function useMagnetic() {
     if (prefersReducedMotion() || !hasFinePointer()) return;
 
     const PROXIMITY = 40;
-    const MAX_SHIFT = 8;
+    const MAX_SHIFT = 4;
 
     let els: HTMLElement[] = [];
     const pairs = new Map<HTMLElement, { x: gsap.QuickToFunc; y: gsap.QuickToFunc }>();

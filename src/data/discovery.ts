@@ -117,9 +117,9 @@ export function processDiscoveryTurn(rawInput: string, prevState: DiscoveryState
   if (hasAny(norm, ["what does it cost", "how much", "pricing", "price", "quote", "cost", "rates"])) {
     return {
       lines: [
-        "Every project is scoped individually with a written proposal and fixed milestones before work begins.",
-        "Starting investment guidelines: Video ($2,400/batch), Web Development ($3,500), AI Agents ($2,800), AI Automation ($1,800).",
-        "Which service would you like to scope for a detailed written quote?",
+        "Every project is scoped to your exact deliverables—whether you start with a single vertical (Film, Web, AI Agents, or Automation) or a full connected system.",
+        "Share your requirements or book a 15-min call and we'll send a tailored scope within 24 hours.",
+        "Which vertical would you like to scope for a detailed proposal?",
       ],
       trigger: "contact",
       label: "Arche · Pricing & Scoping",

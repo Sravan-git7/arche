@@ -1,37 +1,89 @@
 import { useEffect, useRef, useState } from "react";
-import { Wordmark } from "./Wordmark";
-import { siteContent, services } from "../data/site";
 import { Link, useRoute } from "../lib/router";
 import { gsap, prefersReducedMotion } from "../lib/gsap";
 import { isIntroActive } from "./Intro";
+import { getLenis } from "../motion/SmoothScroll";
+import { AcMonogram } from "./AcMonogram";
+import { SlotButton } from "./SlotButton";
+
+interface NavItem {
+  label: string;
+  to: string;
+  hashTarget?: string;
+}
 
 export function Header() {
-  const nav = useRef<HTMLElement>(null);
-  const menuButton = useRef<HTMLButtonElement>(null);
-  const [open, setOpen] = useState(false);
-  const [svcOpen, setSvcOpen] = useState(false);
-  // A pointer hover opens the preview drawer; a click *pins* it so the
-  // visitor can leave the trigger with the pointer. Hover-open + plain
-  // toggle used to fight each other — the click always closed the drawer
-  // that the hover had just opened.
-  const [svcPinned, setSvcPinned] = useState(false);
-  const [solid, setSolid] = useState(false);
-  const last = useRef(0);
-  const route = useRoute();
+  const navRef = useRef<HTMLElement>(null);
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const closeTimerRef = useRef<number | null>(null);
 
-  // The nav fades in at t2.4 during intro; appears instantly if intro was already shown
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState<"services" | "work" | null>(null);
+
+  const route = useRoute();
+  const lastScrollY = useRef(0);
+
+  // Clear pending close timers
+  const clearCloseTimer = () => {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  };
+
+  const handleTriggerEnter = (type: "services" | "work") => {
+    clearCloseTimer();
+    setActiveDropdown(type);
+  };
+
+  const handleTriggerLeave = () => {
+    clearCloseTimer();
+    closeTimerRef.current = window.setTimeout(() => {
+      setActiveDropdown(null);
+    }, 180);
+  };
+
+  const handleMenuEnter = () => {
+    clearCloseTimer();
+  };
+
+  const handleMenuLeave = () => {
+    clearCloseTimer();
+    closeTimerRef.current = window.setTimeout(() => {
+      setActiveDropdown(null);
+    }, 180);
+  };
+
+  const toggleDropdown = (type: "services" | "work") => {
+    clearCloseTimer();
+    setActiveDropdown((prev) => (prev === type ? null : type));
+  };
+
+  // Close dropdown on click outside
   useEffect(() => {
-    if (!nav.current) return;
+    const onDocPointerDown = (e: PointerEvent) => {
+      if (!navRef.current?.contains(e.target as Node)) {
+        setActiveDropdown(null);
+      }
+    };
+    document.addEventListener("pointerdown", onDocPointerDown);
+    return () => document.removeEventListener("pointerdown", onDocPointerDown);
+  }, []);
+
+  // Intro coordination: fades in at t2.4 during intro; instant if intro was already shown
+  useEffect(() => {
+    if (!navRef.current) return;
     if (!isIntroActive()) {
-      gsap.set(nav.current, { opacity: 1 });
+      gsap.set(navRef.current, { opacity: 1, yPercent: 0 });
       return;
     }
 
-    gsap.set(nav.current, { opacity: 0 });
+    gsap.set(navRef.current, { opacity: 0, yPercent: 0 });
 
     const onNavReveal = () => {
-      if (nav.current) {
-        gsap.to(nav.current, { opacity: 1, duration: 0.6, ease: "power2.out" });
+      if (navRef.current) {
+        gsap.to(navRef.current, { opacity: 1, duration: 0.6, ease: "power2.out" });
       }
     };
 
@@ -44,371 +96,708 @@ export function Header() {
     };
   }, []);
 
+  // Smooth smart-hide on deep scroll down; reveal on scroll up
   useEffect(() => {
     const onScroll = () => {
       const y = window.scrollY;
-      setSolid(y > 40);
-      if (nav.current && !open) {
-        const hide = y > 260 && y > last.current;
-        gsap.to(nav.current, {
-          yPercent: hide ? -110 : 0,
-          duration: prefersReducedMotion() ? 0 : 0.55,
-          ease: "expo.out",
+      if (navRef.current && !mobileOpen) {
+        const hide = y > 300 && y > lastScrollY.current && !activeDropdown;
+        gsap.to(navRef.current, {
+          yPercent: hide ? -140 : 0,
+          duration: prefersReducedMotion() ? 0 : 0.45,
+          ease: "power3.out",
           overwrite: true,
         });
-        if (hide) {
-          setSvcOpen(false);
-          setSvcPinned(false);
-        }
       }
-      last.current = y;
+      lastScrollY.current = y;
     };
+
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [open]);
+  }, [mobileOpen, activeDropdown]);
 
+  // Lock body scroll while mobile drawer is open
   useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [open]);
+  }, [mobileOpen]);
 
-  // close everything on route change
+  // Close mobile drawer and dropdown on route change
   useEffect(() => {
-    setOpen(false);
-    setSvcOpen(false);
-    setSvcPinned(false);
+    setMobileOpen(false);
+    setActiveDropdown(null);
   }, [route]);
 
-  // Escape dismisses the pinned drawer and the mobile overlay.
+  // Escape key dismisses mobile drawer & dropdown
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      setSvcOpen(false);
-      setSvcPinned(false);
-      if (open) menuButton.current?.focus();
-      setOpen(false);
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (activeDropdown) {
+          setActiveDropdown(null);
+        }
+        if (mobileOpen) {
+          setMobileOpen(false);
+          menuBtnRef.current?.focus();
+        }
+      }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobileOpen, activeDropdown]);
 
-  const hoverServices = () => {
-    if (!svcPinned) setSvcOpen(true);
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const rect = el.getBoundingClientRect();
+    el.style.setProperty("--mx", `${e.clientX - rect.left}px`);
+    el.style.setProperty("--my", `${e.clientY - rect.top}px`);
   };
-  const leaveServices = () => {
-    if (!svcPinned) setSvcOpen(false);
+
+  const handlePointerLeave = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    el.style.setProperty("--mx", "-999px");
+    el.style.setProperty("--my", "-999px");
   };
-  const clickServices = () => {
-    if (svcOpen && svcPinned) {
-      setSvcOpen(false);
-      setSvcPinned(false);
-    } else {
-      setSvcOpen(true);
-      setSvcPinned(true);
+
+  const handleNavClick = (item: NavItem, e: React.MouseEvent) => {
+    setMobileOpen(false);
+    setActiveDropdown(null);
+    if (route === "/" && item.hashTarget) {
+      const el = document.getElementById(item.hashTarget);
+      if (el) {
+        e.preventDefault();
+        const lenis = getLenis();
+        if (lenis) {
+          lenis.scrollTo(el, { offset: -90, duration: 1.1 });
+        } else {
+          el.scrollIntoView({ behavior: "smooth" });
+        }
+      }
     }
   };
 
-  const { links, cta } = siteContent.nav;
-  const active = (to: string) =>
-    to === "/" ? route === "/" : route === to || route.startsWith(`${to}/`);
+  const isActive = (item: NavItem) => {
+    if (item.to === "/" && route === "/") return true;
+    if (item.to !== "/" && (route === item.to || route.startsWith(`${item.to}/`))) return true;
+    return false;
+  };
 
   return (
     <>
-      <nav
-        ref={nav}
-        className="fixed top-0 left-0 z-[100] w-full"
-        style={{
-          background: solid ? "rgba(244,242,237,0.82)" : "transparent",
-          backdropFilter: solid ? "blur(14px)" : "none",
-          borderBottom: `1px solid ${solid ? "var(--line)" : "transparent"}`,
-          transition: "background .5s var(--e-out), border-color .5s var(--e-out)",
-        }}
-        onMouseLeave={leaveServices}
-        onFocusCapture={() => { if (nav.current) gsap.to(nav.current, { yPercent: 0, duration: prefersReducedMotion() ? 0 : 0.25, overwrite: true }); }}
+      {/* Exact 3-Zone nav-pill glass Navbar Architecture (64px x 1220px) */}
+      <header
+        ref={navRef}
+        id="nav"
+        className="nav fixed top-4 left-0 right-0 z-50 px-4 md:px-8 flex justify-center pointer-events-none select-none transition-transform duration-300"
       >
-        <div className="wrap flex items-center justify-between py-[16px]">
-          <Link to="/" onClick={() => setOpen(false)} className="relative z-[110]">
-            <Wordmark />
-          </Link>
-
-          {/* desktop */}
-          <div className="hidden items-center gap-[34px] md:flex">
-            {links.map((l) =>
-              l.label === "Services" ? (
-                <button
-                  key={l.label}
-                  className="mono mono-fg relative flex items-center gap-[7px]"
-                  aria-expanded={svcOpen}
-                  aria-haspopup="true"
-                  aria-controls="nav-services-drawer"
-                  onMouseEnter={hoverServices}
-                  onFocus={hoverServices}
-                  onClick={clickServices}
-                >
-                  {l.label}
-                  <span
-                    style={{
-                      display: "inline-block",
-                      transition: "transform .4s var(--e-out)",
-                      transform: svcOpen ? "rotate(45deg)" : "none",
-                      fontSize: 13,
-                    }}
-                  >
-                    +
-                  </span>
-                  <ActiveDot on={active(l.to)} />
-                </button>
-              ) : (
-                <Link key={l.label} to={l.to} className="mono mono-fg relative">
-                  <span className="roll" style={{ height: 14 }}>
-                    <span>{l.label}</span>
-                    <span aria-hidden style={{ color: "var(--accent-ink)" }}>
-                      {l.label}
-                    </span>
-                  </span>
-                  <ActiveDot on={active(l.to)} />
-                </Link>
-              )
-            )}
-            <Link to={cta.to} className="btn" cursor="START" data-magnetic>
-              {cta.label} <span className="arw">→</span>
-            </Link>
-          </div>
-
-          {/* mobile toggle */}
-          <button
-            ref={menuButton}
-            aria-label={open ? "Close menu" : "Open menu"}
-            aria-expanded={open}
-            aria-controls="mobile-navigation"
-            onClick={() => setOpen((v) => !v)}
-            className="relative z-[110] flex h-[38px] w-[38px] flex-col items-center justify-center gap-[6px] md:hidden"
+        <div className="nav-wrap relative w-full max-w-[1220px] flex justify-center pointer-events-none">
+          <div
+            className="nav-pill glass pointer-events-auto relative w-full max-w-[1220px] h-[64px] px-7 rounded-full flex items-center justify-between"
+            data-liquid="pill"
+            onPointerMove={handlePointerMove}
+            onPointerLeave={handlePointerLeave}
           >
-            <span
-              className="block h-[1.5px] w-[22px]"
-              style={{
-                background: "var(--fg)",
-                transition: "transform .45s var(--e-out)",
-                transform: open ? "translateY(3.75px) rotate(45deg)" : "none",
+            {/* Zone 1: Left — Logo (h-9) */}
+            <Link
+              to="/"
+              onClick={() => {
+                setMobileOpen(false);
+                setActiveDropdown(null);
               }}
-            />
-            <span
-              className="block h-[1.5px] w-[22px]"
-              style={{
-                background: "var(--fg)",
-                transition: "transform .45s var(--e-out)",
-                transform: open ? "translateY(-3.75px) rotate(-45deg)" : "none",
-              }}
-            />
-          </button>
-        </div>
+              className="nav-logo flex items-center gap-2.5 group cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#9EE41A] rounded-full h-9"
+            >
+              <AcMonogram badge size={32} />
+              <span className="font-display text-[19px] font-bold tracking-[-0.04em] text-[#141413]">
+                Arche
+              </span>
+              <span className="h-1.5 w-1.5 rounded-full bg-[#9EE41A] shadow-[0_0_6px_rgba(158,228,26,0.9)] animate-pulse -ml-0.5" />
+            </Link>
 
-        {/* services drawer (desktop) — live idle previews; a thumbnail
-            click navigates directly to that dedicated service page */}
-        <div
-          id="nav-services-drawer"
-          className="hidden overflow-hidden md:block"
-          inert={!svcOpen}
-          style={{
-            maxHeight: svcOpen ? 340 : 0,
-            transition: "max-height .6s var(--e-inout)",
-            background: "rgba(244,242,237,0.94)",
-            backdropFilter: "blur(14px)",
-            borderBottom: svcOpen ? "1px solid var(--line)" : "none",
-          }}
-        >
-          <div className="wrap grid grid-cols-4 gap-[18px] py-[26px]">
-            {services.map((s, i) => (
-              <Link
-                key={s.slug}
-                to={`/services/${s.slug}`}
-                onClick={() => setSvcOpen(false)}
-                className="group flex flex-col gap-[8px] border-t pt-[14px] text-left"
-                style={{
-                  borderColor: "var(--line)",
-                  opacity: svcOpen ? 1 : 0,
-                  transform: svcOpen ? "translateY(0)" : "translateY(10px)",
-                  transition: `opacity .45s var(--e-out) ${80 + i * 55}ms, transform .45s var(--e-out) ${80 + i * 55}ms`,
-                }}
-                cursor="OPEN"
+            {/* Zone 2: Center — 5 Cleanly Spaced Nav Links + Work ▾ & Services ▾ Dropdown Triggers */}
+            <nav className="nav-links hidden md:flex items-center gap-8">
+              {/* 1. Work ▾ Dropdown Trigger */}
+              <div
+                className="relative py-1 flex items-center"
+                onPointerEnter={() => handleTriggerEnter("work")}
+                onPointerLeave={handleTriggerLeave}
               >
-                <span className="mono">{s.n}</span>
-                <span className="d4 transition-colors duration-300 group-hover:text-[var(--accent-ink)]">
-                  {s.title}
-                </span>
-                <span className="body-s">{s.tagline}</span>
-                {svcOpen && <ServicePreview slug={s.slug} />}
+                <button
+                  type="button"
+                  onClick={() => toggleDropdown("work")}
+                  aria-expanded={activeDropdown === "work"}
+                  aria-haspopup="true"
+                  className={`group relative py-1 font-sans text-[14.5px] font-medium tracking-normal transition-colors duration-200 flex items-center gap-1.5 cursor-pointer ${
+                    activeDropdown === "work" || isActive({ label: "Work", to: "/work" })
+                      ? "text-[#141413] font-semibold"
+                      : "text-[#141413]/85 hover:text-[#141413]"
+                  }`}
+                >
+                  <span>Work</span>
+                  <svg
+                    className={`w-3 h-3 text-[#141413]/60 transition-transform duration-250 ease-out ${
+                      activeDropdown === "work" ? "rotate-180 text-[#141413]" : "group-hover:text-[#141413]"
+                    }`}
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M2.5 4.5L6 8L9.5 4.5"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  {(activeDropdown === "work" || isActive({ label: "Work", to: "/work" })) && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#72B314] shadow-[0_0_6px_#9EE41A]" />
+                  )}
+                  <span className="absolute bottom-0 left-0 w-full h-[1.5px] bg-[#72B314] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]" />
+                </button>
+              </div>
+
+              {/* 2. Services ▾ Dropdown Trigger */}
+              <div
+                className="relative py-1 flex items-center"
+                onPointerEnter={() => handleTriggerEnter("services")}
+                onPointerLeave={handleTriggerLeave}
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleDropdown("services")}
+                  aria-expanded={activeDropdown === "services"}
+                  aria-haspopup="true"
+                  className={`group relative py-1 font-sans text-[14.5px] font-medium tracking-normal transition-colors duration-200 flex items-center gap-1.5 cursor-pointer ${
+                    activeDropdown === "services" || isActive({ label: "Services", to: "/services", hashTarget: "services" })
+                      ? "text-[#141413] font-semibold"
+                      : "text-[#141413]/85 hover:text-[#141413]"
+                  }`}
+                >
+                  <span>Services</span>
+                  <svg
+                    className={`w-3 h-3 text-[#141413]/60 transition-transform duration-250 ease-out ${
+                      activeDropdown === "services" ? "rotate-180 text-[#141413]" : "group-hover:text-[#141413]"
+                    }`}
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M2.5 4.5L6 8L9.5 4.5"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  {(activeDropdown === "services" || isActive({ label: "Services", to: "/services" })) && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#72B314] shadow-[0_0_6px_#9EE41A]" />
+                  )}
+                  <span className="absolute bottom-0 left-0 w-full h-[1.5px] bg-[#72B314] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]" />
+                </button>
+              </div>
+
+              {/* 3. Pricing Link */}
+              <Link
+                to="/pricing"
+                onClick={(e) => handleNavClick({ label: "Pricing", to: "/pricing" }, e)}
+                className={`group relative py-1 font-sans text-[14.5px] font-medium tracking-normal transition-colors duration-200 flex items-center gap-1.5 ${
+                  isActive({ label: "Pricing", to: "/pricing" }) ? "text-[#141413] font-semibold" : "text-[#141413]/85 hover:text-[#141413]"
+                }`}
+              >
+                <span>Pricing</span>
+                {isActive({ label: "Pricing", to: "/pricing" }) && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#72B314] shadow-[0_0_6px_#9EE41A]" />
+                )}
+                <span className="absolute bottom-0 left-0 w-full h-[1.5px] bg-[#72B314] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]" />
               </Link>
-            ))}
+
+              {/* 5. FAQ Link (Navigates cleanly to dedicated /faq Hub) */}
+              <Link
+                to="/faq"
+                onClick={(e) => handleNavClick({ label: "FAQ", to: "/faq" }, e)}
+                className={`group relative py-1 font-sans text-[14.5px] font-medium tracking-normal transition-colors duration-200 flex items-center gap-1.5 ${
+                  isActive({ label: "FAQ", to: "/faq" }) ? "text-[#141413] font-semibold" : "text-[#141413]/85 hover:text-[#141413]"
+                }`}
+              >
+                <span>FAQ</span>
+                {isActive({ label: "FAQ", to: "/faq" }) && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#72B314] shadow-[0_0_6px_#9EE41A]" />
+                )}
+                <span className="absolute bottom-0 left-0 w-full h-[1.5px] bg-[#72B314] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]" />
+              </Link>
+            </nav>
+
+            {/* Zone 3: Right — Nav Side (Sleek h-[42px] px-6 Pill Button + Mobile Hamburger) */}
+            <div className="nav-side flex items-center gap-3">
+              <div className="hidden md:flex items-center">
+                <SlotButton
+                  to="/contact"
+                  variant="primary"
+                  arrow="right"
+                  className="!h-[42px] !px-6 !text-[13px] !font-semibold !tracking-tight !bg-[#141413] !text-[#FBFBF6] hover:!shadow-[0_0_16px_rgba(158,228,26,0.35)] active:scale-95 transition-all"
+                >
+                  Start a Project
+                </SlotButton>
+              </div>
+
+              {/* Mobile Hamburger Toggle Button */}
+              <button
+                ref={menuBtnRef}
+                type="button"
+                aria-label={mobileOpen ? "Close menu" : "Open menu"}
+                aria-expanded={mobileOpen}
+                aria-controls="mobile-nav-drawer"
+                onClick={() => setMobileOpen((v) => !v)}
+                className="relative z-50 flex h-8 w-8 flex-col items-center justify-center gap-1.5 md:hidden text-[#141413] focus:outline-none"
+              >
+                <span
+                  className="block h-[1.5px] w-5 bg-[#141413] transition-transform duration-300 ease-out origin-center"
+                  style={{
+                    transform: mobileOpen ? "translateY(4px) rotate(45deg)" : "none",
+                  }}
+                />
+                <span
+                  className="block h-[1.5px] w-5 bg-[#141413] transition-transform duration-300 ease-out origin-center"
+                  style={{
+                    transform: mobileOpen ? "translateY(-3.5px) rotate(-45deg)" : "none",
+                  }}
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* =========================================================
+              FROSTED-ALABASTER GLASS MEGA-DROPDOWNS
+              - Triggered by Work ▾ and Services ▾
+              - Spring open with custom ease-out curve
+              - Emil Kowalski craft: safe diagonal hover bridge
+              ========================================================= */}
+          <div
+            ref={dropdownRef}
+            data-nav-megamenu
+            onPointerEnter={handleMenuEnter}
+            onPointerLeave={handleMenuLeave}
+            className={`absolute top-[72px] left-1/2 -translate-x-1/2 z-50 pointer-events-auto transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] origin-top ${
+              activeDropdown
+                ? "opacity-100 scale-100 translate-y-0 pointer-events-auto"
+                : "opacity-0 scale-95 -translate-y-2 pointer-events-none"
+            }`}
+            style={{
+              filter: "drop-shadow(0 24px 60px rgba(20, 20, 19, 0.14))",
+            }}
+          >
+            {/* SERVICES MEGA-DROPDOWN */}
+            {activeDropdown === "services" && (
+              <div
+                data-megamenu-panel="services"
+                className="w-[900px] max-w-[95vw] rounded-[24px] p-6 border border-[#141413]/[0.10] text-[#141413] grid grid-cols-1 lg:grid-cols-12 gap-6 shadow-[0_24px_56px_-14px_rgba(20,20,19,0.16),inset_0_1px_0_rgba(255,253,244,0.85)]"
+                style={{
+                  backgroundColor: "rgba(245, 242, 226, 0.98)",
+                  backdropFilter: "blur(28px) saturate(180%)",
+                  WebkitBackdropFilter: "blur(28px) saturate(180%)",
+                }}
+              >
+                {/* 2x2 Grid of 4 Real Services (8 cols) */}
+                <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {/* 01 · Video Editing */}
+                  <Link
+                    to="/services/video-editing"
+                    onClick={() => setActiveDropdown(null)}
+                    className="text-left group/item p-3.5 rounded-2xl bg-[#ECE9D6]/50 hover:bg-[#E5E8D5] border border-[#141413]/[0.06] hover:border-[#72B314]/30 shadow-[0_2px_8px_rgba(20,20,19,0.02)] hover:shadow-[0_8px_20px_rgba(20,20,19,0.05)] transition-all cursor-pointer flex flex-col justify-between block"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="font-mono text-[10px] font-bold tracking-widest text-[#72B314] uppercase">
+                          01 · VIDEO EDITING
+                        </span>
+                        <span className="font-mono text-xs text-[#141413]/30 group-hover/item:text-[#72B314] group-hover/item:translate-x-0.5 transition-all">
+                          →
+                        </span>
+                      </div>
+                      <h4 className="text-[14px] font-bold text-[#141413] group-hover/item:text-[#72B314] transition-colors tracking-tight">
+                        Video Editing
+                      </h4>
+                      <p className="text-[11.5px] text-[#595C56] leading-relaxed mt-1">
+                        Cinematic editing, colour grading, and sound design from raw footage to master.
+                      </p>
+                    </div>
+                  </Link>
+
+                  {/* 02 · Web Development */}
+                  <Link
+                    to="/services/web-development"
+                    onClick={() => setActiveDropdown(null)}
+                    className="text-left group/item p-3.5 rounded-2xl bg-[#ECE9D6]/50 hover:bg-[#E5E8D5] border border-[#141413]/[0.06] hover:border-[#72B314]/30 shadow-[0_2px_8px_rgba(20,20,19,0.02)] hover:shadow-[0_8px_20px_rgba(20,20,19,0.05)] transition-all cursor-pointer flex flex-col justify-between block"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="font-mono text-[10px] font-bold tracking-widest text-[#72B314] uppercase">
+                          02 · WEB DEVELOPMENT
+                        </span>
+                        <span className="font-mono text-xs text-[#141413]/30 group-hover/item:text-[#72B314] group-hover/item:translate-x-0.5 transition-all">
+                          →
+                        </span>
+                      </div>
+                      <h4 className="text-[14px] font-bold text-[#141413] group-hover/item:text-[#72B314] transition-colors tracking-tight">
+                        Web Development
+                      </h4>
+                      <p className="text-[11.5px] text-[#595C56] leading-relaxed mt-1">
+                        Fast, custom-built websites engineered to convert visitors into enquiries.
+                      </p>
+                    </div>
+                  </Link>
+
+                  {/* 03 · AI Chatbots */}
+                  <Link
+                    to="/services/ai-chatbots"
+                    onClick={() => setActiveDropdown(null)}
+                    className="text-left group/item p-3.5 rounded-2xl bg-[#ECE9D6]/50 hover:bg-[#E5E8D5] border border-[#141413]/[0.06] hover:border-[#72B314]/30 shadow-[0_2px_8px_rgba(20,20,19,0.02)] hover:shadow-[0_8px_20px_rgba(20,20,19,0.05)] transition-all cursor-pointer flex flex-col justify-between block"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="font-mono text-[10px] font-bold tracking-widest text-[#72B314] uppercase">
+                          03 · AI CHATBOTS
+                        </span>
+                        <span className="font-mono text-xs text-[#141413]/30 group-hover/item:text-[#72B314] group-hover/item:translate-x-0.5 transition-all">
+                          →
+                        </span>
+                      </div>
+                      <h4 className="text-[14px] font-bold text-[#141413] group-hover/item:text-[#72B314] transition-colors tracking-tight">
+                        AI Chatbots
+                      </h4>
+                      <p className="text-[11.5px] text-[#595C56] leading-relaxed mt-1">
+                        24/7 intelligent agents that qualify leads, book calls, and connect to your CRM.
+                      </p>
+                    </div>
+                  </Link>
+
+                  {/* 04 · AI Automation */}
+                  <Link
+                    to="/services/ai-automation"
+                    onClick={() => setActiveDropdown(null)}
+                    className="text-left group/item p-3.5 rounded-2xl bg-[#ECE9D6]/50 hover:bg-[#E5E8D5] border border-[#141413]/[0.06] hover:border-[#72B314]/30 shadow-[0_2px_8px_rgba(20,20,19,0.02)] hover:shadow-[0_8px_20px_rgba(20,20,19,0.05)] transition-all cursor-pointer flex flex-col justify-between block"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="font-mono text-[10px] font-bold tracking-widest text-[#72B314] uppercase">
+                          04 · AI AUTOMATION
+                        </span>
+                        <span className="font-mono text-xs text-[#141413]/30 group-hover/item:text-[#72B314] group-hover/item:translate-x-0.5 transition-all">
+                          →
+                        </span>
+                      </div>
+                      <h4 className="text-[14px] font-bold text-[#141413] group-hover/item:text-[#72B314] transition-colors tracking-tight">
+                        AI Automation
+                      </h4>
+                      <p className="text-[11.5px] text-[#595C56] leading-relaxed mt-1">
+                        End-to-end workflows syncing email, sheets, CRM, and Slack with zero manual copying.
+                      </p>
+                    </div>
+                  </Link>
+                </div>
+
+                {/* Right-side Soft Sage-Ivory Featured Card (4 cols) */}
+                <div
+                  className="lg:col-span-4 rounded-2xl p-5 text-left flex flex-col justify-between border border-[#72B314]/[0.22] text-[#141413] relative overflow-hidden shadow-[0_12px_28px_-8px_rgba(20,20,19,0.06),inset_0_1px_0_rgba(255,255,255,0.9)]"
+                  style={{
+                    background: "linear-gradient(155deg, #EFF4E3 0%, #E5EDD3 100%)",
+                  }}
+                >
+                  <div
+                    className="pointer-events-none absolute top-0 right-0 w-36 h-36 rounded-full blur-[48px] opacity-[0.08] bg-[#9EE41A]"
+                    aria-hidden="true"
+                  />
+                  <div className="relative z-10">
+                    <div className="inline-flex items-center gap-1.5 mb-2.5 px-2.5 py-1 rounded-full bg-[#72B314]/15 border border-[#72B314]/25">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#72B314] animate-pulse" />
+                      <span className="font-mono text-[9px] font-bold tracking-widest uppercase text-[#4C750D]">
+                        ONE CONNECTED SYSTEM
+                      </span>
+                    </div>
+                    <h4 className="text-[14px] font-semibold text-[#141413] leading-snug">
+                      All 4 disciplines built under one roof.
+                    </h4>
+                    <p className="text-[11.5px] text-[#595C56] leading-relaxed mt-2">
+                      Replace fragmented freelancers and separate vendors with one integrated engine.
+                    </p>
+                  </div>
+                  <Link
+                    to="/services"
+                    onClick={() => setActiveDropdown(null)}
+                    className="relative z-10 mt-5 pt-3 border-t border-[#72B314]/20 text-[12px] font-semibold text-[#4C750D] hover:text-[#325205] flex items-center justify-between group/cta cursor-pointer transition-colors"
+                  >
+                    <span>View all services (4)</span>
+                    <span className="font-mono text-xs group-hover/cta:translate-x-1 transition-transform">→</span>
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {/* WORK MEGA-DROPDOWN */}
+            {activeDropdown === "work" && (
+              <div
+                data-megamenu-panel="work"
+                className="w-[740px] max-w-[95vw] rounded-[24px] p-6 border border-[#141413]/[0.10] text-[#141413] flex flex-col gap-4 shadow-[0_24px_56px_-14px_rgba(20,20,19,0.16),inset_0_1px_0_rgba(255,253,244,0.85)]"
+                style={{
+                  backgroundColor: "rgba(245, 242, 226, 0.96)",
+                  backdropFilter: "blur(28px) saturate(180%)",
+                  WebkitBackdropFilter: "blur(28px) saturate(180%)",
+                }}
+              >
+                <div className="flex items-center justify-between pb-3 border-b border-[#141413]/[0.08]">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-[#72B314]" />
+                    <span className="font-mono text-[10.5px] font-bold tracking-wider uppercase text-[#595C56]">
+                      FEATURED INTERNAL BUILDS &amp; PROOFS
+                    </span>
+                  </div>
+                  <Link
+                    to="/work"
+                    onClick={() => setActiveDropdown(null)}
+                    className="font-mono text-[11px] font-medium text-[#141413]/70 hover:text-[#141413] flex items-center gap-1 group/all transition-colors"
+                  >
+                    <span>View all work (4)</span>
+                    <span className="group-hover/all:translate-x-0.5 transition-transform">→</span>
+                  </Link>
+                </div>
+
+                {/* 2x2 Grid of Builds */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <Link
+                    to="/work"
+                    onClick={() => setActiveDropdown(null)}
+                    className="group/card p-3.5 rounded-2xl bg-[#ECE9D6] hover:bg-[#E5E8D5] border border-[#141413]/[0.06] hover:border-[#72B314]/30 shadow-[0_2px_8px_rgba(20,20,19,0.03)] hover:shadow-[0_8px_20px_rgba(20,20,19,0.06)] transition-all cursor-pointer text-left block"
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-mono text-[9.5px] font-bold tracking-widest text-[#72B314] uppercase">
+                        FILM / COMMERCIAL
+                      </span>
+                      <span className="font-mono text-xs text-[#141413]/30 group-hover/card:text-[#72B314] group-hover/card:translate-x-0.5 transition-all">
+                        →
+                      </span>
+                    </div>
+                    <h4 className="text-[13.5px] font-semibold text-[#141413] group-hover/card:text-[#72B314] transition-colors">
+                      Retention Edit System
+                    </h4>
+                    <p className="text-[11.5px] text-[#595C56] leading-relaxed mt-1">
+                      High-velocity retention editing system designed for organic engagement.
+                    </p>
+                  </Link>
+
+                  <Link
+                    to="/work"
+                    onClick={() => setActiveDropdown(null)}
+                    className="group/card p-3.5 rounded-2xl bg-[#ECE9D6] hover:bg-[#E5E8D5] border border-[#141413]/[0.06] hover:border-[#72B314]/30 shadow-[0_2px_8px_rgba(20,20,19,0.03)] hover:shadow-[0_8px_20px_rgba(20,20,19,0.06)] transition-all cursor-pointer text-left block"
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-mono text-[9.5px] font-bold tracking-widest text-[#72B314] uppercase">
+                        CINEMA / NARRATIVE
+                      </span>
+                      <span className="font-mono text-xs text-[#141413]/30 group-hover/card:text-[#72B314] group-hover/card:translate-x-0.5 transition-all">
+                        →
+                      </span>
+                    </div>
+                    <h4 className="text-[13.5px] font-semibold text-[#141413] group-hover/card:text-[#72B314] transition-colors">
+                      Long-form Narrative Cut
+                    </h4>
+                    <p className="text-[11.5px] text-[#595C56] leading-relaxed mt-1">
+                      Cinema-grade commercial narrative cut with custom score &amp; audio master.
+                    </p>
+                  </Link>
+
+                  <Link
+                    to="/work"
+                    onClick={() => setActiveDropdown(null)}
+                    className="group/card p-3.5 rounded-2xl bg-[#ECE9D6] hover:bg-[#E5E8D5] border border-[#141413]/[0.06] hover:border-[#72B314]/30 shadow-[0_2px_8px_rgba(20,20,19,0.03)] hover:shadow-[0_8px_20px_rgba(20,20,19,0.06)] transition-all cursor-pointer text-left block"
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-mono text-[9.5px] font-bold tracking-widest text-[#72B314] uppercase">
+                        WEB / BESPOKE
+                      </span>
+                      <span className="font-mono text-xs text-[#141413]/30 group-hover/card:text-[#72B314] group-hover/card:translate-x-0.5 transition-all">
+                        →
+                      </span>
+                    </div>
+                    <h4 className="text-[13.5px] font-semibold text-[#141413] group-hover/card:text-[#72B314] transition-colors">
+                      Studio Site System
+                    </h4>
+                    <p className="text-[11.5px] text-[#595C56] leading-relaxed mt-1">
+                      Sub-35ms flagship with fluid gestures, 3D assets, and spatial layout.
+                    </p>
+                  </Link>
+
+                  <Link
+                    to="/work"
+                    onClick={() => setActiveDropdown(null)}
+                    className="group/card p-3.5 rounded-2xl bg-[#ECE9D6] hover:bg-[#E5E8D5] border border-[#141413]/[0.06] hover:border-[#72B314]/30 shadow-[0_2px_8px_rgba(20,20,19,0.03)] hover:shadow-[0_8px_20px_rgba(20,20,19,0.06)] transition-all cursor-pointer text-left block"
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-mono text-[9.5px] font-bold tracking-widest text-[#72B314] uppercase">
+                        AI / AUTOMATION
+                      </span>
+                      <span className="font-mono text-xs text-[#141413]/30 group-hover/card:text-[#72B314] group-hover/card:translate-x-0.5 transition-all">
+                        →
+                      </span>
+                    </div>
+                    <h4 className="text-[13.5px] font-semibold text-[#141413] group-hover/card:text-[#72B314] transition-colors">
+                      AI Ops Pipeline
+                    </h4>
+                    <p className="text-[11.5px] text-[#595C56] leading-relaxed mt-1">
+                      Autonomous multi-tool agent with live CRM routing and zero data loss.
+                    </p>
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      </nav>
+      </header>
 
-      {/* mobile overlay */}
+      {/* Clean Mobile Glass Overlay Drawer (< 768px) */}
       <div
-        id="mobile-navigation"
-        role="navigation"
-        aria-label="Mobile navigation"
-        className="fixed inset-0 z-[99] md:hidden"
-        aria-hidden={!open}
-        inert={!open}
-        style={{
-          background: "var(--bg)",
-          pointerEvents: open ? "auto" : "none",
-          clipPath: open ? "inset(0 0 0% 0)" : "inset(0 0 100% 0)",
-          transition: "clip-path .7s var(--e-inout)",
-        }}
+        id="mobile-nav-drawer"
+        aria-hidden={!mobileOpen}
+        className={`fixed inset-0 z-40 bg-[#F4F4EE]/95 backdrop-blur-2xl transition-all duration-300 md:hidden flex flex-col justify-between p-6 pt-24 ${
+          mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
       >
-        <div data-lenis-prevent="true" className="wrap flex h-full flex-col justify-between overflow-y-auto pt-[96px] pb-[30px]">
-          <div className="flex flex-col">
-            {links
-              .filter((l) => l.label !== "Services")
-              .map((l, i) => (
-                <MobileItem key={l.label} open={open} i={i}>
-                  <Link
-                    to={l.to}
-                    onClick={() => setOpen(false)}
-                    className="d3 block border-b py-[16px]"
-                    style={{ borderColor: "var(--line)" }}
-                  >
-                    {l.label}
-                  </Link>
-                </MobileItem>
-              ))}
-            <MobileItem open={open} i={2}>
-              <div className="flex items-center justify-between border-b pb-[6px] pt-[20px]" style={{ borderColor: "var(--line)" }}>
-                <span className="mono text-[11px] uppercase tracking-wider text-[var(--accent-ink)]">Services</span>
-                <Link to="/services" onClick={() => setOpen(false)} className="mono lnk text-[11px]">
-                  All services →
+        <div className="flex flex-col gap-6 overflow-y-auto max-h-[calc(100svh-140px)] pr-2">
+          <p className="font-mono text-[10.5px] uppercase tracking-widest text-[#5C5F59] pb-2 border-b border-[#141413]/10">
+            Navigation
+          </p>
+
+          <div className="flex flex-col gap-4">
+            {/* Work Item with Sub-links */}
+            <div className="flex flex-col gap-2">
+              <Link
+                to="/work"
+                onClick={() => setMobileOpen(false)}
+                className="text-2xl font-semibold text-[#141413] hover:text-[#9EE41A] transition-colors flex items-center justify-between"
+              >
+                <span>Work</span>
+                <span className="font-mono text-sm text-[#5C5F59]">→</span>
+              </Link>
+              <div className="grid grid-cols-2 gap-2 pl-2">
+                <Link
+                  to="/work"
+                  onClick={() => setMobileOpen(false)}
+                  className="text-xs text-[#595C56] hover:text-[#141413] py-1"
+                >
+                  Retention Edit
+                </Link>
+                <Link
+                  to="/work"
+                  onClick={() => setMobileOpen(false)}
+                  className="text-xs text-[#595C56] hover:text-[#141413] py-1"
+                >
+                  Narrative Cut
+                </Link>
+                <Link
+                  to="/work"
+                  onClick={() => setMobileOpen(false)}
+                  className="text-xs text-[#595C56] hover:text-[#141413] py-1"
+                >
+                  Studio Site
+                </Link>
+                <Link
+                  to="/work"
+                  onClick={() => setMobileOpen(false)}
+                  className="text-xs text-[#595C56] hover:text-[#141413] py-1"
+                >
+                  AI Ops
                 </Link>
               </div>
-            </MobileItem>
-            {services.map((s, i) => (
-              <MobileItem key={s.slug} open={open} i={3 + i}>
+            </div>
+
+            {/* Services Item with Sub-links */}
+            <div className="flex flex-col gap-2 pt-2 border-t border-[#141413]/[0.06]">
+              <Link
+                to="/services"
+                onClick={() => setMobileOpen(false)}
+                className="text-2xl font-semibold text-[#141413] hover:text-[#9EE41A] transition-colors flex items-center justify-between text-left"
+              >
+                <span>Services</span>
+                <span className="font-mono text-sm text-[#5C5F59]">→</span>
+              </Link>
+              <div className="grid grid-cols-2 gap-2 pl-2">
                 <Link
-                  to={`/services/${s.slug}`}
-                  onClick={() => setOpen(false)}
-                  className="group flex items-baseline justify-between border-b py-[13px]"
-                  style={{ borderColor: "var(--line)" }}
+                  to="/services/video-editing"
+                  onClick={() => setMobileOpen(false)}
+                  className="text-xs text-[#595C56] hover:text-[#141413] py-1 text-left"
                 >
-                  <div className="flex items-baseline gap-[14px]">
-                    <span className="mono mono-a">{s.n}</span>
-                    <span className="d4 group-hover:text-[var(--accent-ink)] transition-colors">{s.title}</span>
-                  </div>
-                  <span className="mono text-[var(--muted)] group-hover:translate-x-1 transition-transform">→</span>
+                  01 · Video Editing
                 </Link>
-              </MobileItem>
-            ))}
-          </div>
-          <div className="mt-[26px] flex flex-col gap-[14px]">
-            <Link to={cta.to} onClick={() => setOpen(false)} className="btn w-full justify-center" data-magnetic>
-              {cta.label} <span className="arw">→</span>
+                <Link
+                  to="/services/web-development"
+                  onClick={() => setMobileOpen(false)}
+                  className="text-xs text-[#595C56] hover:text-[#141413] py-1 text-left"
+                >
+                  02 · Web Dev
+                </Link>
+                <Link
+                  to="/services/ai-chatbots"
+                  onClick={() => setMobileOpen(false)}
+                  className="text-xs text-[#595C56] hover:text-[#141413] py-1 text-left"
+                >
+                  03 · AI Chatbots
+                </Link>
+                <Link
+                  to="/services/ai-automation"
+                  onClick={() => setMobileOpen(false)}
+                  className="text-xs text-[#595C56] hover:text-[#141413] py-1 text-left"
+                >
+                  04 · Automation
+                </Link>
+              </div>
+            </div>
+
+            {/* Remaining Nav Items */}
+            <Link
+              to="/#process"
+              onClick={(e) => handleNavClick({ label: "Process", to: "/#process", hashTarget: "process" }, e)}
+              className="text-2xl font-semibold text-[#141413] hover:text-[#9EE41A] transition-colors flex items-center justify-between pt-2 border-t border-[#141413]/[0.06]"
+            >
+              <span>Process</span>
+              <span className="font-mono text-sm text-[#5C5F59]">→</span>
             </Link>
-            <p className="mono">{siteContent.brand.discipline}</p>
+
+            <Link
+              to="/pricing"
+              onClick={(e) => handleNavClick({ label: "Pricing", to: "/pricing" }, e)}
+              className="text-2xl font-semibold text-[#141413] hover:text-[#9EE41A] transition-colors flex items-center justify-between"
+            >
+              <span>Pricing</span>
+              <span className="font-mono text-sm text-[#5C5F59]">→</span>
+            </Link>
+
+            <Link
+              to="/faq"
+              onClick={(e) => handleNavClick({ label: "FAQ", to: "/faq" }, e)}
+              className="text-2xl font-semibold text-[#141413] hover:text-[#9EE41A] transition-colors flex items-center justify-between"
+            >
+              <span>FAQ</span>
+              <span className="font-mono text-sm text-[#5C5F59]">→</span>
+            </Link>
           </div>
+        </div>
+
+        <div className="flex flex-col gap-4 pt-4 border-t border-[#141413]/10">
+          <Link
+            to="/contact"
+            onClick={() => setMobileOpen(false)}
+            className="w-full py-3.5 rounded-full bg-[#141413] text-[#F4F4EE] hover:text-[#9EE41A] font-bold text-center text-sm tracking-tight shadow-[0_4px_16px_rgba(20,20,19,0.15)] active:scale-98 transition-all"
+          >
+            Start a Project →
+          </Link>
+          <p className="font-mono text-[10px] text-center text-[#5C5F59] uppercase tracking-widest">
+            Arché Creative Studios · Technology Meets Creativity
+          </p>
         </div>
       </div>
     </>
-  );
-}
-
-/**
- * PROMPT 20 — live idle preview for the nav drawer. Each service gets a
- * small looping vignette of its idle state — enough motion to preview,
- * never the full interactive demo. Mounted only while the drawer is open.
- */
-function ServicePreview({ slug }: { slug: string }) {
-  if (slug === "video-editing") {
-    return (
-      <span className="relative mt-[4px] block h-[30px] w-full max-w-[96px] overflow-hidden rounded-[3px] border" style={{ borderColor: "var(--line)" }} aria-hidden>
-        <span className="absolute inset-0 flex items-center justify-center gap-[2px]">
-          {[6, 11, 8, 15, 10, 17, 12, 9, 14, 7].map((h, i) => (
-            <span
-              key={i}
-              className="tv-bar block w-[2px] rounded-full"
-              style={{ height: h, background: i === 5 ? "var(--accent-deep)" : "var(--line)", animationDelay: `${i * 80}ms` }}
-            />
-          ))}
-        </span>
-        <span className="tv-head absolute top-0 bottom-0 w-px" style={{ background: "var(--accent)" }} />
-      </span>
-    );
-  }
-  if (slug === "web-development") {
-    return (
-      <span className="mt-[4px] flex h-[30px] w-full max-w-[96px] flex-col justify-center gap-[3px]" aria-hidden>
-        <span className="tv-block-1 block h-[4px] w-[60%] rounded-full" style={{ background: "var(--line)" }} />
-        <span className="tv-block-2 block h-[9px] w-[80%] rounded-[2px]" style={{ background: "var(--line)" }} />
-        <span className="flex gap-[3px]">
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              className="tv-block-3 block h-[8px] flex-1 rounded-[2px]"
-              style={{ background: i === 1 ? "var(--accent-deep)" : "var(--line)", animationDelay: `${i * 120}ms`, opacity: i === 1 ? 0.6 : 1 }}
-            />
-          ))}
-        </span>
-      </span>
-    );
-  }
-  if (slug === "ai-chatbots") {
-    return (
-      <span className="mt-[4px] flex h-[30px] w-full max-w-[96px] flex-col justify-center gap-[4px]" aria-hidden>
-        <span className="tv-q block h-[7px] w-[55%] rounded-full" style={{ background: "var(--line)" }} />
-        <span className="tv-a ml-auto block h-[7px] w-[70%] rounded-full" style={{ background: "var(--accent-deep)" }} />
-        <span className="tv-q block h-[7px] w-[40%] rounded-full" style={{ background: "var(--line)", animationDelay: ".9s" }} />
-      </span>
-    );
-  }
-  return (
-    <span className="relative mt-[4px] block h-[30px] w-full max-w-[96px]" aria-hidden>
-      <svg viewBox="0 0 96 30" className="absolute inset-0 h-full w-full" fill="none">
-        <path d="M 12 6 L 84 6 L 84 24 L 12 24 Z" stroke="var(--line)" strokeWidth="1" />
-        {[
-          [12, 6],
-          [84, 6],
-          [84, 24],
-          [12, 24],
-        ].map(([x, y], i) => (
-          <circle key={i} cx={x} cy={y} r="2.4" fill="var(--bg)" stroke={i === 2 ? "var(--accent-deep)" : "var(--fg)"} strokeWidth="1" />
-        ))}
-        <circle className="tv-runner" r="2" fill="var(--accent)" style={{ offsetPath: 'path("M 12 6 L 84 6 L 84 24 L 12 24 Z")' }} />
-      </svg>
-    </span>
-  );
-}
-
-function ActiveDot({ on }: { on: boolean }) {
-  return (
-    <span
-      aria-hidden
-      style={{
-        position: "absolute",
-        left: "50%",
-        bottom: -9,
-        width: 4,
-        height: 4,
-        borderRadius: 99,
-        background: "var(--accent-deep)",
-        transform: `translateX(-50%) scale(${on ? 1 : 0})`,
-        transition: "transform .4s var(--e-out)",
-      }}
-    />
-  );
-}
-
-function MobileItem({ open, i, children }: { open: boolean; i: number; children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        opacity: open ? 1 : 0,
-        transform: open ? "translateY(0)" : "translateY(16px)",
-        transition: `opacity .5s var(--e-out) ${120 + i * 50}ms, transform .5s var(--e-out) ${120 + i * 50}ms`,
-      }}
-    >
-      {children}
-    </div>
   );
 }

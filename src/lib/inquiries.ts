@@ -30,6 +30,7 @@ export type InquiryPayload = {
   whatNeedsToChange: string;
   timeline: string;
   askArcheSignal?: string;
+  phone?: string;
 };
 
 export type SendResult =
@@ -130,4 +131,35 @@ export function mailtoFallback(studioEmail: string, p: InquiryPayload): string {
   ].filter(Boolean);
   const subject = encodeURIComponent(`Project inquiry — ${p.building}`);
   return `mailto:${studioEmail}?subject=${subject}&body=${encodeURIComponent(lines.join("\n"))}`;
+}
+
+// Aliases for compatibility
+export type ContactFormPayload = {
+  name: string;
+  email: string;
+  phone?: string;
+  service: string;
+  projectDetails: string;
+};
+
+export async function submitContactEnquiry(p: ContactFormPayload): Promise<SendResult> {
+  return submitInquiry({
+    name: p.name,
+    email: p.email,
+    phone: p.phone,
+    building: p.service,
+    whatNeedsToChange: p.projectDetails,
+    timeline: "—",
+  });
+}
+
+export function mailtoFallbackUrl(p: ContactFormPayload): string {
+  return mailtoFallback("archecreativestudios@gmail.com", {
+    name: p.name,
+    email: p.email,
+    phone: p.phone,
+    building: p.service,
+    whatNeedsToChange: p.projectDetails,
+    timeline: "—",
+  });
 }

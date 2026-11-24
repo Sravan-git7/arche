@@ -1,92 +1,177 @@
-import { useEffect } from "react";
-import { Hero, FinalCTA } from "../components/Sections";
-import { HowWeWork } from "../components/HowWeWork";
+import { useEffect, useLayoutEffect, useRef } from "react";
+import { HeroDarkStudio } from "../components/HeroDarkStudio";
+import { TheManifesto } from "../components/TheManifesto";
 import { Chapters } from "../components/Chapters";
+import { TheStudioDifference } from "../components/TheStudioDifference";
+import { HowWeWork } from "../components/HowWeWork";
 import { WorkIndex } from "../components/WorkIndex";
 import { FAQ } from "../components/FAQ";
-import { ArcheAssistant } from "../components/ArcheAssistant";
-import { ProblemSystem } from "../components/ProblemSystem";
-import { Architecture3D } from "../components/Architecture3D";
 import { ProgressRail } from "../components/ProgressRail";
-import { BridgeDot } from "../components/BridgeDot";
-import { ServiceHandoff } from "../components/ServiceHandoff";
-import { Link, usePage } from "../lib/router";
+import { SlotButton } from "../components/SlotButton";
+import { usePage } from "../lib/router";
 import { useReveal, useParallax } from "../lib/reveal";
 import { resetPreviews } from "../lib/autoplay";
+import { gsap, ScrollTrigger, prefersReducedMotion } from "../lib/gsap";
+import { oneRailStore } from "../lib/oneRailState";
 
 /**
- * Motion rhythm — calm → curious → interactive → cinematic → fast → calm
- * → experimental → productive → quiet → cinematic end.
+ * ARCHÉ CREATIVE STUDIOS — REFINED 7-CHAPTER EDITORIAL STORY ARC
  *
- *  Hero          spatial scene, pointer depth, focus-pull headline   (L4)
- *  Problem       pinned: idle tools → fan-out → one diagram          (L3)
- *  Services      pinned: scroll one unit per service, autoplay each  (L3)
- *  System        3D architecture, spatial camera rail                (L4)
- *  Work          pointer-reactive frames, expand-to-route            (L2)
- *  Process       click any stage, the system changes                 (L2)
- *  Approach      dark pause, principles demonstrate themselves       (L2)
- *  Ask Arche     conversation drives a live system                   (L3)
- *  FAQ           calm                                                (L1)
- *  Start         fragments converge into Arche                       (L4)
+ * Sequence:
+ *  Chapter 01 — Hero Stage (<HeroDarkStudio />)
+ *  Chapter 02 — The Tension (<TheManifesto />: Scroll-Lit Word Scrub)
+ *  Chapter 03 — The Proof of Craft (<Chapters />: 4 Full-Width Sticky Stacking Capability Consoles)
+ *  Chapter 04 — The Studio Difference (<TheStudioDifference />: Merged Convictions + 4-Column Stat Strip)
+ *  Chapter 05 — How We Work (<HowWeWork />: Pinned 01-04 Process + Masked Reveals)
+ *  Chapter 06 — Selected Work (<WorkIndex />: Horizontal Carousel + Honesty Evidence)
+ *  Chapter 07 — FAQ & Booking (<FAQ />: Accordion + Smoked-Obsidian Closing Banner)
  */
 export function Home() {
-  usePage("Arche — AI + Digital Systems Studio");
+  usePage("Arche Creative Studios");
   useReveal();
   useParallax();
 
-  // A fresh visit gets a fresh round of Services first-view previews.
+  const workSectionRef = useRef<HTMLElement>(null);
+  const workHeadingRef = useRef<HTMLHeadingElement>(null);
+
+  // Fresh visit gets clean preview state
   useEffect(() => resetPreviews(), []);
 
+  // Work section chapter trigger & masked headline reveal
+  useLayoutEffect(() => {
+    const el = workSectionRef.current;
+    const heading = workHeadingRef.current;
+    if (!el) return;
+
+    const ctx = gsap.context(() => {
+      ScrollTrigger.create({
+        trigger: el,
+        start: "top 60%",
+        end: "bottom 30%",
+        onEnter: () => {
+          oneRailStore.setChapter(5, "WORK", 0.5, "06 · WORK");
+        },
+        onEnterBack: () => {
+          oneRailStore.setChapter(5, "WORK", 0.5, "06 · WORK");
+        },
+      });
+
+      if (heading && !prefersReducedMotion()) {
+        const lines = heading.querySelectorAll(".editorial-line");
+        gsap.fromTo(
+          lines,
+          { y: "105%", opacity: 0 },
+          {
+            y: "0%",
+            opacity: 1,
+            duration: 0.7,
+            stagger: 0.08,
+            ease: "power3.out",
+            scrollTrigger: {
+              trigger: heading,
+              start: "top 85%",
+              once: true,
+            },
+          }
+        );
+      }
+    }, el);
+
+    return () => ctx.revert();
+  }, []);
+
   return (
-    <>
-      <div data-chapter="Hero" id="hero-aperture-wrap" className="relative w-full">
-        <Hero />
+    <div className="w-full bg-transparent text-[#141413] overflow-x-clip">
+      {/* Chapter 01: Hero */}
+      <div data-chapter="Hero">
+        <HeroDarkStudio />
       </div>
-      {/* Hero → Problem → Services is one continuous run: the receding planes
-          and the carried signal bridge in; the compact diagram bridges out. */}
-      <div data-chapter="Problem">
-        <ProblemSystem />
+
+      {/* Chapter 02: The Tension (Scroll-Lit Manifesto) */}
+      <div data-chapter="Tension">
+        <TheManifesto />
       </div>
+
+      {/* Chapter 03: The Proof of Craft (4 Services Sticky Stack) */}
       <div data-chapter="Services">
         <Chapters />
       </div>
-      <div data-chapter="System">
-        <Architecture3D />
+
+      {/* Chapter 04: The Studio Difference (Merged Convictions + 4-Column Stat Strip) */}
+      <div data-chapter="Difference">
+        <TheStudioDifference />
       </div>
+
+      {/* Chapter 05: How We Work (Pinned 01-04 Process) */}
+      <div data-chapter="Process">
+        <HowWeWork />
+      </div>
+
+      {/* Chapter 06: Selected Work */}
       <div data-chapter="Work">
-        <section className="w-full py-[clamp(56px,7vw,110px)]">
-          <div className="wrap">
-            <div className="mb-[clamp(30px,4vw,60px)] flex flex-wrap items-end justify-between gap-[18px]">
+        <section
+          ref={workSectionRef}
+          id="work"
+          className="relative w-full py-14 md:py-20 bg-transparent text-[#0D0E0C] border-t border-[#0D0E0C]/[0.08] overflow-hidden"
+        >
+          <div className="wrap relative z-10">
+            <div className="mb-[clamp(28px,3.5vw,48px)] flex flex-wrap items-end justify-between gap-[18px]">
               <div>
-                <p className="mono mono-a mb-[10px]">Work</p>
-                <h2 className="d2 max-w-[16ch]" data-r="mask">
-                  Built, labelled honestly.
+                {/* Frosted-Glass Eyebrow Pill Box */}
+                <div className="mb-4">
+                  <div className="glass-eyebrow-pill">
+                    <span className="h-[5px] w-[5px] rounded-full bg-[#84CC16] shadow-[0_0_8px_#84CC16] flex-shrink-0" />
+                    <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#232620]">
+                      SELECTED WORK · VERIFIED PROOFS
+                    </span>
+                  </div>
+                </div>
+
+                <h2
+                  ref={workHeadingRef}
+                  className="text-[clamp(2.75rem,5vw,4.5rem)] font-bold tracking-[-0.038em] leading-[0.98] text-[#11120F]"
+                  style={{
+                    fontFamily: "'Inter Tight', sans-serif",
+                    fontVariationSettings: "'wght' 700",
+                    fontWeight: 700,
+                    color: "#11120F",
+                    textShadow: "none",
+                  }}
+                >
+                  <span className="block overflow-hidden py-1">
+                    <span className="editorial-line block text-[#11120F]">
+                      <span className="shiny-ink-text">Built,</span>
+                    </span>
+                  </span>
+                  <span className="block overflow-hidden py-1">
+                    <span className="editorial-line block text-[#63685E]">
+                      <span className="headline-secondary-shine">labelled honestly.</span>
+                    </span>
+                  </span>
                 </h2>
-                <p className="body mt-[14px] max-w-[48ch]" data-r="meta">
+
+                <p className="mt-3.5 max-w-[48ch] text-[#484C45] text-sm sm:text-base leading-relaxed">
                   Internal builds and prototypes — not client case studies. Each one shows how a capability is designed to operate.
                 </p>
               </div>
-              <Link to="/work" className="btn btn-ghost" cursor="VIEW">
-                All work <span className="arw">→</span>
-              </Link>
+
+              <SlotButton to="/work" variant="primary" arrow="right" className="!px-5 !py-2.5">
+                All work
+              </SlotButton>
             </div>
+
             <WorkIndex limit={3} showFilters={false} />
           </div>
         </section>
       </div>
-      <HowWeWork />
-      <div data-chapter="Ask Arche">
-        <ArcheAssistant />
-      </div>
+
+      {/* Chapter 07: FAQ + Dark Obsidian Final CTA */}
       <div data-chapter="FAQ">
         <FAQ />
       </div>
-      <div data-chapter="Start">
-        <FinalCTA />
-      </div>
+
+      {/* Floating HUD Telemetry Rail */}
       <ProgressRail />
-      <BridgeDot />
-      <ServiceHandoff />
-    </>
+    </div>
   );
 }

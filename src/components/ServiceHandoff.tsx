@@ -149,7 +149,7 @@ export function ServiceHandoff() {
       if (!servSec) return;
 
       const st = ScrollTrigger.create({
-        id: "problem-services-handoff",
+        id: "legacy-problem-services-handoff",
         trigger: servSec,
         start: () => {
           const pPin = ScrollTrigger.getById("problem-pin");

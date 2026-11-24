@@ -582,6 +582,7 @@ export function Architecture3D() {
               }}
               aria-live="polite"
             >
+              <span className="sr-only">{stage.num} {stage.title} {stage.subtitle}</span>
               <div
                 ref={labelSwap}
                 className="rounded-[8px] border p-[20px_24px] shadow-sm"

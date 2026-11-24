@@ -1,43 +1,29 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { siteContent, services } from "../data/site";
 import { Link } from "../lib/router";
-import { gsap, ScrollTrigger, SplitText, onMotionPreferenceChange, prefersReducedMotion } from "../lib/gsap";
+import { gsap, onMotionPreferenceChange, prefersReducedMotion } from "../lib/gsap";
 import { HeroEnvironment } from "./HeroEnvironment";
 import { isIntroActive } from "./Intro";
 
 /* ================================================================
-   HERO — quiet, precise, then alive. Orchestrated reveal,
-   desktop pointer idle on planes, scrubbed scroll-out over 100vh.
+   HERO — Original 3D Architectural Hero (Arché 4-Plate Monolith Stack)
+   Authoritative 2-Column Swiss-Editorial Grid paired with Three.js PBR Centerpiece.
    ================================================================ */
-const HERO_LINES = ["Systems that make", "businesses work", "better."];
-
-function wrapLinesInMasks(lines: Element[]) {
-  lines.forEach((line) => {
-    const parent = line.parentElement;
-    if (!parent || !parent.classList.contains("split-line-mask")) {
-      const mask = document.createElement("div");
-      mask.className = "split-line-mask";
-      mask.style.overflow = "hidden";
-      mask.style.display = "block";
-      line.parentNode?.insertBefore(mask, line);
-      mask.appendChild(line);
-    }
-  });
-}
 
 export function Hero() {
   const root = useRef<HTMLElement>(null);
+  const leftColRef = useRef<HTMLDivElement>(null);
   const statement = useRef<HTMLHeadingElement>(null);
-  const eyebrowText = useRef<HTMLSpanElement>(null);
-  const eyebrowHairline = useRef<HTMLSpanElement>(null);
-  const tagline = useRef<HTMLSpanElement>(null);
+  const line1Ref = useRef<HTMLSpanElement>(null);
+  const line2Ref = useRef<HTMLSpanElement>(null);
   const subRef = useRef<HTMLParagraphElement>(null);
   const buttonsRef = useRef<HTMLDivElement>(null);
-  const stripHairline = useRef<HTMLSpanElement>(null);
+  const proofRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
 
   const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion);
   useEffect(() => onMotionPreferenceChange(setReducedMotion), []);
+  const [hoveredService, setHoveredService] = useState<number | null>(null);
 
   useLayoutEffect(() => {
     const heroEl = root.current;
@@ -46,192 +32,122 @@ export function Hero() {
     const reduce = reducedMotion || prefersReducedMotion();
     if (reduce) return;
 
-    let splitHeadline: SplitText | null = null;
-    let splitTagline: SplitText | null = null;
-    let splitSub: SplitText | null = null;
-    let isRevealed = false;
     const ctx = gsap.context(() => {
-      // Split headline lines
-      if (statement.current) {
-        splitHeadline = new SplitText(statement.current, {
-          type: "lines",
-          linesClass: "hl-split-line",
-        });
-        wrapLinesInMasks(splitHeadline.lines);
-      }
-
-      // Split right tagline characters
-      if (tagline.current) {
-        splitTagline = new SplitText(tagline.current, {
-          type: "chars",
-          charsClass: "tagline-char",
-        });
-      }
-
-      // Split sub paragraph lines
-      if (subRef.current) {
-        splitSub = new SplitText(subRef.current, {
-          type: "lines",
-          linesClass: "sub-split-line",
-        });
-        wrapLinesInMasks(splitSub.lines);
-      }
-
-      const buttonEls = buttonsRef.current ? Array.from(buttonsRef.current.children) : [];
-      const serviceItems = stripRef.current ? stripRef.current.querySelectorAll<HTMLElement>(".hero-service-item") : [];
-
-      // HERO SCROLL-OUT (scrubbed, scrub 0.6, over the first 100vh, no pin):
-      // - Headline lines move up at different rates (line 1 -20%, line 2 -35%, line 3 -50%)
-      //   and fade to opacity 0 between 60 and 100 percent.
-      // - Paragraph and buttons fade to 0.5 and then 0.
+      // 1. HERO SCROLL-OUT (ScrollTrigger, scrub: 0.85):
+      // Left editorial column lifts with subtle parallax into The Proposition
       const scrollOut = gsap.timeline({
         scrollTrigger: {
           trigger: heroEl,
           start: "top top",
           end: "+=100%",
-          scrub: 0.6,
+          scrub: 0.85,
           invalidateOnRefresh: true,
         },
       });
 
-      if (splitHeadline && splitHeadline.lines.length >= 3) {
-        scrollOut.to(splitHeadline.lines[0], { yPercent: -20, ease: "none", duration: 1 }, 0);
-        scrollOut.to(splitHeadline.lines[1], { yPercent: -35, ease: "none", duration: 1 }, 0);
-        scrollOut.to(splitHeadline.lines[2], { yPercent: -50, ease: "none", duration: 1 }, 0);
-        scrollOut.to(splitHeadline.lines, { opacity: 0, ease: "none", duration: 0.4 }, 0.6);
-      } else if (splitHeadline) {
-        scrollOut.to(splitHeadline.lines, { yPercent: -35, ease: "none", duration: 1 }, 0);
-        scrollOut.to(splitHeadline.lines, { opacity: 0, ease: "none", duration: 0.4 }, 0.6);
-      }
-
-      if (subRef.current && buttonsRef.current) {
-        scrollOut.to([subRef.current, buttonsRef.current], { opacity: 0.5, ease: "none", duration: 0.5 }, 0);
-        scrollOut.to([subRef.current, buttonsRef.current], { opacity: 0, ease: "none", duration: 0.5 }, 0.5);
+      if (leftColRef.current) {
+        scrollOut.to(leftColRef.current, { yPercent: -12, opacity: 0, ease: "none", duration: 1 }, 0);
       }
 
       if (stripRef.current) {
-        scrollOut.to(stripRef.current, { opacity: 0, ease: "none", duration: 0.4 }, 0.2);
+        scrollOut.to(stripRef.current, { opacity: 0, ease: "none", duration: 0.3 }, 0);
       }
 
-      // Pre-set elements for reveal
-      gsap.set(eyebrowHairline.current, { scaleX: 0, transformOrigin: "left center" });
-      gsap.set(eyebrowText.current, { y: 12, opacity: 0 });
-      if (splitHeadline) gsap.set(splitHeadline.lines, { yPercent: 110 });
-      if (splitTagline) gsap.set(splitTagline.chars, { opacity: 0 });
-      if (splitSub) gsap.set(splitSub.lines, { yPercent: 110 });
-      gsap.set(buttonEls, { y: 24, opacity: 0 });
-      gsap.set(stripHairline.current, { scaleX: 0, transformOrigin: "left center" });
-      gsap.set(serviceItems, { y: 16, opacity: 0 });
+      // Pre-set elements for choreographed entrance
+      gsap.set([line1Ref.current, line2Ref.current], { yPercent: 108 });
+      if (subRef.current) gsap.set(subRef.current, { opacity: 0, y: 16 });
+      if (buttonsRef.current) gsap.set(buttonsRef.current, { opacity: 0, y: 18 });
+      if (proofRef.current) gsap.set(proofRef.current, { opacity: 0, y: 18 });
+      if (stripRef.current) gsap.set(stripRef.current, { opacity: 0, y: 14 });
 
-      // Orchestrated Hero Reveal Timeline — ACT 3: STATEMENT
-      const revealTl = gsap.timeline({
-        paused: true,
-        onComplete: () => {
-          isRevealed = true;
+      // Orchestrated Hero Reveal Timeline (0.0s -> 1.35s, power4.out)
+      const revealTl = gsap.timeline({ paused: true });
+
+      // Display headline lines rise cleanly out of overflow-hidden masks
+      revealTl.to(
+        [line1Ref.current, line2Ref.current],
+        {
+          yPercent: 0,
+          duration: 1.05,
+          ease: "power4.out",
+          stagger: 0.08,
         },
-      });
+        0.1
+      );
 
-      // Eyebrow: hairline scaleX 0 to 1 from left over 0.9s; text rises 12px and fades in
-      revealTl.to(eyebrowHairline.current, { scaleX: 1, duration: 0.9, ease: "power2.out" }, 0);
-      revealTl.to(eyebrowText.current, { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" }, 0.05);
-
-      // Headline: SplitText lines, masked, yPercent 110 to 0, 1.15s expo.out, stagger 0.09
-      // Lines arrive into full readability as the signal reaches its anchor point
-      if (splitHeadline) {
+      // Sub-statement
+      if (subRef.current) {
         revealTl.to(
-          splitHeadline.lines,
+          subRef.current,
           {
-            yPercent: 0,
-            duration: 1.15,
-            ease: "expo.out",
-            stagger: 0.09,
+            opacity: 1,
+            y: 0,
+            duration: 0.75,
+            ease: "power3.out",
           },
-          0.15
+          0.35
         );
       }
 
-      // Right tagline: types in by characters, 0.02s stagger, starting at 0.5s
-      if (splitTagline) {
+      // Dual CTAs
+      if (buttonsRef.current) {
         revealTl.to(
-          splitTagline.chars,
+          buttonsRef.current,
           {
             opacity: 1,
-            duration: 0.01,
-            stagger: 0.02,
-            ease: "none",
+            y: 0,
+            duration: 0.65,
+            ease: "power3.out",
           },
           0.5
         );
       }
 
-      // Paragraph: masked line reveal, stagger 0.065
-      if (splitSub) {
+      // 3-Column Proof Strip
+      if (proofRef.current) {
         revealTl.to(
-          splitSub.lines,
+          proofRef.current,
           {
-            yPercent: 0,
-            duration: 0.9,
-            ease: "expo.out",
-            stagger: 0.065,
+            opacity: 1,
+            y: 0,
+            duration: 0.7,
+            ease: "power3.out",
           },
           0.65
         );
       }
 
-      // Buttons: y 24 to 0 and opacity, 0.8s, stagger 0.1
-      revealTl.to(
-        buttonEls,
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.8,
-          ease: "power3.out",
-          stagger: 0.1,
-        },
-        0.85
-      );
+      // Bottom Index Rail
+      if (stripRef.current) {
+        revealTl.to(
+          stripRef.current,
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.6,
+            ease: "power3.out",
+          },
+          0.8
+        );
+      }
 
-      // Bottom service row: its top hairline scaleX 0 to 1 over 0.85s, then each of the four items rises with stagger 0.08
-      revealTl.to(stripHairline.current, { scaleX: 1, duration: 0.85, ease: "power2.out" }, 0.95);
-      revealTl.to(
-        serviceItems,
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.65,
-          ease: "power3.out",
-          stagger: 0.08,
-        },
-        1.1
-      );
-
-      // Same-session reload: headline only reveal (0.9s)
+      // Same-session fast reveal
       const runFastReveal = () => {
-        gsap.set(eyebrowHairline.current, { scaleX: 1 });
-        gsap.set(eyebrowText.current, { y: 0, opacity: 1 });
-        if (splitTagline) gsap.set(splitTagline.chars, { opacity: 1 });
-        if (splitSub) gsap.set(splitSub.lines, { yPercent: 0 });
-        gsap.set(buttonEls, { y: 0, opacity: 1 });
-        gsap.set(stripHairline.current, { scaleX: 1 });
-        gsap.set(serviceItems, { y: 0, opacity: 1 });
+        if (subRef.current) gsap.set(subRef.current, { opacity: 1, y: 0 });
+        if (buttonsRef.current) gsap.set(buttonsRef.current, { opacity: 1, y: 0 });
+        if (proofRef.current) gsap.set(proofRef.current, { opacity: 1, y: 0 });
+        if (stripRef.current) gsap.set(stripRef.current, { opacity: 1, y: 0 });
 
-        if (splitHeadline) {
-          gsap.fromTo(
-            splitHeadline.lines,
-            { yPercent: 110 },
-            {
-              yPercent: 0,
-              duration: 0.9,
-              ease: "expo.out",
-              stagger: 0.08,
-              onComplete: () => {
-                isRevealed = true;
-              },
-            }
-          );
-        } else {
-          isRevealed = true;
-        }
+        gsap.fromTo(
+          [line1Ref.current, line2Ref.current],
+          { yPercent: 108 },
+          {
+            yPercent: 0,
+            duration: 0.85,
+            ease: "power4.out",
+            stagger: 0.07,
+          }
+        );
       };
 
       let cleanupRevealListener = () => {};
@@ -249,44 +165,8 @@ export function Hero() {
         };
       }
 
-      // Handle window resize mid-reveal without flash or broken split text
-      let resizeTimer: number;
-      const onResize = () => {
-        window.clearTimeout(resizeTimer);
-        resizeTimer = window.setTimeout(() => {
-          if (splitHeadline && statement.current) {
-            splitHeadline.split({ type: "lines", linesClass: "hl-split-line" });
-            wrapLinesInMasks(splitHeadline.lines);
-            if (isRevealed) {
-              gsap.set(splitHeadline.lines, { yPercent: 0, opacity: 1 });
-            }
-          }
-          if (splitSub && subRef.current) {
-            splitSub.split({ type: "lines", linesClass: "sub-split-line" });
-            wrapLinesInMasks(splitSub.lines);
-            if (isRevealed) {
-              gsap.set(splitSub.lines, { yPercent: 0, opacity: 1 });
-            }
-          }
-          if (splitTagline && tagline.current) {
-            splitTagline.split({ type: "chars", charsClass: "tagline-char" });
-            if (isRevealed) {
-              gsap.set(splitTagline.chars, { opacity: 1 });
-            }
-          }
-          ScrollTrigger.refresh();
-        }, 120);
-      };
-
-      window.addEventListener("resize", onResize, { passive: true });
-
       return () => {
         cleanupRevealListener();
-        window.removeEventListener("resize", onResize);
-        window.clearTimeout(resizeTimer);
-        splitHeadline?.revert();
-        splitTagline?.revert();
-        splitSub?.revert();
       };
     }, heroEl);
 
@@ -298,57 +178,171 @@ export function Hero() {
   const h = siteContent.hero;
 
   return (
-    <section id="hero" ref={root} className="relative flex min-h-[92svh] w-full flex-col justify-end pt-[130px] pb-[26px]">
-      <HeroEnvironment />
-      {/* faint structural columns */}
-      <div className="pointer-events-none absolute inset-0 hidden justify-between px-[var(--gut)] md:flex" aria-hidden="true">
+    <section
+      id="hero"
+      ref={root}
+      className="relative flex h-[100svh] min-h-[100svh] max-h-[100svh] w-full flex-col justify-between pt-[76px] md:pt-[84px] pb-0 overflow-hidden select-none bg-[#F4F4EE]"
+      style={{ background: "#F4F4EE", color: "#141413" }}
+    >
+      {/* Subtle paper grain & architectural drafting grid hairlines */}
+      <div className="pointer-events-none absolute inset-0 hidden justify-between px-8 md:flex z-0" aria-hidden="true">
         {Array.from({ length: 5 }).map((_, i) => (
-          <span key={i} className="h-full w-px" style={{ background: "var(--line)", opacity: 0.5 }} />
+          <span key={i} className="h-full w-px" style={{ background: "rgba(20,20,19,0.045)" }} />
         ))}
       </div>
 
-      <div className="wrap relative">
-        <div className="mb-[22px] flex items-center gap-[14px]">
-          <span ref={eyebrowText} className="mono mono-a">{h.kicker}</span>
-          <span ref={eyebrowHairline} className="h-px flex-1 origin-left" style={{ background: "var(--line)" }} />
-          <span ref={tagline} className="mono hidden sm:block">{siteContent.brand.line}</span>
+      {/* Top Telemetry Hairline Bar */}
+      <div className="flex-shrink-0 w-full max-w-[1360px] mx-auto px-6 md:px-8 pt-2 pb-2 flex items-center justify-between border-b border-[rgba(20,20,19,0.08)] z-10">
+        <div className="flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-[#9EE41A] shadow-[0_0_6px_#9EE41A]" />
+          <span className="font-mono text-[11px] font-semibold tracking-wider text-[#141413] uppercase">
+            Creative Technology Studio
+          </span>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="hidden sm:inline font-mono text-[11px] tracking-wider text-[#6E6D68] uppercase">
+            Systems · Film · Web · AI
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EAE7DF] px-2.5 py-0.5 font-mono text-[10px] text-[#141413] font-medium border border-[rgba(20,20,19,0.08)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#9EE41A] animate-pulse" />
+            Accepting Projects
+          </span>
+        </div>
+      </div>
+
+      {/* Main Stage: Authoritative 2-Column Swiss-Editorial Grid */}
+      <div className="flex-1 min-h-0 w-full max-w-[1360px] mx-auto px-6 md:px-8 grid grid-cols-1 lg:grid-cols-12 items-center gap-6 lg:gap-8 py-1 md:py-2 z-10">
+        {/* Left Column (Editorial Typography, CTAs, Proof Strip) */}
+        <div ref={leftColRef} className="lg:col-span-7 flex flex-col justify-center">
+          {/* Display Headline */}
+          <h1 ref={statement} className="font-sans font-semibold text-[#141413] tracking-[-0.042em] leading-[0.97]">
+            <div className="overflow-hidden">
+              <span ref={line1Ref} className="block text-[clamp(44px,5.0vw,80px)]">
+                Systems that make
+              </span>
+            </div>
+            <div className="overflow-hidden mt-1 md:mt-1.5">
+              <span ref={line2Ref} className="block text-[clamp(44px,5.0vw,80px)]">
+                businesses work better.
+              </span>
+            </div>
+          </h1>
+
+          {/* Editorial Sub-Statement */}
+          <p ref={subRef} className="font-sans text-[15px] sm:text-[16px] md:text-[17.5px] leading-[1.52] text-[#141413]/75 max-w-[520px] mt-4 md:mt-5">
+            Film, interactive web, AI agents, and operational automation—engineered together as one connected system so founders and brands scale without friction.
+          </p>
+
+          {/* Dual High-Craft CTAs */}
+          <div ref={buttonsRef} className="mt-5 md:mt-6 flex flex-wrap items-center gap-3">
+            <Link
+              to={h.ctaPrimary.to}
+              className="group inline-flex items-center gap-2.5 rounded-full bg-[#141413] px-6 py-2.5 md:py-3 font-sans text-[13px] font-medium text-white transition-all duration-200 hover:bg-[#20201E] active:scale-[0.98]"
+              style={{
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.22), 0 8px 24px -4px rgba(20,20,19,0.20)",
+              }}
+              cursor="START"
+              data-magnetic
+            >
+              <span>{h.ctaPrimary.label}</span>
+              <span className="inline-block transition-transform duration-250 ease-out group-hover:translate-x-1 font-sans">
+                →
+              </span>
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                const svcSection = document.getElementById("services-home");
+                if (svcSection) {
+                  const targetY = svcSection.offsetTop;
+                  if ((window as any).__lenis) {
+                    (window as any).__lenis.scrollTo(targetY, { duration: 1.1 });
+                  } else {
+                    svcSection.scrollIntoView({ behavior: "smooth" });
+                  }
+                }
+              }}
+              className="group inline-flex items-center gap-2 rounded-full border border-[rgba(20,20,19,0.18)] bg-[#EAE7DF] px-5 py-2.5 md:py-3 font-sans text-[13px] font-medium text-[#141413] transition-all duration-200 hover:border-[#141413] hover:bg-white active:scale-[0.98]"
+              data-cursor="VIEW"
+            >
+              <span>Explore Services</span>
+              <span className="inline-block transition-transform duration-250 ease-out group-hover:translate-y-0.5">
+                ↓
+              </span>
+            </button>
+          </div>
+
+          {/* 3-Column Architectural Proof Strip */}
+          <div ref={proofRef} className="mt-5 md:mt-7 pt-4 md:pt-5 border-t border-dashed border-[#141413]/15 grid grid-cols-3 gap-4 md:gap-6 max-w-[540px]">
+            <div>
+              <div className="font-mono text-[10px] md:text-[11px] font-semibold tracking-wider text-[#141413] uppercase">
+                04 Verticals
+              </div>
+              <div className="font-sans text-[12px] md:text-[13px] text-[#6E6D68] mt-0.5">
+                Film, Web, AI, Ops
+              </div>
+            </div>
+            <div>
+              <div className="font-mono text-[10px] md:text-[11px] font-semibold tracking-wider text-[#141413] uppercase">
+                One Pipeline
+              </div>
+              <div className="font-sans text-[12px] md:text-[13px] text-[#6E6D68] mt-0.5">
+                Zero silos
+              </div>
+            </div>
+            <div>
+              <div className="font-mono text-[10px] md:text-[11px] font-semibold tracking-wider text-[#141413] uppercase">
+                Production Grade
+              </div>
+              <div className="font-sans text-[12px] md:text-[13px] text-[#6E6D68] mt-0.5">
+                Engineered from scratch
+              </div>
+            </div>
+          </div>
         </div>
 
-        <h1 ref={statement} className="d1 relative" aria-label={h.statement} style={{ transformOrigin: "0% 0%" }}>
-          {HERO_LINES.map((ln) => (
-            <span key={ln} className="hl-line block md:whitespace-nowrap" aria-hidden="true">
-              {ln}
-            </span>
+        {/* Right Column (Unobstructed 3D Arché 4-Plate Monolith Stack) */}
+        <div className="lg:col-span-5 h-[280px] sm:h-[340px] md:h-[400px] lg:h-full relative flex items-center justify-center">
+          <HeroEnvironment hoveredService={hoveredService} />
+        </div>
+      </div>
+
+      {/* Bottom Docked 01–04 Vertical Rail (100% visible inside 100vh) */}
+      <div ref={stripRef} className="hero-strip flex-shrink-0 w-full max-w-[1360px] mx-auto px-6 md:px-8 border-t border-[rgba(20,20,19,0.10)] py-2 z-20">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[rgba(20,20,19,0.08)] border border-[rgba(20,20,19,0.08)] rounded-lg overflow-hidden backdrop-blur-sm bg-white/40">
+          {services.map((s, idx) => (
+            <Link
+              key={s.slug}
+              to={`/services/${s.slug}`}
+              onMouseEnter={() => setHoveredService(idx)}
+              onMouseLeave={() => setHoveredService(null)}
+              onFocus={() => setHoveredService(idx)}
+              onBlur={() => setHoveredService(null)}
+              onClick={(e) => {
+                if (typeof window !== "undefined" && (window.location.pathname === "/" || window.location.pathname === "")) {
+                  const svcSection = document.getElementById("services-home");
+                  if (svcSection) {
+                    e.preventDefault();
+                    const targetY = svcSection.offsetTop;
+                    if ((window as any).__lenis) {
+                      (window as any).__lenis.scrollTo(targetY, { duration: 1.2 });
+                    } else {
+                      svcSection.scrollIntoView({ behavior: "smooth" });
+                    }
+                  }
+                }
+              }}
+              className="hero-service-item group flex items-center justify-between px-3 py-2 md:px-4 md:py-2.5 transition-colors bg-[#F4F4EE]/90 hover:bg-white"
+              cursor="OPEN"
+            >
+              <span className="font-mono text-[11px] font-medium tracking-wider text-[#141413]">
+                {s.n} · {s.title.toUpperCase()}
+              </span>
+              <span className="font-mono text-[11px] text-[#9EE41A] transition-transform duration-300 group-hover:translate-x-1">
+                →
+              </span>
+            </Link>
           ))}
-        </h1>
-
-        <div className="mt-[36px] flex flex-col gap-[26px] border-t pt-[24px] md:flex-row md:items-end md:justify-between" style={{ borderColor: "var(--line)" }}>
-          <p ref={subRef} className="body max-w-[52ch]">{h.sub}</p>
-          <div ref={buttonsRef} className="flex flex-none flex-wrap gap-[10px]">
-            <Link to={h.ctaPrimary.to} className="btn" cursor="START" data-magnetic>
-              {h.ctaPrimary.label} <span className="arw">→</span>
-            </Link>
-            <Link to={h.ctaSecondary.to} className="btn btn-ghost" cursor="VIEW">
-              {h.ctaSecondary.label}
-            </Link>
-          </div>
-        </div>
-
-        {/* service modules tick along the base */}
-        <div ref={stripRef} className="hero-strip mt-[22px] relative" style={{ background: "var(--line)", border: "1px solid var(--line)" }}>
-          <span ref={stripHairline} className="absolute -top-px left-0 right-0 h-px origin-left" style={{ background: "var(--line)" }} />
-          <div className="grid grid-cols-2 gap-px md:grid-cols-4">
-            {services.map((s) => (
-              <Link key={s.slug} to={`/services/${s.slug}`} className="hero-service-item group flex items-center justify-between px-[16px] py-[13px]" style={{ background: "var(--bg)" }} cursor="OPEN">
-                <span className="mono mono-fg">
-                  {s.n} — {s.title}
-                </span>
-                <span className="mono transition-transform duration-500 group-hover:translate-x-[4px]" style={{ color: "var(--accent-ink)" }}>
-                  →
-                </span>
-              </Link>
-            ))}
-          </div>
         </div>
       </div>
     </section>

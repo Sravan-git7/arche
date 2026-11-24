@@ -101,10 +101,10 @@ async function verifyAll() {
       return imgs.map((img) => img.getAttribute("src"));
     });
     console.log("[2/5] Intro img src attributes:", assetCheck);
-    if (assetCheck.every((src) => src.includes("arche%20logo.jpeg") || src.includes("arche logo.jpeg"))) {
-      console.log("[PASS] Intro images reference public asset /arche logo.jpeg.");
+    if (assetCheck.every((src) => src.includes("arche%20logo.png") || src.includes("arche logo.png"))) {
+      console.log("[PASS] Intro images reference public asset /arche logo.png.");
     } else {
-      throw new Error("Intro images do not reference /arche logo.jpeg");
+      throw new Error("Intro images do not reference /arche logo.png");
     }
 
     // [3/5] Check Nav and Footer in live page (new page with intro skipped)

@@ -1,9 +1,11 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useEffect, useRef, useState } from "react";
 import { projects, type Project } from "../data/projects";
 import { services } from "../data/site";
 import { Link } from "../lib/router";
 import { gsap, ScrollTrigger, prefersReducedMotion } from "../lib/gsap";
 import { hasFinePointer } from "../lib/interact";
+import { SpotlightCard } from "./SpotlightCard";
+import { attachCardTilt } from "../motion/cardTilt";
 
 const RATIO: Record<Project["ratio"], string> = {
   tall: "4 / 5",
@@ -175,7 +177,7 @@ export function ProjectRow({ p, i, isLast = false }: { p: Project; i: number; is
               alt={`${p.name} — ${p.serviceLabel}`}
               loading="lazy"
               decoding="async"
-              className="h-[116%] w-[110%] max-w-none -translate-x-[5%] object-cover transition-[scale,filter] duration-[900ms] group-hover:scale-[1.04]"
+              className="h-[116%] w-[110%] max-w-none -translate-x-[5%] object-cover transition-all duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.03]"
               style={{ transitionTimingFunction: "var(--e-out)", willChange: "transform, filter" }}
             />
           </div>
@@ -233,17 +235,9 @@ export function ProjectRow({ p, i, isLast = false }: { p: Project; i: number; is
             {p.summary}
           </p>
 
-          <div className="flex flex-wrap items-center gap-[6px]" data-r="meta" data-r-delay="150">
-            {p.scope.map((s) => (
-              <span
-                key={s}
-                className="mono"
-                style={{ border: "1px solid var(--line)", borderRadius: 999, padding: "4px 11px" }}
-              >
-                {s}
-              </span>
-            ))}
-          </div>
+          <p className="font-mono text-[11px] text-[#595C56] tracking-wide" data-r="meta" data-r-delay="150">
+            {p.scope.join(" · ")}
+          </p>
 
           <div className="mt-[4px] flex items-center gap-[16px]">
             <button
@@ -348,6 +342,176 @@ function ProjectProof({ service }: { service: string }) {
   );
 }
 
+export function WorkCarousel({ items }: { items: Project[] }) {
+  const [startIndex, setStartIndex] = useState(0);
+  const [expandedSlug, setExpandedSlug] = useState<string | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  const visibleCount = 3;
+  const maxIndex = Math.max(0, items.length - visibleCount);
+
+  const prev = () => setStartIndex((i) => Math.max(0, i - 1));
+  const next = () => setStartIndex((i) => Math.min(maxIndex, i + 1));
+
+  const visibleItems = items.slice(startIndex, startIndex + visibleCount);
+
+  // Attach weighted 3D card tilt & push physics to work cards
+  useEffect(() => {
+    if (!gridRef.current) return;
+    const cards = gridRef.current.querySelectorAll<HTMLElement>(".frosted-crystal");
+    const cleanups: (() => void)[] = [];
+    cards.forEach((c) => cleanups.push(attachCardTilt(c)));
+    return () => cleanups.forEach((c) => c());
+  }, [startIndex]);
+
+  return (
+    <div className="w-full">
+      {/* Carousel Controls Header */}
+      <div className="flex items-center justify-between pb-6 mb-6 border-b border-[#141413]/10">
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-xs text-[#5C5F59] uppercase tracking-wider font-semibold">
+            SHOWCASE · {String(startIndex + 1).padStart(2, "0")}–{String(Math.min(items.length, startIndex + visibleCount)).padStart(2, "0")} OF {String(items.length).padStart(2, "0")}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={prev}
+            disabled={startIndex === 0}
+            data-cursor="hover"
+            aria-label="Previous work slide"
+            className="btn-tactile w-10 h-10 rounded-full bg-[#E5E7DC] border border-[#141413]/15 backdrop-blur-md flex items-center justify-center text-[#141413] hover:bg-[#141413] hover:text-[#9EE41A] disabled:opacity-30 disabled:pointer-events-none transition-all"
+          >
+            ←
+          </button>
+          <button
+            type="button"
+            onClick={next}
+            disabled={startIndex >= maxIndex}
+            data-cursor="hover"
+            aria-label="Next work slide"
+            className="btn-tactile w-10 h-10 rounded-full bg-[#E5E7DC] border border-[#141413]/15 backdrop-blur-md flex items-center justify-center text-[#141413] hover:bg-[#141413] hover:text-[#9EE41A] disabled:opacity-30 disabled:pointer-events-none transition-all"
+          >
+            →
+          </button>
+        </div>
+      </div>
+
+      {/* 3-Up Carousel Grid */}
+      <div ref={gridRef} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {visibleItems.map((p) => {
+          const tag = getHonestyTag(p.status);
+          const isExpanded = expandedSlug === p.slug;
+
+          return (
+            <SpotlightCard
+              key={p.slug}
+              data-cursor="hover"
+              className="frosted-crystal arche-glow-card shiny-border group relative flex flex-col justify-between p-5 rounded-2xl transition-all"
+            >
+              <div>
+                {/* Recessed Warm Limestone Tray wrapping Media Thumbnail */}
+                <div
+                  data-cursor="view"
+                  className="relative aspect-[16/10] w-full overflow-hidden rounded-xl border border-[#141413]/[0.08] p-1 cursor-pointer"
+                  style={{
+                    background: "rgba(244, 241, 224, 0.70)",
+                    boxShadow:
+                      "inset 0 1px 0 rgba(255, 253, 244, 0.92), 0 8px 20px -6px rgba(20, 20, 19, 0.08)",
+                  }}
+                >
+                  <div className="relative h-full w-full overflow-hidden rounded-lg bg-[#141413]/10">
+                    <img
+                      src={p.img}
+                      alt={p.name}
+                      loading="lazy"
+                      className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+                    />
+
+                    {/* Smoked-Glass LIVE Badge */}
+                    <div className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#141413]/85 text-white border border-white/15 backdrop-blur-md shadow-sm">
+                      <span className="relative flex h-1.5 w-1.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#9EE41A] opacity-75" />
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#9EE41A]" />
+                      </span>
+                      <span className="font-mono text-[9px] font-semibold tracking-widest text-[#9EE41A]">
+                        LIVE
+                      </span>
+                    </div>
+
+                    {/* Honesty Pill Tag */}
+                    <div className="absolute top-2.5 right-2.5 z-10">
+                      <span className="px-2 py-0.5 rounded-full bg-[#141413]/80 text-[#F4F4EE] border border-white/10 backdrop-blur-md font-mono text-[9px] tracking-wider uppercase">
+                        {tag}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Meta Header */}
+                <div className="mt-4 flex items-center justify-between text-[#5C5F59] font-mono text-[11px] tracking-wider uppercase">
+                  <span>{p.n} · {p.serviceLabel}</span>
+                  <span>{p.year}</span>
+                </div>
+
+                {/* Project Title */}
+                <h3 className="mt-2 text-lg sm:text-xl font-semibold tracking-tight text-[#141413] group-hover:text-[#141413] transition-colors">
+                  {p.name}
+                </h3>
+
+                {/* Summary */}
+                <p className="mt-2 text-xs sm:text-sm text-[#5C5F59] leading-relaxed line-clamp-2">
+                  {p.summary}
+                </p>
+
+                {/* Single-line clean muted scope caption */}
+                <p className="mt-3 font-mono text-[10.5px] text-[#595C56] tracking-wide">
+                  {p.scope.slice(0, 3).join(" · ")}
+                </p>
+              </div>
+
+              {/* Bottom Action Footer */}
+              <div className="mt-5 pt-3.5 border-t border-[#141413]/8 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setExpandedSlug(isExpanded ? null : p.slug)}
+                  data-cursor="hover"
+                  className="font-mono text-[11px] font-semibold tracking-wider uppercase text-[#141413] hover:text-[#9EE41A] transition-colors inline-flex items-center gap-1.5"
+                >
+                  <span>{isExpanded ? "Hide Spec" : "View Spec"}</span>
+                  <span className="text-[10px]">{isExpanded ? "▲" : "▼"}</span>
+                </button>
+
+                <div className="action-circle">
+                  <span className="action-circle-icon text-sm">↗</span>
+                </div>
+              </div>
+
+              {/* In-Card Spec Overlay if expanded */}
+              {isExpanded && (
+                <div className="mt-3 p-3 rounded-xl bg-[#141413]/5 border border-[#141413]/10 text-xs text-[#5C5F59] space-y-1.5">
+                  <p className="font-mono text-[10px] font-semibold uppercase text-[#141413]">
+                    System Architecture · {tag}
+                  </p>
+                  <p className="text-[11px] leading-relaxed">
+                    Designed as a modular capability within Arché&apos;s single operating model.
+                  </p>
+                  <Link
+                    to={`/services/${p.service}`}
+                    className="inline-block mt-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-[#141413] hover:text-[#9EE41A] underline"
+                  >
+                    Explore Service Pipeline →
+                  </Link>
+                </div>
+              )}
+            </SpotlightCard>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function WorkIndex({
   filter,
   limit,
@@ -358,7 +522,14 @@ export function WorkIndex({
   showFilters?: boolean;
 }) {
   const [active, setActive] = useState(filter || "all");
-  const list = projects.filter((p) => active === "all" || p.service === active).slice(0, limit || 99);
+  const filtered = projects.filter((p) => active === "all" || p.service === active);
+
+  // When limit is set (e.g. Home page 3-up showcase), render horizontal 3-up carousel
+  if (!showFilters || limit) {
+    return <WorkCarousel items={filtered} />;
+  }
+
+  const list = filtered.slice(0, limit || 99);
 
   return (
     <div>

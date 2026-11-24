@@ -1,712 +1,356 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { services, siteContent } from "../data/site";
-import { ServiceStage } from "./SystemStage";
-import { Link } from "../lib/router";
-import { gsap, ScrollTrigger, prefersReducedMotion, onMotionPreferenceChange } from "../lib/gsap";
-import { emitThread } from "../lib/threadBus";
-import { hasFinePointer } from "../lib/interact";
-import { onPreviewDone } from "../lib/autoplay";
-import { digitRoll } from "../motion/helpers";
+import { useLayoutEffect, useEffect, useRef, useState } from "react";
+import { gsap, ScrollTrigger, prefersReducedMotion } from "../lib/gsap";
+import { oneRailStore } from "../lib/oneRailState";
+import { SlotButton } from "./SlotButton";
 
-/**
- * SERVICES — shared shell.
- *
- *  left   number · title · tagline · arc chips · Explore link   (unchanged)
- *  right  a live stage frame; each tab brings its own product
- *  bottom tab rail with connecting line — the arrival point of the
- *         shared thread from the Problem section
- */
-const HOVER_MS = 400;
+import { VideoEditingDemo } from "./VideoEditingDemo";
+import { WebDevDemo } from "./WebDevDemo";
+import { AgentDemo } from "./AgentDemo";
+import { AutomationDemo } from "./AutomationDemo";
 
-const N = services.length;
+interface ServiceCardData {
+  id: string;
+  n: string;
+  title: string;
+  roomName: string;
+  headline: string;
+  desc: string;
+  slug: string;
+  highlights: string[];
+  coordinate: string;
+}
 
-/** Pin length: 340vh (85vh per service across 4 services). */
-const pinDistance = () => Math.round(window.innerHeight * 3.4);
+const SERVICE_CARDS: ServiceCardData[] = [
+  {
+    id: "video-editing",
+    n: "01",
+    title: "Video Editing",
+    roomName: "VIDEO EDITING",
+    headline: "Video Editing",
+    desc: "Every frame has a story. Let's make it worth watching. Engineered from raw 4K camera footage to cinema-grade master delivery.",
+    slug: "video-editing",
+    highlights: ["4K Cinema Master Grades", "60fps Native Playback", "Sub-frame Sound Design"],
+    coordinate: "03 · SERVICES",
+  },
+  {
+    id: "web-development",
+    n: "02",
+    title: "Web Development",
+    roomName: "WEB DEVELOPMENT",
+    headline: "Web Development",
+    desc: "Fast, bespoke websites engineered to convert. High-craft digital flagships with sub-35ms interaction speed.",
+    slug: "web-development",
+    highlights: ["Architectural Layout Systems", "Sub-35ms Interaction", "Fluid Spatial Responsive Canvas"],
+    coordinate: "03 · SERVICES",
+  },
+  {
+    id: "ai-chatbots",
+    n: "03",
+    title: "AI Chatbots",
+    roomName: "AI CHATBOTS",
+    headline: "AI Chatbots",
+    desc: "Intelligent agents that qualify leads, book calls, and handle support 24/7. Zero latency, rules-backed reasoning.",
+    slug: "ai-chatbots",
+    highlights: ["INSTANT LEAD ROUTING", "Multi-tool Function Calling", "24/7 Autonomous Booking"],
+    coordinate: "03 · SERVICES",
+  },
+  {
+    id: "ai-automation",
+    n: "04",
+    title: "AI Automation",
+    roomName: "AI AUTOMATION",
+    headline: "AI Automation",
+    desc: "End-to-end workflows that connect your stack and eliminate repetitive ops. Real-time sync across all your tools.",
+    slug: "ai-automation",
+    highlights: ["Bi-directional Sheet & CRM Sync", "Automated Slack & Inbox Triage", "Zero Manual Touchpoints"],
+    coordinate: "03 · SERVICES",
+  },
+];
 
-export type ShowcaseMode = "AUTO" | "MANUAL";
-
-export const SHOWCASE_CONFIG = {
-  /** Dwell time after a demo's showcase completes before advancing (ms) */
-  dwellAfterShowcaseMs: 1800,
-  /** Dwell time when prefersReducedMotion is enabled (ms) */
-  reducedMotionDwellMs: 4000,
-  /**
-   * Safety timeout per service in case a preview signal is delayed or already marked played.
-   * Generous enough for full showcase + margin.
-   */
-  safetyTimeoutMs: {
-    "video-editing": 7500,
-    "web-development": 7000,
-    "ai-chatbots": 7500,
-    "ai-automation": 13000,
-  } as Record<string, number>,
-} as const;
+const STEPPED_TOPS = ["78px", "108px", "138px", "168px"];
 
 export function Chapters() {
-  const root = useRef<HTMLElement>(null);
-  const moduleRef = useRef<HTMLDivElement>(null);
-  const copy = useRef<HTMLDivElement>(null);
-  const strip = useRef<HTMLDivElement>(null);
-  const hoverTimer = useRef(0);
-  const firstIndex = useRef(true);
+  const rootRef = useRef<HTMLElement>(null);
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [cardInView, setCardInView] = useState<boolean[]>([false, false, false, false]);
+  const [cardRunKeys, setCardRunKeys] = useState<number[]>([0, 0, 0, 0]);
 
-  const [index, setIndex] = useState(0);
-  const [preview, setPreview] = useState<number | null>(null);
-  const [inView, setInView] = useState(false);
-  const [visited, setVisited] = useState<Set<string>>(() => new Set([services[0].slug]));
-  const [showcaseMode, setShowcaseMode] = useState<ShowcaseMode>("AUTO");
-
-  /* ---- pinned scroll state — desktop only ---- */
-  const [pinned, setPinned] = useState(
-    () => typeof window !== "undefined" && window.matchMedia("(min-width: 900px)").matches && !prefersReducedMotion()
-  );
-  const [pinOn, setPinOn] = useState(false);
-  const pinSt = useRef<ScrollTrigger | null>(null);
-  const prevIndexRef = useRef(0);
-
-  const numeralFillRef = useRef<HTMLSpanElement>(null);
-  const counterNumRef = useRef<HTMLSpanElement>(null);
-  const progressLineRef = useRef<HTMLSpanElement>(null);
-  const headerStatementRef = useRef<HTMLSpanElement>(null);
-
-  // Demo autoplay is event-synchronized with morph completion (single source of truth)
-  const [demoActive, setDemoActive] = useState(true);
-
-  const indexRef = useRef(0);
-  indexRef.current = index;
-  const targetIndexRef = useRef(0);
-  const pinnedRef = useRef(pinned);
-  pinnedRef.current = pinned;
-  const showcaseModeRef = useRef<ShowcaseMode>("AUTO");
-  showcaseModeRef.current = showcaseMode;
-  const advanceTimerRef = useRef<number>(0);
-  const previewDoneUnsubRef = useRef<(() => void) | null>(null);
-  const inViewRef = useRef(false);
-  inViewRef.current = inView;
-
-  const userExplicitSelectedRef = useRef(false);
-  const explicitIndexRef = useRef<number | null>(null);
-  const isClickScrollingRef = useRef(false);
-  const isScrollingRef = useRef(false);
-  const scrollEndTimerRef = useRef(0);
-
+  // Viewport-gated IntersectionObserver (threshold: 0.35) with 220ms settling delay
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 900px)");
-    const sync = () => setPinned(mq.matches && !prefersReducedMotion());
-    mq.addEventListener("change", sync);
-    const unsubs = onMotionPreferenceChange(sync);
-    return () => {
-      mq.removeEventListener("change", sync);
-      unsubs();
-    };
-  }, []);
+    const cards = cardRefs.current;
+    const settleTimers: (number | null)[] = [null, null, null, null];
 
-  const clearAdvanceTimer = () => {
-    if (advanceTimerRef.current) {
-      window.clearTimeout(advanceTimerRef.current);
-      advanceTimerRef.current = 0;
-    }
-    if (previewDoneUnsubRef.current) {
-      previewDoneUnsubRef.current();
-      previewDoneUnsubRef.current = null;
-    }
-  };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const idx = cards.findIndex((c) => c === entry.target);
+          if (idx === -1) return;
 
-  /** Arms automatic progression to the next service upon showcase completion + dwell */
-  const armAutoAdvance = (serviceSlug: string) => {
-    clearAdvanceTimer();
-    if (showcaseModeRef.current !== "AUTO" || !inViewRef.current || isScrollingRef.current) return;
-
-    const triggerNext = () => {
-      clearAdvanceTimer();
-      if (showcaseModeRef.current !== "AUTO" || !inViewRef.current || isScrollingRef.current) return;
-      const nextIdx = (indexRef.current + 1) % services.length;
-      transitionToService(nextIdx);
-    };
-
-    if (prefersReducedMotion()) {
-      advanceTimerRef.current = window.setTimeout(triggerNext, SHOWCASE_CONFIG.reducedMotionDwellMs);
-      return;
-    }
-
-    const safetyMs = SHOWCASE_CONFIG.safetyTimeoutMs[serviceSlug] ?? 8000;
-    advanceTimerRef.current = window.setTimeout(triggerNext, safetyMs);
-
-    previewDoneUnsubRef.current = onPreviewDone((doneSlug) => {
-      if (doneSlug !== serviceSlug) return;
-      if (showcaseModeRef.current !== "AUTO" || isScrollingRef.current) {
-        clearAdvanceTimer();
-        return;
-      }
-      if (advanceTimerRef.current) {
-        window.clearTimeout(advanceTimerRef.current);
-      }
-      advanceTimerRef.current = window.setTimeout(triggerNext, SHOWCASE_CONFIG.dwellAfterShowcaseMs);
-    });
-  };
-
-  const handleStageSettled = (settledSlug: string) => {
-    const currentTarget = services[targetIndexRef.current]?.slug;
-    const currentIndex = services[indexRef.current]?.slug;
-    if (currentTarget === settledSlug || currentIndex === settledSlug) {
-      setDemoActive(true);
-      if (showcaseModeRef.current === "AUTO") {
-        armAutoAdvance(settledSlug);
-      }
-    }
-  };
-
-  const intro = siteContent.servicesIntro;
-  const s = services[index];
-
-  /** Orchestrates outgoing elements exit then incoming elements entrance */
-  const transitionToService = (newIndex: number) => {
-    if (newIndex === targetIndexRef.current && newIndex === indexRef.current) return;
-    setDemoActive(false);
-    const oldIndex = indexRef.current;
-    prevIndexRef.current = oldIndex;
-    targetIndexRef.current = newIndex;
-
-    // Active service rail dot gets one ring pulse per activation (Scale 1 -> 1.8, Opacity 0.6 -> 0, 0.7s)
-    const targetSlug = services[newIndex].slug;
-    const activeDotRing = document.querySelector<HTMLElement>(`[data-rail-dot="${targetSlug}"] .rail-pulse-ring`);
-    if (activeDotRing) {
-      gsap.fromTo(activeDotRing, { scale: 1, opacity: 0.6 }, { scale: 1.8, opacity: 0, duration: 0.7, ease: "power2.out" });
-    }
-
-    if (prefersReducedMotion()) {
-      setIndex(newIndex);
-      setVisited((v) => (v.has(services[newIndex].slug) ? v : new Set(v).add(services[newIndex].slug)));
-      return;
-    }
-
-    // 1. Leaving service: outgoing elements exit (yPercent: -40, opacity: 0, duration: 0.35s, stagger: 0.04s)
-    const copyEl = copy.current;
-    if (copyEl) {
-      const outgoingEls = Array.from(copyEl.querySelectorAll(".svc-title-word, .svc-desc, .svc-tag-item, .btn"));
-      gsap.to(outgoingEls, {
-        yPercent: -40,
-        opacity: 0,
-        duration: 0.35,
-        stagger: 0.04,
-        ease: "power2.in",
-        overwrite: "auto",
-        onComplete: () => {
-          // Guard against stale closures if another transition started
-          if (targetIndexRef.current !== newIndex) return;
-
-          // 2. Commit new service state
-          setIndex(newIndex);
-          setVisited((v) => (v.has(services[newIndex].slug) ? v : new Set(v).add(services[newIndex].slug)));
-
-          // Roll counter digit
-          if (counterNumRef.current) {
-            digitRoll(counterNumRef.current, services[oldIndex].n, services[newIndex].n, {
-              duration: 0.6,
-              ease: "power2.out",
+          if (entry.isIntersecting) {
+            if (settleTimers[idx]) window.clearTimeout(settleTimers[idx]!);
+            settleTimers[idx] = window.setTimeout(() => {
+              setCardInView((prev) => {
+                const next = [...prev];
+                next[idx] = true;
+                return next;
+              });
+              setCardRunKeys((prev) => {
+                const next = [...prev];
+                next[idx] = next[idx] + 1;
+                return next;
+              });
+            }, 220); // 220ms viewport settling delay before play
+          } else {
+            if (settleTimers[idx]) {
+              window.clearTimeout(settleTimers[idx]!);
+              settleTimers[idx] = null;
+            }
+            setCardInView((prev) => {
+              if (!prev[idx]) return prev;
+              const next = [...prev];
+              next[idx] = false;
+              return next;
             });
           }
-
-          // 3. Active service entrance: incoming elements enter without overlap
-          requestAnimationFrame(() => {
-            const freshCopy = copy.current;
-            if (!freshCopy) return;
-
-            // Numeral fills with lime using clip-path wipe from bottom to top over 0.8s
-            if (numeralFillRef.current) {
-              gsap.fromTo(
-                numeralFillRef.current,
-                { clipPath: "inset(100% 0% 0% 0%)" },
-                { clipPath: "inset(0% 0% 0% 0%)", duration: 0.8, ease: "power2.out" }
-              );
-            }
-
-            // Title lines reveal through masks over 0.8s, stagger 0.08s
-            const freshWords = freshCopy.querySelectorAll(".svc-title-word");
-            gsap.fromTo(
-              freshWords,
-              { yPercent: 100, opacity: 1 },
-              { yPercent: 0, opacity: 1, duration: 0.8, stagger: 0.08, ease: "power3.out" }
-            );
-
-            // Description lines reveal
-            const freshDesc = freshCopy.querySelector(".svc-desc");
-            if (freshDesc) {
-              gsap.fromTo(
-                freshDesc,
-                { yPercent: 100, opacity: 0 },
-                { yPercent: 0, opacity: 1, duration: 0.7, ease: "power3.out" }
-              );
-            }
-
-            // Three tags rise with stagger 0.06s
-            const freshTags = freshCopy.querySelectorAll(".svc-tag-item");
-            gsap.fromTo(
-              freshTags,
-              { y: 16, opacity: 0 },
-              { y: 0, opacity: 1, duration: 0.5, stagger: 0.06, ease: "power2.out" }
-            );
-
-            // EXPLORE button fades in last
-            const freshBtn = freshCopy.querySelector(".btn");
-            if (freshBtn) {
-              gsap.fromTo(
-                freshBtn,
-                { opacity: 0, y: 8 },
-                { opacity: 1, y: 0, duration: 0.4, delay: 0.3, ease: "power2.out" }
-              );
-            }
-          });
-        },
-      });
-    } else {
-      setIndex(newIndex);
-      setVisited((v) => (v.has(services[newIndex].slug) ? v : new Set(v).add(services[newIndex].slug)));
-    }
-  };
-
-  /** Manual selection: cancels automatic progression and locks selected service indefinitely */
-  const selectFromUser = (newIndex: number) => {
-    clearAdvanceTimer();
-    setShowcaseMode("MANUAL");
-    showcaseModeRef.current = "MANUAL";
-    userExplicitSelectedRef.current = true;
-    explicitIndexRef.current = newIndex;
-
-    if (newIndex === indexRef.current && newIndex === targetIndexRef.current) {
-      return;
-    }
-
-    transitionToService(newIndex);
-
-    if (pinSt.current && pinOnRef.current) {
-      const pinStart = pinSt.current.start;
-      const pinLength = pinSt.current.end - pinStart;
-      const targetProgress = (newIndex + 0.5) / services.length;
-      const targetY = pinStart + targetProgress * pinLength;
-      isClickScrollingRef.current = true;
-      window.scrollTo({
-        top: targetY,
-        behavior: prefersReducedMotion() ? "auto" : "smooth",
-      });
-      window.setTimeout(() => {
-        isClickScrollingRef.current = false;
-      }, 600);
-    }
-  };
-  const selectFromUserRef = useRef(selectFromUser);
-  selectFromUserRef.current = selectFromUser;
-
-  const pinOnRef = useRef(false);
-  pinOnRef.current = pinOn;
-
-  const hoverStart = (i: number) => {
-    if (!hasFinePointer() || i === index || pinOn) return;
-    window.clearTimeout(hoverTimer.current);
-    hoverTimer.current = window.setTimeout(() => {
-      if (pinOnRef.current) return;
-      if (indexRef.current === i) return;
-      setPreview(i);
-    }, HOVER_MS);
-  };
-  const hoverEnd = () => {
-    window.clearTimeout(hoverTimer.current);
-    setPreview(null);
-  };
-
-  useEffect(
-    () => () => {
-      window.clearTimeout(hoverTimer.current);
-      clearAdvanceTimer();
-    },
-    []
-  );
-
-  /*
-   * Nav hover-preview handoff. A nav thumbnail click either
-   * fires the select-service event (same-page jump) or stashes the slug
-   * in sessionStorage (cross-route).
-   */
-  useEffect(() => {
-    const apply = (slug: string, andScroll: boolean) => {
-      const i = services.findIndex((sv) => sv.slug === slug);
-      if (i < 0) return;
-      selectFromUserRef.current(i);
-      if (andScroll && !pinnedRef.current) {
-        window.setTimeout(() => {
-          document.getElementById("services-home")?.scrollIntoView({
-            behavior: prefersReducedMotion() ? "auto" : "smooth",
-            block: "start",
-          });
-        }, 180);
-      }
-    };
-    const onEv = (e: Event) => apply((e as CustomEvent).detail, false);
-    window.addEventListener("arche:select-service", onEv);
-    let pending: string | null = null;
-    try {
-      pending = sessionStorage.getItem("arche:svcTab");
-      sessionStorage.removeItem("arche:svcTab");
-    } catch {
-      /* ignore */
-    }
-    if (pending) apply(pending, true);
-    return () => window.removeEventListener("arche:select-service", onEv);
-  }, []);
-
-  // Viewport observer: stages animate and autonomous progression runs while on screen
-  useEffect(() => {
-    const el = root.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        const isVisible = entries[0].isIntersecting;
-        setInView(isVisible);
-        inViewRef.current = isVisible;
-        if (isVisible) {
-          if (showcaseModeRef.current === "AUTO" && !userExplicitSelectedRef.current && !isScrollingRef.current) {
-            armAutoAdvance(services[indexRef.current].slug);
-          }
-        } else {
-          clearAdvanceTimer();
-        }
+        });
       },
-      { threshold: 0.35 }
+      {
+        threshold: 0.35,
+        rootMargin: "0px 0px -5% 0px",
+      }
     );
-    io.observe(el);
+
+    cards.forEach((card) => {
+      if (card) observer.observe(card);
+    });
+
     return () => {
-      io.disconnect();
-      clearAdvanceTimer();
+      observer.disconnect();
+      settleTimers.forEach((t) => t && window.clearTimeout(t));
     };
   }, []);
 
-  /*
-   * Pinned scroll container (desktop, motion OK).
-   * Pin keeps page navigation stable and predictable.
-   * Scrolling down drives 01 -> 02 -> 03 -> 04; scrolling up reverses 04 -> 03 -> 02 -> 01.
-   */
   useLayoutEffect(() => {
-    if (!pinned) {
-      pinSt.current = null;
-      setPinOn(false);
-      return;
-    }
-    const sec = root.current;
-    if (!sec) return;
+    const root = rootRef.current;
+    if (!root) return;
 
-    const fitStage = () => {
-      const h = Math.min(440, Math.max(300, Math.round(window.innerHeight - 350)));
-      sec.style.setProperty("--svc-stage-h", `${h}px`);
-    };
-    fitStage();
+    const cards = cardRefs.current.filter(Boolean) as HTMLDivElement[];
+    if (cards.length === 0) return;
+
+    // Presence trigger for Left-Edge Rail HUD
+    const stPresence = ScrollTrigger.create({
+      trigger: root,
+      start: "top 70%",
+      end: "bottom 30%",
+      onEnter: () => {
+        oneRailStore.setChapter(2, "SERVICES", 0, "03 · SERVICES");
+      },
+      onEnterBack: () => {
+        oneRailStore.setChapter(2, "SERVICES", 1, "03 · SERVICES");
+      },
+    });
+
+    if (prefersReducedMotion() || window.innerWidth < 1024) {
+      return () => stPresence.kill();
+    }
 
     const ctx = gsap.context(() => {
-      pinSt.current = ScrollTrigger.create({
-        id: "services-pin",
-        trigger: sec,
-        start: "top top",
-        end: () => `+=${pinDistance()}`,
-        pin: true,
-        pinSpacing: true,
-        anticipatePin: 1,
-        invalidateOnRefresh: true,
-        onRefresh: () => fitStage(),
-        onToggle: (self) => setPinOn(self.isActive),
-        onEnter: () => {
-          clearAdvanceTimer();
-          if (!userExplicitSelectedRef.current) {
-            if (indexRef.current !== 0) {
-              transitionToService(0);
-            }
-          } else if (explicitIndexRef.current !== null && indexRef.current !== explicitIndexRef.current) {
-            transitionToService(explicitIndexRef.current);
-          }
-        },
-        onLeaveBack: () => {
-          clearAdvanceTimer();
-          if (!userExplicitSelectedRef.current) {
-            if (indexRef.current !== 0) {
-              transitionToService(0);
-            }
-          }
-        },
-        onUpdate: (self) => {
-          if (isClickScrollingRef.current) return;
-          clearAdvanceTimer();
-          isScrollingRef.current = true;
-          window.clearTimeout(scrollEndTimerRef.current);
-          scrollEndTimerRef.current = window.setTimeout(() => {
-            isScrollingRef.current = false;
-          }, 350);
+      // For each card (except the last), as the next card scrolls up over it into stepped sticky position,
+      // visibly animate Card N receding into depth: scale 1.0 -> 0.955 -> 0.92, body opacity 1.0 -> 0.25, brightness 1.0 -> 0.96
+      cards.forEach((card, i) => {
+        if (i < cards.length - 1) {
+          const nextCard = cards[i + 1];
+          if (!nextCard) return;
 
-          const p = self.progress;
-          let targetIdx: number;
-          if (p <= 0.02) {
-            targetIdx = userExplicitSelectedRef.current && explicitIndexRef.current !== null
-              ? explicitIndexRef.current
-              : 0;
-          } else {
-            targetIdx = Math.min(services.length - 1, Math.max(0, Math.floor(p * services.length)));
-            if (userExplicitSelectedRef.current && explicitIndexRef.current !== targetIdx) {
-              userExplicitSelectedRef.current = false;
-              explicitIndexRef.current = null;
-            }
-          }
+          ScrollTrigger.create({
+            trigger: nextCard,
+            start: "top 80%",
+            end: `top ${STEPPED_TOPS[i + 1]}`,
+            scrub: 0.6,
+            onUpdate: (self) => {
+              const p = self.progress;
+              const scaleVal = 1.0 - p * 0.08; // 1.0 -> 0.92
+              const bodyOpacityVal = 1.0 - p * 0.75; // 1.0 -> 0.25
+              const brightnessVal = 1.0 - p * 0.04; // 1.0 -> 0.96
+              gsap.set(card, {
+                scale: scaleVal,
+                transformOrigin: "center top",
+              });
+              const body = card.querySelector<HTMLElement>(".service-card-body");
+              if (body) {
+                gsap.set(body, {
+                  opacity: bodyOpacityVal,
+                  filter: `brightness(${brightnessVal})`,
+                });
+              }
+            },
+          });
+        }
 
-          if (targetIdx !== indexRef.current && targetIdx !== targetIndexRef.current) {
-            transitionToService(targetIdx);
-          }
-        },
+        // Section chapter coordinate updater for OneRail telemetry
+        ScrollTrigger.create({
+          trigger: card,
+          start: "top center",
+          end: "bottom center",
+          onEnter: () => {
+            oneRailStore.setChapter(2, "SERVICES", i / 3, "03 · SERVICES");
+          },
+          onEnterBack: () => {
+            oneRailStore.setChapter(2, "SERVICES", i / 3, "03 · SERVICES");
+          },
+        });
       });
-      setPinOn(pinSt.current.isActive);
-    }, sec);
-
-    let raf = 0;
-    const onResize = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        fitStage();
-        ScrollTrigger.refresh();
-      });
-    };
-    window.addEventListener("resize", onResize);
+    }, root);
 
     return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", onResize);
+      stPresence.kill();
       ctx.revert();
-      pinSt.current = null;
-      setPinOn(false);
     };
-  }, [pinned]);
-
-  // left column follows the committed tab on mobile / unpinned
-  useEffect(() => {
-    emitThread();
-    if (firstIndex.current) {
-      firstIndex.current = false;
-      return;
-    }
-    // keep the active tab centred in the mobile strip
-    const st = strip.current;
-    const tab = st?.querySelector<HTMLElement>(`[data-i="${index}"]`);
-    if (st && tab && st.scrollWidth > st.clientWidth) {
-      st.scrollTo({ left: tab.offsetLeft - (st.clientWidth - tab.offsetWidth) / 2, behavior: "smooth" });
-    }
-  }, [index]);
+  }, []);
 
   return (
     <section
-      id="services-home"
-      ref={root}
-      className={
-        pinned
-          ? "relative w-full pt-[clamp(48px,6vh,86px)] pb-[clamp(24px,4vh,48px)] overflow-hidden"
-          : "relative w-full py-[clamp(56px,8vh,96px)] overflow-hidden"
-      }
+      ref={rootRef}
+      id="services"
+      className="relative w-full bg-transparent text-[#0D0E0C] pt-12 pb-6 px-4 sm:px-6 md:px-12 select-none overflow-x-clip"
     >
-      <div ref={moduleRef} className="wrap flex flex-col">
-        {/* header */}
-        <div className="order-0 flex items-end justify-between gap-[16px] border-b pb-[14px]" style={{ borderColor: "var(--line)" }}>
-          <div className="flex flex-col gap-[4px] min-[900px]:flex-row min-[900px]:items-baseline min-[900px]:gap-[16px]">
-            <span className="mono mono-a">{intro.label}</span>
-            <span className="overflow-hidden inline-block">
-              <span ref={headerStatementRef} className="d4 max-w-[32ch] inline-block">{intro.statement}</span>
-            </span>
-          </div>
-          <span className="mono flex-none"><span ref={counterNumRef} className="inline-block">{s.n}</span> / {String(services.length).padStart(2, "0")}</span>
-        </div>
-
-        {/* copy + stage: Rebalanced layout with stretched left column vertically distributed between content group and bottom CTA */}
-        <div className="order-2 grid items-start gap-[clamp(28px,3.5vw,48px)] py-[clamp(20px,3vh,32px)] min-[900px]:items-stretch min-[900px]:grid-cols-[clamp(340px,28vw,410px)_minmax(0,1fr)]">
-          <div ref={copy} className="flex min-w-0 flex-col min-[900px]:h-full min-[900px]:justify-between min-[900px]:pt-[2px] min-[900px]:pb-[12px]">
-            {/* PRIMARY GROUP 1: CONTENT GROUP (Service Number, Title, Description, Process Tags) */}
-            <div className="flex flex-col">
-              {/* Service Number */}
-              <button
-                type="button"
-                className="self-start cursor-pointer bg-transparent border-0 p-0 text-left"
-                style={{ marginBottom: "clamp(12px, 1.4vw, 16px)" }}
-                onClick={() => selectFromUser((index + 1) % N)}
-                aria-label={`Service ${s.n} of ${services.length} — show next service`}
-                data-cursor="NEXT"
-              >
-                <span className="relative block select-none" style={{ fontSize: "clamp(58px,6.2vw,92px)", lineHeight: 0.95 }}>
-                  <span className="numeral outline-t block">
-                    {s.n}
-                  </span>
-                  <span
-                    ref={numeralFillRef}
-                    className="numeral absolute inset-0 block"
-                    style={{
-                      color: "var(--accent-deep)",
-                      WebkitTextStroke: "0px transparent",
-                      clipPath: "inset(0% 0% 0% 0%)",
-                    }}
-                    aria-hidden
-                  >
-                    {s.n}
-                  </span>
-                </span>
-              </button>
-
-              {/* Service Title */}
-              <h3
-                className="d2 font-medium"
-                style={{
-                  fontSize: "clamp(38px,4.2vw,64px)",
-                  lineHeight: 0.98,
-                  letterSpacing: "-0.045em",
-                  marginBottom: "clamp(16px, 1.8vw, 22px)",
-                }}
-              >
-                {s.title.split(" ").map((w, idx) => (
-                  <span key={idx} className="inline-block overflow-hidden mr-[0.26em] align-top pb-[0.05em] -mb-[0.05em]">
-                    <span className="svc-title-word inline-block">{w}</span>{" "}
-                  </span>
-                ))}
-              </h3>
-
-              {/* Description */}
-              <div className="overflow-hidden" style={{ marginBottom: "clamp(20px, 2.2vw, 26px)" }}>
-                <p className="svc-desc body max-w-[34ch] text-[clamp(14.5px,1.05vw,17px)]" style={{ lineHeight: 1.55, color: "var(--muted)" }}>
-                  {s.tagline}
-                </p>
-              </div>
-
-              {/* Process Tags */}
-              <div
-                className="flex flex-wrap items-center gap-x-[clamp(6px,0.9vw,10px)] gap-y-[8px] mb-[clamp(24px,3vh,30px)] min-[900px]:mb-0"
-              >
-                {s.arc.map((a, k) => (
-                  <span key={a} className="svc-tag-item flex items-center gap-[clamp(6px,0.9vw,10px)] flex-none">
-                    <span
-                      className="mono"
-                      style={{
-                        padding: "5px 11px",
-                        border: `1px solid ${k === s.arc.length - 1 ? "var(--accent-deep)" : "var(--line)"}`,
-                        borderRadius: 999,
-                        color: k === s.arc.length - 1 ? "var(--accent-ink)" : "var(--muted)",
-                        lineHeight: 1,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {a}
-                    </span>
-                    {k < s.arc.length - 1 && (
-                      <span className="mono select-none" style={{ color: "var(--faint)", lineHeight: 1 }} aria-hidden>
-                        →
-                      </span>
-                    )}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* PRIMARY GROUP 2: EXPLORE CTA */}
-            <div className="svc-btn-wrap">
-              <Link
-                to={`/services/${s.slug}`}
-                className="btn btn-ghost"
-                cursor="OPEN"
-                onNavigate={() => {
-                  const stage = document.getElementById("services-stage");
-                  if (stage && !prefersReducedMotion()) {
-                    gsap.to(stage, {
-                      scale: 1.04,
-                      opacity: 0.9,
-                      duration: 0.35,
-                      ease: "power2.out",
-                    });
-                  }
-                }}
-              >
-                Explore {s.title} <span className="arw">→</span>
-              </Link>
+      <div className="relative z-10 w-full max-w-[1240px] mx-auto">
+        {/* =========================================================
+            SERVICES SECTION HEADER
+            ========================================================= */}
+        <div className="mb-8 md:mb-10 text-center max-w-[860px] mx-auto">
+          {/* Frosted-Glass Eyebrow Pill Box */}
+          <div className="mb-4 flex justify-center">
+            <div className="glass-eyebrow-pill">
+              <span className="h-[5px] w-[5px] rounded-full bg-[#84CC16] shadow-[0_0_8px_#84CC16] flex-shrink-0" />
+              <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#232620]">
+                CAPABILITIES · 04 CONNECTED VERTICALS
+              </span>
             </div>
           </div>
 
-          <div className="relative min-w-0 w-full">
-            <ServiceStage
-              slug={s.slug}
-              previewSlug={preview !== null ? services[preview].slug : null}
-              active={(inView || pinOn) && demoActive}
-              visited={visited}
-              onSelect={selectFromUser}
-              onStageSettled={handleStageSettled}
-            />
-          </div>
-        </div>
-
-        {/* tab rail — the shared thread's arrival point */}
-        <div
-          className="order-1 flex items-center gap-[clamp(10px,1.2vw,16px)] pt-[14px] min-[900px]:order-3 min-[900px]:border-t"
-          style={{ borderColor: "var(--line)" }}
-        >
-          <div
-            ref={strip}
-            data-thread-rail
-            role="tablist"
-            aria-label="Services"
-            className="svc-rail hide-scroll -mx-[var(--gut)] flex snap-x snap-mandatory gap-[8px] overflow-x-auto px-[var(--gut)] min-[900px]:mx-0 min-[900px]:gap-[clamp(10px,1.2vw,16px)] min-[900px]:overflow-visible min-[900px]:px-0"
-            onMouseLeave={hoverEnd}
-            onKeyDown={(e) => {
-              if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
-              e.preventDefault();
-              const next = e.key === "Home" ? 0 : e.key === "End" ? N - 1 : (index + (e.key === "ArrowRight" ? 1 : -1) + N) % N;
-              selectFromUser(next);
-              strip.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
+          <h2
+            className="text-[clamp(2.75rem,5vw,4.5rem)] font-bold tracking-[-0.038em] leading-[0.98] mb-4 text-[#11120F]"
+            style={{
+              fontFamily: "'Inter Tight', sans-serif",
+              fontVariationSettings: "'wght' 700",
+              fontWeight: 700,
+              color: "#11120F",
+              textShadow: "none",
             }}
           >
-            {services.map((sv, i) => (
-              <button
-                key={sv.slug}
-                type="button"
-                role="tab"
-                id={`svc-tab-${sv.slug}`}
-                aria-controls="services-stage"
-                data-i={i}
-                data-thread-slot="services"
-                data-active={i === index ? "1" : "0"}
-                data-preview={preview === i ? "1" : "0"}
-                aria-selected={i === index}
-                onClick={() => selectFromUser(i)}
-                onMouseEnter={() => hoverStart(i)}
-                onFocus={() => hoverEnd()}
-                className="svc-tab flex h-[34px] flex-none snap-center items-center justify-center min-[900px]:min-w-[clamp(126px,12.5vw,176px)]"
-              >
-                <span className="svc-tab-pill relative overflow-hidden">
-                  <span
-                    className="svc-tab-border pointer-events-none absolute inset-0 rounded-[999px] border border-[var(--accent-deep)]"
-                    style={{
-                      opacity: i === index ? 1 : 0,
-                      clipPath: i === index ? "inset(0% 0% 0% 0%)" : "inset(0% 100% 0% 0%)",
-                    }}
-                  />
-                  <span className="svc-tab-dot" />
-                  <span className="mono whitespace-nowrap">{sv.n} {sv.title}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-          <span className="relative hidden h-px flex-1 overflow-hidden min-[900px]:block" style={{ background: "var(--line)" }}>
-            <span
-              ref={progressLineRef}
-              className="absolute inset-0 origin-left"
-              style={{
-                background: "var(--accent-deep)",
-                transform: `scaleX(${index / (services.length - 1)})`,
-                transition: "transform .6s var(--e-out)",
+            <span className="block text-[#11120F]">
+              <span className="shiny-ink-text">Four verticals.</span>
+            </span>
+            <span className="block mt-1 text-[#63685E]">
+              <span className="headline-secondary-shine">Built as one system.</span>
+            </span>
+          </h2>
+
+          <p className="text-[clamp(15px,1.25vw,18px)] text-[#484C45] max-w-[54ch] mx-auto leading-relaxed font-sans">
+            Cinema film, interactive web, autonomous AI agents, and operational automation. Engineered as connected components that multiply impact.
+          </p>
+        </div>
+
+        {/* =========================================================
+            4 FULL-WIDTH STEPPED-DECK ARCHITECTURAL SAGE-LIME CARDS
+            - Stepped sticky tops: 78px, 108px, 138px, 168px (30px gap)
+            - Upward separation shadows so incoming cards float in front
+            - Compact space-y-[10vh] pacing and pb-[6vh] runway
+            ========================================================= */}
+        <div className="relative flex flex-col space-y-[10vh] pb-[6vh]">
+          {SERVICE_CARDS.map((svc, idx) => (
+            <div
+              key={svc.id}
+              ref={(el) => {
+                cardRefs.current[idx] = el;
               }}
-            />
-          </span>
-          <span className="mono hidden flex-none min-[900px]:block" aria-live="polite">
-            {preview !== null
-              ? "Previewing"
-              : showcaseMode === "AUTO"
-                ? `Showcase · ${s.n} / ${String(N).padStart(2, "0")} · auto`
-                : `Service ${s.n} / ${String(N).padStart(2, "0")} · locked`}
-          </span>
+              style={{
+                position: "sticky",
+                top: STEPPED_TOPS[idx],
+                zIndex: (idx + 1) * 10,
+                background: "#F4F1E0",
+                boxShadow:
+                  idx === 0
+                    ? "inset 0 1px 0 rgba(255, 253, 244, 0.92), 0 10px 28px -14px rgba(20, 20, 19, 0.08)"
+                    : "inset 0 1px 0 rgba(255, 253, 244, 0.92), 0 -14px 36px -10px rgba(20, 20, 19, 0.09), 0 16px 40px -16px rgba(20, 20, 19, 0.10)",
+              }}
+              className="sticky-service-card frosted-ivory-card arche-glow-card shiny-border w-full max-w-[1220px] mx-auto rounded-[28px] p-6 sm:p-8 lg:p-10 transition-all duration-300 flex flex-col gap-8"
+            >
+              {/* Card Header Top Row */}
+              <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-[#141413]/[0.08]">
+                <div>
+                  <div className="flex items-center gap-2 mb-2 font-mono text-[11px] font-semibold tracking-widest text-[#868A82] uppercase">
+                    <span className="text-[#141413] font-bold">{svc.n} ·</span>
+                    <span>{svc.roomName}</span>
+                  </div>
+
+                  <h3 className="text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-[-0.025em] leading-[1.15] text-[#141413]">
+                    {svc.headline}
+                  </h3>
+
+                  <p className="text-sm sm:text-base text-[#595C56] max-w-[58ch] leading-relaxed mt-2">
+                    {svc.desc}
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 font-sans text-[12.5px] font-normal text-[#52554E]">
+                    {svc.highlights.map((h, i) => (
+                      <span key={h} className="inline-flex items-center gap-2">
+                        {i > 0 && <span className="h-1.5 w-1.5 rounded-full bg-[#72B314]" />}
+                        <span>{h}</span>
+                      </span>
+                    ))}
+                  </div>
+
+                  <SlotButton
+                    to={`/services/${svc.slug}`}
+                    variant="primary"
+                    arrow="right"
+                    className="!px-4 !py-2 !text-[11px]"
+                  >
+                    Details
+                  </SlotButton>
+                </div>
+              </div>
+
+              {/* Inner Service Card Body (dimmed to 0.15 on recession) */}
+              <div className="service-card-body flex flex-col gap-8 transition-opacity duration-300">
+                {/* Inner Live Interactive Demo Canvas Tray on Soft Alabaster #E5E7DC */}
+                <div className="w-full rounded-2xl bg-[#E5E7DC] border border-[#141413]/[0.08] overflow-hidden shadow-[0_4px_16px_-4px_rgba(20,20,19,0.05)]">
+                  {idx === 0 && (
+                    <VideoEditingDemo
+                      active={cardInView[0]}
+                      isInView={cardInView[0]}
+                      runKey={cardRunKeys[0]}
+                    />
+                  )}
+                  {idx === 1 && (
+                    <WebDevDemo
+                      active={cardInView[1]}
+                      isInView={cardInView[1]}
+                      runKey={cardRunKeys[1]}
+                    />
+                  )}
+                  {idx === 2 && (
+                    <AgentDemo
+                      active={cardInView[2]}
+                      isInView={cardInView[2]}
+                      runKey={cardRunKeys[2]}
+                    />
+                  )}
+                  {idx === 3 && (
+                    <AutomationDemo
+                      active={cardInView[3]}
+                      isInView={cardInView[3]}
+                      runKey={cardRunKeys[3]}
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </section>

@@ -112,17 +112,19 @@ export function ContactPage() {
         } else if (parsed.service) {
           const map: Record<string, BuildOption> = {
             "video-editing": "Video",
+            "video-production": "Video",
             "web-development": "Website",
             "ai-chatbots": "AI Agent",
             "ai-automation": "Automation",
+            "ai-solutions-automation": "Automation",
           };
           targetBuild = map[parsed.service] || null;
         }
         if (targetBuild) {
           setBuild(targetBuild);
         }
-        if (parsed.pkg) {
-          setChange(`Interested in ${parsed.pkg}.`);
+        if (parsed.pkg || parsed.package) {
+          setChange(`Interested in ${parsed.pkg || parsed.package}.`);
         }
         sessionStorage.removeItem("arche:prefill");
       }
@@ -317,13 +319,18 @@ export function ContactPage() {
   const stepTitles = ["WHAT ARE YOU BUILDING?", "WHAT NEEDS TO CHANGE?", "TIMELINE / SCALE", "WHERE DO WE REPLY?"];
 
   return (
-    <section className="w-full pt-[130px] pb-[clamp(60px,8vw,130px)]">
+    <section className="w-full pt-32 md:pt-36 pb-[clamp(60px,8vw,130px)]">
       <div className="wrap max-w-[880px]">
-        <p className="mono mono-a mb-[14px]" data-r="meta">
-          {c.label}
-        </p>
-        <h1 className="d1 max-w-[14ch]" data-r="mask">
-          {c.closing}
+        <div className="mb-4">
+          <div className="glass-eyebrow-pill">
+            <span className="h-[5px] w-[5px] rounded-full bg-[#84CC16] shadow-[0_0_8px_#84CC16] flex-shrink-0" />
+            <span className="font-mono text-[11px] font-semibold tracking-[0.14em] uppercase text-[#232620]">
+              {c.label}
+            </span>
+          </div>
+        </div>
+        <h1 className="text-[clamp(2.75rem,5.2vw,4.5rem)] font-bold tracking-[-0.038em] leading-[0.98] text-[#11120F] max-w-[16ch]">
+          <span className="shiny-ink-text">{c.closing}</span>
         </h1>
         <p className="body mt-[18px] max-w-[52ch]" data-r="meta" data-r-delay="120">
           Four short steps — more conversation than form. Rough answers are fine; we'll sharpen

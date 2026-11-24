@@ -40,14 +40,20 @@ export function SmoothScroll({ children }: SmoothScrollProps) {
     }
 
     const instance = new Lenis({
-      duration: 1.15,
+      lerp: 0.052,
+      duration: 1.45,
       smoothWheel: true,
+      wheelMultiplier: 0.85,
+      touchMultiplier: 1.5,
       syncTouch: false,
       autoRaf: false,
     });
 
     lenisRef.current = instance;
     globalLenisInstance = instance;
+    if (typeof window !== "undefined") {
+      (window as any).__lenis = instance;
+    }
     setLenis(instance);
 
     // Sync Lenis with GSAP ticker & ScrollTrigger exactly per R8

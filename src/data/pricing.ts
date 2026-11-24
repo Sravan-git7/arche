@@ -1,12 +1,8 @@
 /**
- * Arche Pricing Model (PROMPT 27)
+ * ARCHE CREATIVE STUDIOS — Pricing Model
  *
- * Honest, studio-style pricing architecture — no fake three-tier SaaS tables.
- * Every service outlines:
- *  1. A starting-price framing ("Projects typically start at...")
- *  2. A scope-driver explanation ("Final scope depends on...")
- *  3. An honest caveat ("Every project is scoped individually — this isn't a fixed package.")
- *  4. Scope parameters (turnaround, deposit, deliverables)
+ * Transparent studio pricing architecture in INR.
+ * Derived from the central service catalog and package definitions.
  */
 
 export type ServicePricingData = {
@@ -34,44 +30,117 @@ export type ServicePricingData = {
 };
 
 export const pricingData: Record<string, ServicePricingData> = {
-  "video-editing": {
-    slug: "video-editing",
+  "video-production": {
+    slug: "video-production",
     n: "01",
-    serviceTitle: "Video Editing",
-    startingAt: "$2,400",
-    unit: "batch / scope-based",
-    startingFraming: "Video Editing projects typically start at $2,400.",
-    scopeDrivers: "raw footage volume, narrative complexity, publishing cadence, and format variations (vertical short-form vs long-form masters).",
-    caveat: "Every project is scoped individually — this isn't a fixed package.",
+    serviceTitle: "Video Production & Editing",
+    startingAt: "₹799",
+    unit: "per video",
+    startingFraming: "Video Production & Editing starts from ₹799 per video.",
+    scopeDrivers: "source footage volume, narrative pacing, custom motion graphics, sound design, and export aspect ratios.",
+    caveat: "All packages include transparent deliverables, limits, and revision rounds.",
     parameters: {
-      turnaround: "2–5 working days per batch",
-      deposit: "50% to schedule, balance on delivery",
-      revisions: "2 dedicated revision passes per cut",
-      handoff: "Full project source archives + master exports",
+      turnaround: "Short-form: 3–5 working days · Long-form: 5–8 working days",
+      deposit: "50% upfront to confirm schedule, balance on approval",
+      revisions: "1–2 consolidated revision rounds per video",
+      handoff: "High-retention master video exports + project files",
     },
     startingScopes: [
       {
-        name: "Short-Form Batch",
-        price: "$2,400",
-        unit: "per batch",
-        summary: "Batch of high-retention vertical edits cut from your raw footage.",
+        name: "Short-Form Basic",
+        price: "₹799",
+        unit: "per video",
+        summary: "Clean cuts and pacing for social clips up to 30s.",
         includes: [
-          "8 short-form vertical edits (Reels / TikTok / Shorts)",
-          "Dynamic typography & retention-focused pacing",
-          "Color grade & clean audio mixing",
-          "2 revision rounds per video with 48h turnaround",
+          "Final duration up to 30 seconds (source up to 5 mins)",
+          "Clean cuts & removal of pauses",
+          "English captions & basic transitions",
+          "Basic audio balancing & color correction",
+          "One vertical 9:16 export · 1 revision round",
         ],
       },
       {
-        name: "Long-Form Master",
-        price: "Custom quote",
-        unit: "per episode",
-        summary: "Editorial assembly for YouTube, podcasts, and keynotes.",
+        name: "Short-Form Standard",
+        price: "₹1,499",
+        unit: "per video",
+        summary: "Hook-focused high-retention reel or short up to 60s.",
         includes: [
-          "Up to 20 min final master cut with narrative structure",
-          "Audio restoration, sound effects & pacing polish",
-          "Custom visual chapter titles & motion graphics",
-          "1 short-form vertical cutdown included",
+          "Final duration up to 60 seconds (source up to 15 mins)",
+          "Hook-focused editing & dynamic pacing",
+          "Styled English captions & text callouts",
+          "B-roll / overlays & sound design",
+          "One vertical 9:16 export · 2 revision rounds",
+        ],
+      },
+      {
+        name: "Long-Form Standard",
+        price: "₹4,999",
+        unit: "per video",
+        summary: "Full YouTube video or podcast edit up to 10 mins.",
+        includes: [
+          "Final duration up to 10 mins (source up to 60 mins)",
+          "Narrative flow, chapter headings & B-roll placement",
+          "Branded intro/outro & visual titles",
+          "Dialogue cleanup, audio balance & color correction",
+          "One 16:9 export · 2 revision rounds",
+        ],
+      },
+    ],
+  },
+
+  "pitch-decks-storytelling": {
+    slug: "pitch-decks-storytelling",
+    n: "02",
+    serviceTitle: "Pitch Decks & Storytelling",
+    startingAt: "₹3,999",
+    unit: "per deck",
+    startingFraming: "Pitch Decks & Storytelling projects start from ₹3,999.",
+    scopeDrivers: "number of slides, narrative structuring requirements, custom diagrams, market research, and delivery urgency.",
+    caveat: "Every deck is structured to communicate clearly and hold investor attention.",
+    parameters: {
+      turnaround: "Clear Deck: 3–4 days · Narrative: 5–7 days · Investor: 7–10 days",
+      deposit: "50% upfront to initiate sprint, balance on final delivery",
+      revisions: "1–2 structured revision rounds included",
+      handoff: "Presentation-ready PDF + fully editable PPTX source files",
+    },
+    startingScopes: [
+      {
+        name: "Clear Deck (Basic)",
+        price: "₹3,999",
+        unit: "up to 8 slides",
+        summary: "Clean visual design based on supplied, approved content.",
+        includes: [
+          "Up to 8 custom designed slides",
+          "Clean visual hierarchy, typography & brand colors",
+          "Simple icons, image placement & basic charts",
+          "Editable PPTX + presentation-ready PDF",
+          "One consolidated revision round",
+        ],
+      },
+      {
+        name: "Narrative Pitch Deck (Standard)",
+        price: "₹7,999",
+        unit: "up to 12 slides",
+        summary: "Structured storytelling and slide redesign for startups and sales.",
+        includes: [
+          "Up to 12 structured slides",
+          "Storyline flow & content refinement",
+          "Bespoke data charts, diagrams & visual metaphors",
+          "Visual redesign of existing slides or draft notes",
+          "Editable PPTX + PDF · Two revision rounds",
+        ],
+      },
+      {
+        name: "Investor-Ready Deck (Premium)",
+        price: "₹14,999",
+        unit: "up to 16 slides",
+        summary: "Comprehensive pitch package for fundraising, venture competitions and keynotes.",
+        includes: [
+          "Up to 16 slides with narrative architecture",
+          "Problem-solution framing & market sizing graphics",
+          "Custom visual diagrams, financial layout & traction slides",
+          "Includes 1-page executive pitch summary (PDF)",
+          "Two structured revision rounds · Editable PPTX + PDF",
         ],
       },
     ],
@@ -79,130 +148,122 @@ export const pricingData: Record<string, ServicePricingData> = {
 
   "web-development": {
     slug: "web-development",
-    n: "02",
-    serviceTitle: "Web Development",
-    startingAt: "$3,500",
-    unit: "scope-based",
-    startingFraming: "Web Development projects typically start at $3,500.",
-    scopeDrivers: "number of unique templates, custom motion/interactive components, CMS requirements, and CRM webhook integrations.",
-    caveat: "Every project is scoped individually — this isn't a fixed package.",
-    parameters: {
-      turnaround: "2–4 weeks (landing page) · 4–8 weeks (full site)",
-      deposit: "50% to schedule, balance on deployment",
-      revisions: "Iterative staging reviews with direct engineer access",
-      handoff: "Complete codebase repository, documentation & edge deployment",
-    },
-    startingScopes: [
-      {
-        name: "Conversion Landing Page",
-        price: "$3,500",
-        unit: "one-time",
-        summary: "A single high-performance page engineered around one clear conversion action.",
-        includes: [
-          "Custom design system & bespoke interface motion",
-          "TypeScript / Tailwind implementation — zero page-builder bloat",
-          "Form routing directly into your CRM & analytics tracking",
-          "Sub-second load times & 95+ Lighthouse score",
-        ],
-      },
-      {
-        name: "Marketing System Site",
-        price: "Custom quote",
-        unit: "scope-based",
-        includes: [
-          "Multi-page bespoke architecture & interactive components",
-          "Custom CMS / content model for internal updates",
-          "Technical SEO, OpenGraph assets & semantic accessibility",
-          "30-day post-launch support and tuning window",
-        ],
-        summary: "An operating system for your brand that turns traffic into qualified pipeline.",
-      },
-    ],
-  },
-
-  "ai-chatbots": {
-    slug: "ai-chatbots",
     n: "03",
-    serviceTitle: "AI Chatbots",
-    startingAt: "$2,800",
-    unit: "setup & grounding",
-    startingFraming: "AI Chatbot projects typically start at $2,800.",
-    scopeDrivers: "knowledge source complexity, tool actions (calendar booking, CRM lookups, API triggers), and escalation routing rules.",
-    caveat: "Every project is scoped individually — this isn't a fixed package.",
+    serviceTitle: "Web Development",
+    startingAt: "₹4,999",
+    unit: "one-time",
+    startingFraming: "Web Development projects start from ₹4,999.",
+    scopeDrivers: "number of pages, interactive/motion components, CMS needs, CRM integrations, and responsive complexity.",
+    caveat: "Zero bloated page builders. Handcrafted for speed, mobile responsiveness and conversion.",
     parameters: {
-      turnaround: "2–3 weeks to production deployment",
-      deposit: "50% to schedule, balance on deployment",
-      revisions: "Weekly prompt refinement & transcript review cycles",
-      handoff: "Hosted agent widget, webhook endpoints & knowledge update guide",
+      turnaround: "Landing page: 4–6 days · Starter site: 7–10 days · Business site: 2–3 weeks",
+      deposit: "50% upfront to reserve sprint, balance upon launch sign-off",
+      revisions: "Iterative staging previews with direct feedback rounds",
+      handoff: "Production deployment, clean source code & handover guide",
     },
     startingScopes: [
       {
-        name: "Support & Knowledge Agent",
-        price: "$2,800",
-        unit: "setup & tune",
-        summary: "24/7 grounded conversational agent resolving questions over your documentation.",
+        name: "Landing Page (Starter)",
+        price: "₹4,999",
+        unit: "one page",
+        summary: "Single-page conversion layout engineered for marketing campaigns.",
         includes: [
-          "Knowledge base ingestion (docs, FAQs, pricing, policies)",
-          "Strict hallucination guardrails & brand tone calibration",
-          "Custom embeddable web widget styled to your brand",
-          "Human escalation routing with full chat transcripts",
+          "High-conversion single-page layout",
+          "Mobile responsive & fast loading performance",
+          "Contact form or WhatsApp CTA integration",
+          "Basic on-page SEO & social share meta",
+          "One consolidated revision round",
         ],
       },
       {
-        name: "Lead Qualification Bot",
-        price: "Custom quote",
-        unit: "scope-based",
-        summary: "Conversational qualification engine that captures, scores, and routes leads.",
+        name: "Starter Business Site (Standard)",
+        price: "₹9,999",
+        unit: "up to 4 pages",
+        summary: "Multi-page website for growing businesses and modern studios.",
         includes: [
-          "Custom qualification decision logic & intent scoring",
-          "Direct tool calling (calendar booking, CRM contact creation)",
-          "Real-time alerts via Slack / Email on qualified leads",
-          "30-day conversation tuning and optimization window",
+          "Up to 4 custom pages (Home, About, Services, Contact)",
+          "Branded visual design & subtle animations",
+          "Lead capture forms & social channel links",
+          "Performance optimization & mobile-first QA",
+          "Two revision rounds · Handover documentation",
+        ],
+      },
+      {
+        name: "Advanced Business Site (Premium)",
+        price: "₹18,999",
+        unit: "up to 8 pages",
+        summary: "Comprehensive digital flagship with bespoke interactions.",
+        includes: [
+          "Up to 8 custom designed pages",
+          "Custom UI animations & interactive sections",
+          "CMS integration for blog/news or dynamic portfolio",
+          "Analytics, event tracking & lead notification routing",
+          "30-day post-launch support window",
         ],
       },
     ],
   },
 
-  "ai-automation": {
-    slug: "ai-automation",
+  "ai-solutions-automation": {
+    slug: "ai-solutions-automation",
     n: "04",
-    serviceTitle: "AI Automation",
-    startingAt: "$1,800",
-    unit: "audit & pipeline build",
-    startingFraming: "AI Automation projects typically start at $1,800.",
-    scopeDrivers: "number of integrated tools, AI extraction/decision complexity, data volume, and human-in-the-loop fallback interfaces.",
-    caveat: "Every project is scoped individually — this isn't a fixed package.",
+    serviceTitle: "AI Solutions & Automation",
+    startingAt: "₹5,999",
+    unit: "starting from",
+    startingFraming: "AI Solutions & Automation projects start from ₹5,999.",
+    scopeDrivers: "complexity of automation logic, number of connected apps, AI model fine-tuning, and knowledge base volume.",
+    caveat: "Built on proven automation platforms and LLM APIs with robust error handling.",
     parameters: {
-      turnaround: "2–4 weeks to live pipeline rollout",
-      deposit: "50% to schedule, balance on handover",
-      revisions: "Stress-testing across real historic cases & edge conditions",
-      handoff: "Documented workflow blueprints, error alerts & video walkthroughs",
+      turnaround: "Basic assistant: 4–6 days · Workflow: 5–7 days · Advanced system: 10–14 days",
+      deposit: "50% upfront to configure, balance on live test validation",
+      revisions: "Live scenario testing & prompt tuning cycles",
+      handoff: "Deployed system, API connections & team video walkthrough",
     },
     startingScopes: [
       {
-        name: "Process Audit & Roadmap",
-        price: "$1,800",
-        unit: "fixed scope",
-        summary: "Deep mapping of repetitive operations to identify high-ROI automation opportunities.",
+        name: "Basic Website Assistant (Starter)",
+        price: "₹5,999",
+        unit: "one assistant",
+        summary: "24/7 intelligent FAQ chatbot trained on your business data.",
         includes: [
-          "Process mapping session with your operations team",
-          "Bottleneck analysis & manual hours audit",
-          "Detailed automation architecture blueprint",
-          "Guaranteed fixed quote for the implementation phase",
+          "Trained on website content, FAQs, pricing and services",
+          "Custom embeddable chat widget matching your brand",
+          "Lead capture flow (collects name, email, query)",
+          "Instant email notification alerts on new inquiries",
+          "Setup on third-party platform + handover guide",
         ],
       },
       {
-        name: "Core Workflow Pipeline",
-        price: "Custom quote",
-        unit: "scope-based",
-        summary: "Autonomous end-to-end workflow connecting your tools without human copy-paste.",
+        name: "Workflow Pipeline (Standard)",
+        price: "₹8,999",
+        unit: "up to 3 workflows",
+        summary: "Autonomous multi-step pipeline connecting leads to CRM and alerts.",
         includes: [
-          "Multi-tool integration (CRM, email, databases, sheets, APIs)",
-          "AI extraction & classification nodes inside the flow",
-          "Real-time error handling & Slack notification alerts",
-          "30-day post-launch monitoring and maintenance window",
+          "Up to 3 multi-step automated workflows",
+          "Lead capture to Google Sheets / CRM sync",
+          "Automated email confirmations & WhatsApp/Slack alerts",
+          "Error-handling & human fallback notifications",
+          "Full testing with real scenarios · Two revision passes",
+        ],
+      },
+      {
+        name: "Advanced Assistant & Automation (Premium)",
+        price: "₹17,999",
+        unit: "complete system",
+        summary: "Unified AI assistant and multi-platform automation pipeline.",
+        includes: [
+          "Website or WhatsApp conversational AI assistant",
+          "Custom prompt engineering & multi-document grounding",
+          "End-to-end automation connecting forms, sheets, CRM & notifications",
+          "Lead qualification & calendar booking integration",
+          "30 days post-launch support & tuning window",
         ],
       },
     ],
   },
 };
+
+// Aliases for legacy slug lookups
+pricingData["video-editing"] = pricingData["video-production"];
+pricingData["ai-automation"] = pricingData["ai-solutions-automation"];
+pricingData["ai-chatbots"] = pricingData["ai-solutions-automation"];

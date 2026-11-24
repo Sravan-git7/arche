@@ -6,24 +6,30 @@ export function Footer() {
   const f = siteContent.footer;
 
   return (
-    <footer className="on-ink w-full border-t" style={{ borderColor: "var(--line)" }}>
-      <div className="wrap py-[clamp(40px,4.6vw,70px)]">
-        <div className="grid gap-[32px] md:grid-cols-12">
-          <div className="flex flex-col gap-[12px] md:col-span-5">
-            <Wordmark size={22} onDark={true} />
-            <p className="mono max-w-[30ch]">{f.note}</p>
-            <p className="body-s max-w-[36ch]">{siteContent.brand.line}</p>
+    <footer className="w-full bg-transparent text-[#0D0E0C] border-t border-[#0D0E0C]/[0.08] relative overflow-hidden">
+      <div className="wrap py-[clamp(48px,5vw,80px)] relative z-10">
+        <div className="grid gap-[36px] md:grid-cols-12">
+          {/* Left Column: Wordmark + Strong Editorial Statement + Location Note */}
+          <div className="flex flex-col gap-[18px] md:col-span-5">
+            <Wordmark size={36} monogramScale={1.35} onDark={false} />
+            <p className="text-[clamp(22px,2vw,26px)] font-bold tracking-tight text-[#0D0E0C] max-w-[380px] leading-[1.25]">
+              Built for teams that refuse to stitch four agencies together.
+            </p>
+            <p className="mono max-w-[32ch] text-[#484C45] text-[13px]">{f.note}</p>
           </div>
 
           {f.cols.map((col) => (
-            <div key={col.t} className="flex flex-col gap-[12px] md:col-span-2">
-              <p className="mono" style={{ color: "var(--accent-ink)" }}>
+            <div key={col.t} className="flex flex-col gap-[14px] md:col-span-2">
+              <p className="font-mono text-[12px] font-bold uppercase tracking-wider text-[#343832]">
                 {col.t}
               </p>
-              <ul className="m-0 flex list-none flex-col gap-[7px] p-0">
+              <ul className="m-0 flex list-none flex-col gap-[10px] p-0">
                 {col.l.map((l) => (
                   <li key={l.to + l.label}>
-                    <Link to={l.to} className="body-s lnk">
+                    <Link
+                      to={l.to}
+                      className="text-[16px] sm:text-[17px] font-semibold text-[#0D0E0C] hover:text-[#484C45] transition-colors leading-snug inline-block"
+                    >
                       {l.label}
                     </Link>
                   </li>
@@ -32,14 +38,29 @@ export function Footer() {
             </div>
           ))}
 
-          <div className="flex flex-col gap-[12px] md:col-span-3">
-            <p className="mono" style={{ color: "var(--accent-ink)" }}>
+          <div className="flex flex-col gap-[14px] md:col-span-3">
+            <p className="font-mono text-[12px] font-bold uppercase tracking-wider text-[#343832]">
               Contact
             </p>
-            <a href="mailto:hello@arche.studio" className="body-s lnk self-start">
-              hello@arche.studio
+            <a
+              href={`mailto:${siteContent.contact.email}`}
+              className="text-[16px] sm:text-[17px] font-semibold text-[#0D0E0C] hover:text-[#484C45] transition-colors leading-snug self-start"
+            >
+              {siteContent.contact.email}
             </a>
-            <Link to="/contact" className="btn btn-ghost mt-[8px] self-start" cursor="START" style={{ borderColor: "var(--line)", color: "var(--fg)" }}>
+            {siteContent.contact.phone && (
+              <a
+                href={`tel:${siteContent.contact.phone.replace(/\s+/g, "")}`}
+                className="text-[16px] sm:text-[17px] font-semibold text-[#0D0E0C] hover:text-[#484C45] transition-colors leading-snug self-start"
+              >
+                {siteContent.contact.phone}
+              </a>
+            )}
+            <Link
+              to="/contact"
+              className="btn btn-ghost mt-[10px] self-start border border-[#0D0E0C]/15 text-[#0D0E0C] hover:bg-[#0D0E0C] hover:text-[#FBFBF6] hover:border-[#0D0E0C] transition-colors font-semibold"
+              data-cursor="START"
+            >
               Start <span className="arw">→</span>
             </Link>
           </div>
@@ -47,15 +68,16 @@ export function Footer() {
       </div>
 
       {/* oversized closing wordmark */}
-      <div className="wrap overflow-hidden pb-[14px]">
+      <div className="wrap relative overflow-hidden pb-[14px]">
         <span
-          className="block w-full leading-none select-none"
+          className="relative z-10 block w-full leading-none select-none uppercase font-display"
           style={{
             fontSize: "clamp(64px,18vw,300px)",
-            fontWeight: 600,
+            fontWeight: 800,
+            fontVariationSettings: "'wght' 800",
             letterSpacing: "-0.055em",
-            color: "transparent",
-            WebkitTextStroke: "1px var(--line)",
+            color: "rgba(13, 14, 12, 0.08)",
+            WebkitTextStroke: "1px rgba(13, 14, 12, 0.14)",
           }}
           aria-hidden
         >
@@ -63,9 +85,9 @@ export function Footer() {
         </span>
       </div>
 
-      <div className="wrap flex flex-wrap items-center justify-between gap-[10px] border-t py-[18px]" style={{ borderColor: "var(--line)" }}>
-        <p className="mono">{f.legal}</p>
-        <p className="mono">We build systems.</p>
+      <div className="wrap relative z-10 flex flex-wrap items-center justify-between gap-[10px] border-t border-[#0D0E0C]/[0.08] py-[18px] pb-24 md:pb-[18px] md:pl-[340px] text-[#484C45]">
+        <p className="mono text-[12px]">{f.legal}</p>
+        <p className="mono text-[12px]">Technology Meets Creativity</p>
       </div>
     </footer>
   );

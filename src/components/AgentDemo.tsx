@@ -2,286 +2,414 @@ import { useEffect, useRef, useState } from "react";
 import { prefersReducedMotion } from "../lib/gsap";
 import { announcePreviewDone, markPreviewPlayed } from "../lib/autoplay";
 
-/**
- * A deliberately scoped agent demo: three questions, no free-text input.
- * The full Ask Arche section owns open-ended conversation. Here the visitor
- * sees a question become a considered answer and a small business action.
- *
- * PROMPT 24 — autoplay-first: ~1.5s after the stage first comes on screen it
- * sends ONE of the suggested questions by itself, so the whole reply and the
- * trigger sequence play out unprompted. The other two chips stay visitor-
- * triggered, and any question asked by the visitor cancels the auto-send.
- */
-
 const SLUG = "ai-chatbots";
-/** PROMPT 28: Pause exactly 1 second (1000ms) after entering view before auto-sending the first question. */
-const AUTO_ASK_MS = 1000;
-const QUESTIONS = [
+
+export interface ChatQuestion {
+  id: "booking" | "crm" | "uncertain";
+  question: string;
+  reasoningStart: string;
+  reasoningEnd: string;
+  lines: string[];
+  flow: string[];
+  actionCard: {
+    title: string;
+    detail: string;
+    badge: string;
+  };
+}
+
+export const QUESTIONS: ChatQuestion[] = [
   {
     id: "booking",
     question: "How fast is a demo booked?",
-    status: "Checking availability",
+    reasoningStart: "Checking calendar availability...",
+    reasoningEnd: "Verifying slot · 140ms",
     lines: [
-      "In this example, the agent checks an open time.",
-      "It can prepare the booking and return",
-      "the confirmation in the same conversation.",
+      "In this example, the agent checks live availability.",
+      "It reserves the slot directly in your calendar",
+      "and returns the confirmation in the same conversation.",
     ],
     flow: ["AGENT", "CALENDAR", "BOOKING READY"],
+    actionCard: {
+      title: "Thu 10:30 · Demo Slot Held",
+      detail: "Google Calendar & Calendly synchronized",
+      badge: "SLOT HELD",
+    },
   },
   {
     id: "crm",
     question: "Can this connect to my CRM?",
-    status: "Mapping the handoff",
+    reasoningStart: "Mapping CRM handoff schema...",
+    reasoningEnd: "Verifying HubSpot pipeline · 110ms",
     lines: [
-      "It can qualify the request, collect the details",
-      "that matter, then pass them to your CRM.",
-      "We scope the connection around your tools.",
+      "It qualifies the request, gathers verified contact intent,",
+      "and routes the enriched lead directly into HubSpot or Salesforce.",
+      "No manual copy-paste between conversations and pipeline.",
     ],
     flow: ["AGENT", "QUALIFY", "CRM"],
+    actionCard: {
+      title: "CRM Synced · HubSpot",
+      detail: "Lead enriched: Tier 1 · Owner assigned",
+      badge: "SYNCED",
+    },
   },
   {
     id: "uncertain",
     question: "What if it isn't sure?",
-    status: "Checking context",
+    reasoningStart: "Checking context boundaries...",
+    reasoningEnd: "Escalation policy validated · 90ms",
     lines: [
-      "It asks for clarification rather than guessing.",
-      "If it still cannot resolve the request,",
-      "it passes the context to a person.",
+      "It asks for clarification rather than hallucinating an answer.",
+      "If the topic falls outside verified guidelines,",
+      "it immediately routes the full context to your team.",
     ],
     flow: ["QUESTION", "CLARIFY", "HUMAN"],
+    actionCard: {
+      title: "Escalated to Human",
+      detail: "Slack notification dispatched to team",
+      badge: "ESCALATED",
+    },
   },
-] as const;
+];
 
-type Phase = "sent" | "thinking" | "reply" | "complete";
-type Turn = { id: (typeof QUESTIONS)[number]["id"]; phase: Phase; linesShown: number };
+type Phase = "sent" | "reasoning" | "reply" | "complete";
 
-const QUESTION_ENTER = 220;
-const HOLD = 500;
-const THINK = 600;
-const LINE_GAP = 145;
+interface ActiveTurn {
+  id: ChatQuestion["id"];
+  phase: Phase;
+  linesShown: number;
+}
 
 export function AgentDemo({
-  active = true,
+  active = false,
+  isInView: _isInView,
+  runKey = 0,
   preview = false,
 }: {
   active?: boolean;
+  isInView?: boolean;
+  runKey?: number;
   preview?: boolean;
 }) {
-  const [turns, setTurns] = useState<Turn[]>([]);
-  const [used, setUsed] = useState<Set<Turn["id"]>>(() => new Set());
+  const [currentTurn, setCurrentTurn] = useState<ActiveTurn | null>(null);
+  const [usedQuestions, setUsedQuestions] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [announcement, setAnnouncement] = useState("");
-  const timers = useRef<Set<number>>(new Set());
-  const busyRef = useRef(false);
-  const scroll = useRef<HTMLDivElement>(null);
-  const autoTimer = useRef(0);
-  const autoStarted = useRef(false);
-  const autoTurn = useRef<Turn["id"] | null>(null);
+  const timers = useRef<number[]>([]);
+  const userInteractedRef = useRef(false);
+  const questionIndexRef = useRef(0);
 
   const clearTimers = () => {
-    timers.current.forEach((id) => window.clearTimeout(id));
-    timers.current.clear();
+    timers.current.forEach((t) => window.clearTimeout(t));
+    timers.current = [];
   };
 
   useEffect(() => () => clearTimers(), []);
 
-  useEffect(() => {
-    if (turns.length) scroll.current?.scrollTo({ top: scroll.current.scrollHeight, behavior: "smooth" });
-  }, [turns]);
-
-  const after = (ms: number, cb: () => void) => {
-    const id = window.setTimeout(() => {
-      timers.current.delete(id);
-      cb();
-    }, ms);
-    timers.current.add(id);
-  };
-
-  const update = (id: Turn["id"], changes: Partial<Turn>) => {
-    setTurns((current) => current.map((t) => (t.id === id ? { ...t, ...changes } : t)));
-  };
-
-  const ask = (id: Turn["id"]) => {
-    if (preview || busyRef.current || used.has(id)) return;
-    // the visitor asked something: the demo's own auto-send stands down
-    if (autoTimer.current) {
-      window.clearTimeout(autoTimer.current);
-      autoTimer.current = 0;
-    }
-    const question = QUESTIONS.find((q) => q.id === id)!;
-
-    busyRef.current = true;
+  // Programmatic question triggering with auto-cycle
+  const ask = (qId: ChatQuestion["id"]) => {
+    clearTimers();
     setBusy(true);
-    setUsed((current) => new Set(current).add(id));
-    setTurns((current) => [...current, { id, phase: "sent", linesShown: 0 } satisfies Turn]);
-    setAnnouncement("Question sent. The agent is considering it.");
+    setUsedQuestions((prev) => new Set(prev).add(qId));
+
+    const item = QUESTIONS.find((q) => q.id === qId)!;
+    setAnnouncement(`Question sent: ${item.question}`);
 
     if (prefersReducedMotion()) {
-      update(id, { phase: "complete", linesShown: question.lines.length });
-      busyRef.current = false;
+      setCurrentTurn({ id: qId, phase: "complete", linesShown: item.lines.length });
       setBusy(false);
-      setAnnouncement(`Agent reply: ${question.lines.join(" ")}`);
       return;
     }
 
-    // Bubble slides in for 220ms, then a genuine 500ms pause before the
-    // three-dot thinking indicator occupies the thread for 600ms.
-    const thinkAt = QUESTION_ENTER + HOLD;
-    const replyAt = thinkAt + THINK;
-    after(thinkAt, () => {
-      update(id, { phase: "thinking" });
-      setAnnouncement(`Agent thinking. ${question.status}.`);
-    });
-    after(replyAt, () => {
-      // The action strip appears on the same render as the dark reply bubble.
-      update(id, { phase: "reply", linesShown: 1 });
-    });
-    question.lines.slice(1).forEach((_, i) => {
-      after(replyAt + (i + 1) * LINE_GAP, () => update(id, { linesShown: i + 2 }));
-    });
-    after(replyAt + (question.lines.length - 1) * LINE_GAP + 310, () => {
-      update(id, { phase: "complete" });
-      busyRef.current = false;
-      setBusy(false);
-      setAnnouncement(`Agent reply: ${question.lines.join(" ")}`);
-      if (autoTurn.current === id) {
-        autoTurn.current = null;
+    // Step 1: User bubble glides in (x: 12px -> 0, 0.3s)
+    setCurrentTurn({ id: qId, phase: "sent", linesShown: 0 });
+
+    // Step 2: Reasoning trace expands for 0.8s
+    timers.current.push(
+      window.setTimeout(() => {
+        setCurrentTurn((prev) => (prev ? { ...prev, phase: "reasoning" } : null));
+      }, 300)
+    );
+
+    // Step 3: Agent bubble line-by-line reveal
+    timers.current.push(
+      window.setTimeout(() => {
+        setCurrentTurn((prev) => (prev ? { ...prev, phase: "reply", linesShown: 1 } : null));
+      }, 1100)
+    );
+
+    timers.current.push(
+      window.setTimeout(() => {
+        setCurrentTurn((prev) => (prev ? { ...prev, phase: "reply", linesShown: 2 } : null));
+      }, 1350)
+    );
+
+    timers.current.push(
+      window.setTimeout(() => {
+        setCurrentTurn((prev) => (prev ? { ...prev, phase: "reply", linesShown: 3 } : null));
+      }, 1600)
+    );
+
+    // Step 4: Action card snaps in underneath
+    timers.current.push(
+      window.setTimeout(() => {
+        setCurrentTurn((prev) => (prev ? { ...prev, phase: "complete", linesShown: item.lines.length } : null));
+        setBusy(false);
+        setAnnouncement(`Action complete: ${item.actionCard.title}`);
         announcePreviewDone(SLUG);
-      }
-    });
+
+        // Schedule next question in continuous loop if user hasn't manually taken over
+        if (!userInteractedRef.current) {
+          timers.current.push(
+            window.setTimeout(() => {
+              if (userInteractedRef.current) return;
+              questionIndexRef.current = (questionIndexRef.current + 1) % QUESTIONS.length;
+              const nextQ = QUESTIONS[questionIndexRef.current].id;
+              ask(nextQ);
+            }, 4200)
+          );
+        }
+      }, 1900)
+    );
   };
 
-  /* PROMPT 28 — AI Chatbots: the moment this tab becomes active and is in viewport,
-     wait exactly 1 second, then programmatically "send" the first suggested question
-     using the exact identical code path. */
+  // Viewport-gated reset & replay
   useEffect(() => {
-    if (autoStarted.current || !active || preview) return;
-    const id = window.setTimeout(() => {
-      autoTimer.current = 0;
-      autoStarted.current = true;
-      markPreviewPlayed(SLUG);
-      const first = QUESTIONS.find((q) => !used.has(q.id)) ?? QUESTIONS[0];
-      autoTurn.current = first.id;
-      ask(first.id);
-    }, AUTO_ASK_MS);
-    autoTimer.current = id;
-    return () => {
-      window.clearTimeout(id);
-      if (autoTimer.current === id) autoTimer.current = 0;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, preview]);
+    clearTimers();
+    if (!active) {
+      setCurrentTurn(null);
+      setBusy(false);
+      setUsedQuestions(new Set());
+      return;
+    }
+
+    if (preview || userInteractedRef.current) return;
+    markPreviewPlayed(SLUG);
+
+    setCurrentTurn(null);
+    setBusy(false);
+    setUsedQuestions(new Set());
+
+    const timer = window.setTimeout(() => {
+      if (userInteractedRef.current) return;
+      ask("booking");
+    }, 280);
+
+    timers.current.push(timer);
+    return () => clearTimers();
+  }, [active, runKey, preview]);
 
   const reset = () => {
     clearTimers();
-    autoTurn.current = null;
-    busyRef.current = false;
     setBusy(false);
-    setTurns([]);
-    setUsed(new Set());
-    setAnnouncement("Conversation reset. Choose a question to begin.");
+    setCurrentTurn(null);
+    setUsedQuestions(new Set());
+    setAnnouncement("Conversation reset. Choose a prompt chip to begin.");
   };
 
-  const last = turns[turns.length - 1];
-  const running = last && last.phase !== "complete";
-  const label =
-    !last ? "Ready" : last.phase === "thinking" ? QUESTIONS.find((q) => q.id === last.id)!.status : running ? "Responding" : "Ready";
+  const item = currentTurn ? QUESTIONS.find((q) => q.id === currentTurn.id) : null;
 
   return (
-    <div className="agent-demo relative flex min-h-[366px] flex-col gap-[10px] px-[14px] pt-[39px] pb-[13px] min-[900px]:h-[var(--svc-stage-h,440px)]" aria-label="AI agent mini demo">
-      <div className="flex flex-none items-center justify-between gap-[8px]">
-        <div className="flex items-center gap-[8px]">
+    <div
+      className="agent-demo relative flex h-full w-full flex-col justify-between p-[12px] min-[900px]:p-[16px] select-none"
+      aria-label="AI Chatbots Demo"
+    >
+      {/* ------------------------------------------------------------- */}
+      {/* 1. Header Bar: Status Indicator & Reset                       */}
+      {/* ------------------------------------------------------------- */}
+      <div className="flex flex-none items-center justify-between gap-[10px]">
+        <div className="flex items-center gap-[7px]">
           <span
-            data-slab="signal"
-            className={`agent-indicator block h-[6px] w-[6px] rounded-full ${preview && active ? "animate-pulse" : ""}`}
-            style={{ background: "var(--accent-deep)" }}
+            className="h-[6px] w-[6px] rounded-full"
+            style={{
+              background: busy ? "#9EE41A" : "#8A8D89",
+              boxShadow: busy ? "0 0 8px rgba(158,228,26,0.6)" : "none",
+            }}
           />
-          <span className="mono mono-fg">Arche agent</span>
-          <span className="mono">· {label}</span>
+          <span className="font-mono text-[10.5px] font-semibold uppercase tracking-wider text-[#141413]">
+            ARCHE AGENT
+          </span>
+          <span className="font-mono text-[10px] text-[#5C5F59]">
+            · {busy ? "PROCESSING" : currentTurn ? "ANSWERED" : "READY"}
+          </span>
         </div>
-        {turns.length > 0 && !preview && (
-          <button type="button" onClick={reset} className="mono lnk" data-cursor="RESET" aria-label="Reset conversation">
+
+        {currentTurn && (
+          <button
+            type="button"
+            onClick={reset}
+            className="font-mono text-[10px] uppercase tracking-wider text-[#5C5F59] hover:text-[#141413] px-[8px] py-[2px] rounded border border-[#141413]/10 bg-[#F1F2EA] transition-colors"
+            data-cursor="RESET"
+            aria-label="Reset conversation"
+          >
             Reset
           </button>
         )}
       </div>
 
-      <div data-slab="s2" className="agent-chat flex min-h-[170px] flex-1 flex-col overflow-hidden rounded-[5px] border" style={{ borderColor: "var(--line)", background: "var(--card)" }}>
-        <div ref={scroll} data-lenis-prevent="true" className="flex-1 space-y-[12px] overflow-y-auto px-[11px] py-[12px]" aria-busy={busy}>
-          {turns.map((turn) => {
-            const item = QUESTIONS.find((q) => q.id === turn.id)!;
-            const replying = turn.phase === "reply" || turn.phase === "complete";
-            return (
-              <div key={turn.id} className="space-y-[9px]">
-                <div data-slab="s1" className="agent-question flex justify-end">
-                  <p className="m-0 max-w-[88%] rounded-[14px_14px_4px_14px] border px-[11px] py-[7px] text-[12.5px] leading-[1.42] tracking-[-.01em]" style={{ borderColor: "var(--line)", color: "var(--fg)", background: "var(--bg)" }}>
-                    {item.question}
-                  </p>
+      {/* ------------------------------------------------------------- */}
+      {/* 2. Light Warm-Stone Conversation Stage                        */}
+      {/* ------------------------------------------------------------- */}
+      <div
+        data-slab="s2"
+        className="agent-chat relative flex-1 my-[8px] flex flex-col justify-between overflow-hidden rounded-[10px] border border-[#141413]/10 bg-[#E5E7DC] p-[12px] min-[900px]:p-[14px]"
+        style={{
+          boxShadow: "0 2px 10px rgba(20,20,19,0.06)",
+        }}
+      >
+        {/* Scrollable Conversation Viewport */}
+        <div className="flex-1 overflow-y-auto space-y-[10px] pr-[2px]">
+          {item && currentTurn ? (
+            <div className="space-y-[10px]">
+              {/* 1. User Message Bubble */}
+              <div data-slab="s1" className="flex justify-end">
+                <div
+                  className="rounded-[12px_12px_3px_12px] border border-[#141413]/10 bg-[#141413] px-[12px] py-[7px] text-[12.5px] font-medium text-[#F4F4EE] shadow-sm transition-all duration-300"
+                  style={{
+                    transform: "translateX(0)",
+                    opacity: 1,
+                  }}
+                >
+                  {item.question}
                 </div>
-
-                {turn.phase === "thinking" && (
-                  <div className="agent-thinking flex items-center gap-[6px] pl-[4px]" role="status" aria-label="Agent thinking">
-                    {[0, 1, 2].map((i) => (
-                      <span key={i} className="agent-thinking-dot h-[5px] w-[5px] rounded-full" style={{ background: "var(--accent-deep)", animationDelay: `${i * 120}ms` }} />
-                    ))}
-                    <span className="mono text-[9px] uppercase tracking-wider text-[var(--accent-ink)] ml-[4px]">
-                      {item.status}...
-                    </span>
-                  </div>
-                )}
-
-                {replying && (
-                  <div className="agent-reply max-w-[91%]">
-                    <div data-slab="engine" className="inline-flex max-w-full flex-col gap-[2px] rounded-[14px_14px_14px_4px] px-[11px] py-[8px]" style={{ background: "var(--fg)", color: "var(--bg)" }}>
-                      {item.lines.slice(0, turn.linesShown).map((line, lIdx) => (
-                        <span data-slab="grain" key={line} className="agent-reply-line block text-[12.5px] leading-[1.43] tracking-[-.01em]">
-                          {line}
-                          {turn.phase === "reply" && lIdx === turn.linesShown - 1 && turn.linesShown < item.lines.length && (
-                            <span className="inline-block w-[2px] h-[0.9em] ml-[2px] bg-[var(--accent)] align-middle animate-pulse" />
-                          )}
-                        </span>
-                      ))}
-                    </div>
-                    <div data-slab="s3" className="agent-flow mt-[7px] inline-flex max-w-full flex-wrap items-center gap-[5px] rounded-full border px-[8px] py-[5px]" style={{ borderColor: "var(--line)", background: "var(--bg)" }} aria-label={item.flow.join(" to ")}>
-                      {item.flow.map((step, i) => (
-                        <span key={step} className="agent-flow-part flex items-center gap-[5px]" style={{ animationDelay: `${i * 70}ms` }}>
-                          <span className="block h-[5px] w-[5px] rounded-full" style={{ background: i === item.flow.length - 1 ? "var(--accent-deep)" : "var(--faint)" }} />
-                          <span className="mono whitespace-nowrap" style={{ color: i === item.flow.length - 1 ? "var(--accent-ink)" : "var(--fg)", fontSize: 8.5 }}>{step}</span>
-                          {i < item.flow.length - 1 && <span className="mono" aria-hidden style={{ color: "var(--faint)", fontSize: 8 }}>→</span>}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
-            );
-          })}
+
+              {/* 2. Compact Beveled Reasoning Trace Strip (Live Neon Pulse) */}
+              {currentTurn.phase === "reasoning" && (
+                <div className="flex items-center gap-[8px] rounded-[6px] border border-[#9EE41A] bg-[#F1F9E3] px-[10px] py-[6px] shadow-sm animate-pulse">
+                  <div className="flex items-center gap-[4px]">
+                    <span className="h-[4px] w-[4px] rounded-full bg-[#9EE41A]" />
+                    <span className="h-[4px] w-[4px] rounded-full bg-[#9EE41A] opacity-60" />
+                    <span className="h-[4px] w-[4px] rounded-full bg-[#9EE41A] opacity-30" />
+                  </div>
+                  <span className="font-mono text-[9.5px] text-[#141413] tracking-wide font-medium">
+                    {item.reasoningStart}
+                  </span>
+                  <span className="ml-auto font-mono text-[9px] text-[#9EE41A] font-semibold bg-[#141413] px-[6px] py-[1px] rounded">
+                    {item.reasoningEnd}
+                  </span>
+                </div>
+              )}
+
+              {/* 3. White Beveled Agent Response Bubble */}
+              {(currentTurn.phase === "reply" || currentTurn.phase === "complete") && (
+                <div className="agent-reply flex flex-col items-start gap-[8px]">
+                  <div
+                    data-slab="engine"
+                    className="inline-flex max-w-[94%] flex-col gap-[3px] rounded-[12px_12px_12px_3px] bg-[#F1F2EA] border border-[#141413]/10 p-[12px] text-[#141413] shadow-sm"
+                    style={{
+                      boxShadow: "0 2px 10px rgba(20,20,19,0.06)",
+                    }}
+                  >
+                    {item.lines.slice(0, currentTurn.linesShown).map((line, idx) => (
+                      <span
+                        key={idx}
+                        className="agent-reply-line text-[12px] leading-[1.45] tracking-tight block text-[#141413]"
+                      >
+                        {line}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* 4. Structured White Beveled Action Card with Lime Confirmation Dot */}
+                  {currentTurn.phase === "complete" && (
+                    <div
+                      data-slab="s3"
+                      className="w-full max-w-[94%] rounded-[8px] border border-[#9EE41A]/50 bg-[#F1F2EA] p-[10px] shadow-[0_2px_8px_rgba(20,20,19,0.06)] flex items-center justify-between gap-[10px] transition-all"
+                    >
+                      <div className="flex items-center gap-[8px]">
+                        <span className="h-[7px] w-[7px] rounded-full bg-[#9EE41A] shadow-[0_0_6px_#9EE41A] flex-none" />
+                        <div>
+                          <strong className="text-[12px] font-semibold text-[#141413] block">
+                            {item.actionCard.title}
+                          </strong>
+                          <span className="font-mono text-[9.5px] text-[#5C5F59] block">
+                            {item.actionCard.detail}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="rounded bg-[#141413] px-[8px] py-[2px] font-mono text-[9px] font-semibold text-[#9EE41A]">
+                        {item.actionCard.badge}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Flow Telemetry Strip (.agent-flow) */}
+                  <div
+                    className="agent-flow flex items-center gap-[5px] rounded-full border border-[#141413]/10 bg-[#F1F2EA] px-[9px] py-[3px] shadow-sm"
+                    aria-label={item.flow.join(" to ")}
+                  >
+                    {item.flow.map((step, idx) => (
+                      <span key={step} className="flex items-center gap-[4px] font-mono text-[8.5px]">
+                        <span
+                          className="h-[4px] w-[4px] rounded-full"
+                          style={{ background: idx === item.flow.length - 1 ? "#9EE41A" : "#8A8D89" }}
+                        />
+                        <span
+                          style={{
+                            color: idx === item.flow.length - 1 ? "#141413" : "#5C5F59",
+                            fontWeight: idx === item.flow.length - 1 ? 700 : 400,
+                          }}
+                        >
+                          {step}
+                        </span>
+                        {idx < item.flow.length - 1 && <span className="text-[#5C5F59]">→</span>}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Empty State Prompt Guidance */
+            <div className="flex h-full flex-col items-center justify-center text-center p-[16px]">
+              <span className="h-[8px] w-[8px] rounded-full bg-[#9EE41A] mb-[8px] shadow-[0_0_8px_#9EE41A]" />
+              <p className="font-medium text-[13px] text-[#141413] mb-[2px]">
+                Ask Arche Agent
+              </p>
+              <p className="font-mono text-[10.5px] text-[#5C5F59] max-w-[32ch]">
+                Select a suggested prompt chip below to see reasoning and automated business action.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* This is the only input in the mini-demo: 3 bounded questions. */}
-      <div className="flex flex-none flex-wrap gap-[6px]" aria-label="Suggested questions">
-        {QUESTIONS.map((item, i) => {
-          const asked = used.has(item.id);
+      {/* ------------------------------------------------------------- */}
+      {/* 3. Recessed White Prompt-Chip Tray at Bottom                 */}
+      {/* ------------------------------------------------------------- */}
+      <div
+        className="flex flex-none flex-wrap items-center gap-[6px] rounded-[8px] border border-[#141413]/10 bg-[#F1F2EA] p-[6px] shadow-sm"
+        aria-label="Suggested questions"
+      >
+        {QUESTIONS.map((q, idx) => {
+          const isAsked = usedQuestions.has(q.id);
           return (
             <button
-              key={item.id}
+              key={q.id}
               type="button"
-              data-slab={i === 0 ? "s4" : i === 1 ? "s5" : "s6"}
-              className="chip agent-suggestion text-left"
-              data-asked={asked ? "1" : "0"}
-              aria-pressed={asked}
-              title={asked ? "Already asked. Reset to ask again." : undefined}
-              style={{ padding: "7px 10px", opacity: asked ? 0.46 : busy ? 0.64 : 1 }}
-              onClick={() => ask(item.id)}
-              data-cursor={asked || busy || preview ? undefined : "ASK"}
+              data-slab={idx === 0 ? "s4" : idx === 1 ? "s5" : "s6"}
+              onClick={() => {
+                userInteractedRef.current = true;
+                ask(q.id);
+              }}
+              disabled={busy}
+              className="rounded-full px-[10px] py-[5px] font-mono text-[9.5px] font-medium border transition-all disabled:opacity-50 cursor-pointer"
+              style={{
+                background: isAsked ? "#141413" : "#EAE7DF",
+                borderColor: isAsked ? "#141413" : "rgba(20,20,19,0.1)",
+                color: isAsked ? "#9EE41A" : "#141413",
+              }}
             >
-              {item.question}
+              {q.question}
             </button>
           );
         })}
       </div>
-      <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</span>
+
+      <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {announcement}
+      </span>
     </div>
   );
 }
