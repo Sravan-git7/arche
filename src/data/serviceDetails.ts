@@ -3,8 +3,8 @@
  *
  * Detailed editorial and conversion content for all 4 core verticals:
  * 01 · Video Editing
- * 02 · Web Development
- * 03 · AI Chatbots
+ * 02 · Pitch Decks & Storytelling
+ * 03 · Web Development
  * 04 · AI Automation
  *
  * All rates, turnaround times, and deliverables are 100% grounded in
@@ -35,7 +35,7 @@ export interface PricingTier {
 }
 
 export interface ServiceDetail {
-  slug: "video-editing" | "web-development" | "ai-chatbots" | "ai-automation";
+  slug: "video-editing" | "pitch-decks" | "web-development" | "ai-automation" | string;
   aliasSlugs?: string[];
   n: "01" | "02" | "03" | "04";
   shortName: string;
@@ -238,8 +238,8 @@ export const SERVICE_DETAILS: Record<string, ServiceDetail> = {
       },
     ],
     crossLinks: [
-      { slug: "web-development", n: "02", title: "Web Development", tagline: "Sub-35ms responsive flagships engineered to convert.", startingAt: "₹5,999" },
-      { slug: "ai-chatbots", n: "03", title: "AI Chatbots", tagline: "24/7 lead qualification & grounded knowledge assistants.", startingAt: "₹7,999" },
+      { slug: "pitch-decks", n: "02", title: "Pitch Decks", tagline: "Structured storyline architecture and high-stakes presentation design.", startingAt: "₹3,999" },
+      { slug: "web-development", n: "03", title: "Web Development", tagline: "Sub-35ms responsive flagships engineered to convert.", startingAt: "₹5,999" },
       { slug: "ai-automation", n: "04", title: "AI Automation", tagline: "Autonomous multi-app pipelines eliminating repetitive manual ops.", startingAt: "₹7,999" },
     ],
   },
@@ -247,11 +247,11 @@ export const SERVICE_DETAILS: Record<string, ServiceDetail> = {
   "web-development": {
     slug: "web-development",
     aliasSlugs: ["web-dev", "websites"],
-    n: "02",
+    n: "03",
     shortName: "Web Development",
     title: "Web Development & Digital Platforms",
     categoryTag: "WEB & PRODUCT",
-    eyebrow: "SERVICE 02 · WEB DEVELOPMENT",
+    eyebrow: "SERVICE 03 · WEB DEVELOPMENT",
     heroHeadline1: "High-performance digital platforms",
     heroHeadline2: "engineered for conversion.",
     valuePromise:
@@ -398,163 +398,163 @@ export const SERVICE_DETAILS: Record<string, ServiceDetail> = {
     ],
     crossLinks: [
       { slug: "video-editing", n: "01", title: "Video Production", tagline: "Raw footage transformed into high-retention visual stories.", startingAt: "₹799" },
-      { slug: "ai-chatbots", n: "03", title: "AI Chatbots", tagline: "24/7 lead qualification & grounded knowledge assistants.", startingAt: "₹7,999" },
+      { slug: "pitch-decks", n: "02", title: "Pitch Decks", tagline: "Structured storyline architecture and high-stakes presentation design.", startingAt: "₹3,999" },
       { slug: "ai-automation", n: "04", title: "AI Automation", tagline: "Autonomous multi-app pipelines eliminating repetitive manual ops.", startingAt: "₹7,999" },
     ],
   },
 
-  "ai-chatbots": {
-    slug: "ai-chatbots",
-    aliasSlugs: ["ai-solutions"],
-    n: "03",
-    shortName: "AI Chatbots",
-    title: "AI Chatbots & Conversational Agents",
-    categoryTag: "AI & INTELLIGENCE",
-    eyebrow: "SERVICE 03 · AI CHATBOTS",
-    heroHeadline1: "Intelligent conversational agents",
-    heroHeadline2: "grounded in your real data.",
+  "pitch-decks": {
+    slug: "pitch-decks",
+    aliasSlugs: ["pitch-decks-storytelling", "ai-chatbots", "pitch-deck", "storytelling"],
+    n: "02",
+    shortName: "Pitch Decks",
+    title: "Pitch Decks & Storytelling",
+    categoryTag: "STORY & INVESTOR DECKS",
+    eyebrow: "SERVICE 02 · PITCH DECKS",
+    heroHeadline1: "Investor-ready narratives",
+    heroHeadline2: "engineered for conversion.",
     valuePromise:
-      "We design and deploy 24/7 conversational assistants that qualify inbound leads, answer complex customer queries with zero hallucinations, and schedule appointments directly into your calendar.",
-    stageBadge: "LIVE REASONING AGENT & CALENDAR BOOKING STAGE",
+      "We transform complex business models, deep tech, and ambitious visions into structured investor decks that command conviction and accelerate closing rounds.",
+    stageBadge: "NARRATIVE SLIDE ARCHITECT & 16:9 MASTER DECK STAGE",
     problemStatement: {
-      leadIn: "The cost of unassisted inbound traffic:",
+      leadIn: "The cost of a weak narrative:",
       leadWords: [
-        "78%", "of", "customers", "buy", "from", "the", "company", "that",
-        "responds", "first.", "Slow", "response", "times,", "generic", "canned",
-        "responses,", "and", "missed", "after-hours", "inquiries", "silently",
-        "bleed", "hundreds", "of", "high-intent", "deals."
+        "Investors", "spend", "an", "average", "of", "2", "minutes", "and", "40",
+        "seconds", "on", "a", "deck.", "Chaotic", "storylines,", "dense", "text",
+        "walls,", "and", "amateur", "graphics", "kill", "high-conviction", "deals",
+        "before", "the", "first", "meeting."
       ],
       bodyParagraphs: [
-        "Human sales and support teams cannot sit behind a keyboard 24 hours a day. Yet today's customers expect immediate, articulate, and accurate answers within seconds—whether it is 2:00 PM on a Tuesday or 3:00 AM on a Sunday.",
-        "Arché builds bespoke AI agents grounded strictly in your verified documentation, pricing frameworks, and service catalogs. Our bots reason step-by-step, refuse to hallucinate, collect verified lead credentials, and seamlessly route high-priority opportunities directly to human operators."
+        "Great companies routinely get passed over because their pitch deck reads like a fragmented operational manual instead of a high-conviction investment thesis. When problem framing, market sizing, and unit economics are buried, investor momentum evaporates.",
+        "Arché engineers pitch decks from the narrative core out. We restructure your thesis into an undeniable story arc, pair it with custom infographics and financial data visualization, and package it into an investor-grade 16:9 master deck ready for venture partners and boardroom keynotes.",
       ],
     },
     whatsIncludedCard: {
       title: "What's Included",
-      startingAt: "₹7,999",
-      unit: "one-time",
-      summary: "Custom grounded conversational engine tailored to your knowledge base.",
+      startingAt: "₹3,999",
+      unit: "per deck",
+      summary: "Structured storyline architecture and custom presentation design tailored for your raise.",
       deliverables: [
-        { name: "Document-Grounded Knowledge Base", detail: "RAG architecture indexing your website, PDFs, FAQs & price sheets" },
-        { name: "Zero-Hallucination Guardrails", detail: "Strict context fencing so the agent only answers what you verify" },
-        { name: "Lead Qualification & Enrichment", detail: "Extracts visitor name, verified phone/email, budget, and project urgency" },
-        { name: "Calendar Booking Sync", detail: "Integrates directly with Google Calendar or Calendly to hold live demo slots" },
-        { name: "Human Escalation Path", detail: "Smooth transfer to WhatsApp or email when queries exceed scope" },
-        { name: "Custom Branded UI Widget", detail: "Lightweight floating drawer or embedded widget matching your visual palette" },
+        { name: "Storyline Flow & Thesis Refinement", detail: "Problem-solution-market narrative arc mapped to investor psychology" },
+        { name: "Bespoke Slide Architecture (16:9)", detail: "Custom visual hierarchy, typography tokens & high-contrast layout" },
+        { name: "Custom Data Charts & Infographics", detail: "Traction curves, market sizing TAM/SAM/SOM, and revenue velocity graphics" },
+        { name: "Editable Master Files (PPTX + PDF)", detail: "Full source presentation in PowerPoint / Google Slides + pitch-ready PDF" },
+        { name: "Executive 1-Pager Pitch Sheet", detail: "Concise investor summary sheet for fast email follow-ups" },
+        { name: "Structured Revision Rounds", detail: "Iterative feedback integration on narrative pacing and slide polish" },
       ],
     },
     outcomes: [
       {
         n: "01",
-        title: "Instant <2s Inbound Response Time",
-        desc: "Every prospective client receives immediate, articulate answers 24/7/365 with zero delays.",
+        title: "Instant Narrative Clarity",
+        desc: "Investors grasp your unfair advantage and market economics in under 90 seconds.",
       },
       {
         n: "02",
-        title: "100% Zero-Hallucination Accuracy",
-        desc: "Rigid system prompt guardrails ensure the bot cites real prices and never invents unauthorized commitments.",
+        title: "Institutional Visual Polish",
+        desc: "Bespoke typography, 16:9 layout framing, and custom charts elevate your valuation credibility.",
       },
       {
         n: "03",
-        title: "Automated Calendar Bookings",
-        desc: "Eliminate email back-and-forth by letting high-intent leads book discovery calls on the spot.",
+        title: "Accelerated Fundraising Velocity",
+        desc: "Clear storylines remove partner friction, shortening close times from months to weeks.",
       },
     ],
     qualifier: {
       headlineLead: "Is this",
       headlineAccent: "right for you?",
-      leadIn: "Our AI Chatbot engineering is ideal for businesses and teams looking to:",
+      leadIn: "Our Pitch Deck & Storytelling sprint is designed for founders and operators preparing to:",
       checklist: [
-        "Capture, qualify, and route inbound web leads even while your sales team is offline.",
-        "Deflect 60%+ of repetitive support questions (pricing, turnaround times, policies, FAQs).",
-        "Enable frictionless calendar booking for demos, consultations, or service appointments.",
-        "Provide consistent, professional answers in multiple languages without hiring offshore reps.",
-        "Ground an assistant in private internal SOPs or employee onboarding documentation.",
+        "Raise Pre-Seed, Seed, or Series-A capital from institutional VCs and angel syndicates.",
+        "Pitch enterprise partners or commercial clients on 7-figure contract pilots.",
+        "Redesign cluttered draft slides into a clean, compelling 16:9 master presentation.",
+        "Clarify complex technical or AI products into intuitive visual metaphors.",
+        "Deliver high-stakes conference keynotes, demo day pitches, or board updates.",
       ],
     },
     tierComparison: {
-      sectionHeadline: "Transparent AI Chatbot Tiers.",
-      sectionSubtitle: "One-time setup with predictable performance. No ongoing per-token markup from Arché.",
+      sectionHeadline: "Transparent Pitch Deck Tiers.",
+      sectionSubtitle: "Clear scope, fixed turnaround, and fully editable deliverables. Grounded in our real published rates.",
       tiers: [
         {
-          id: "ai-bot-basic",
-          name: "Basic — Starter Assist",
-          tagline: "Single-channel FAQ & lead capture bot",
-          price: "₹7,999",
-          unit: "one-time",
-          turnaround: "5–8 working days",
+          id: "deck-basic",
+          name: "Basic — Clear Deck",
+          tagline: "Essential pitch deck redesign",
+          price: "₹3,999",
+          unit: "per deck",
+          turnaround: "4–5 working days",
           revisions: "1 consolidated revision round",
           deliverables: [
-            "One website FAQ & lead capture bot",
-            "Up to 25 approved FAQs & knowledge points",
-            "Lead capture (Name, Email, Phone, Note)",
-            "Email or Google Sheets destination webhook",
-            "Fallback messaging & human handoff link",
-            "Mobile-responsive chat widget",
-            "Functional testing & handover walkthrough",
+            "Up to 8 structured slides",
+            "Slide visual redesign from your draft/notes",
+            "Standard charts & diagram styling",
+            "Typography & color hierarchy",
+            "Presentation-ready PDF",
+            "Editable PowerPoint (PPTX) source",
+            "1 consolidated revision round",
           ],
         },
         {
-          id: "ai-bot-standard",
-          name: "Standard — Grounded Agent",
-          tagline: "Document-grounded RAG assistant",
-          price: "₹14,999",
-          unit: "one-time",
+          id: "deck-standard",
+          name: "Standard — Story Deck",
+          tagline: "Complete narrative arc & custom graphics",
+          price: "₹7,999",
+          unit: "per deck",
           popular: true,
-          turnaround: "10–15 working days",
+          turnaround: "6–8 working days",
           revisions: "2 consolidated revision rounds",
           deliverables: [
-            "Grounded in up to 15 supplied pages or docs",
-            "Intelligent RAG context retrieval & guardrails",
-            "Lead qualification & CRM pipeline webhook",
-            "Calendar booking link integration (Calendly/Google)",
-            "Live human escalation path with full transcript",
-            "Custom widget styling matching brand aesthetics",
-            "Testing, execution logs & operator walkthrough",
+            "Up to 12 structured slides",
+            "Storyline flow & content refinement",
+            "Problem-solution framing & narrative arc",
+            "Bespoke data charts, diagrams & visual metaphors",
+            "Visual redesign of existing slides or draft notes",
+            "Editable PPTX + pitch-ready PDF",
+            "Two structured revision rounds",
           ],
         },
         {
-          id: "ai-bot-premium",
-          name: "Premium — Omnichannel Suite",
-          tagline: "Web + WhatsApp multichannel agent",
-          price: "₹29,999",
-          unit: "one-time",
-          turnaround: "3–4 weeks",
+          id: "deck-premium",
+          name: "Premium — Signature Deck",
+          tagline: "Comprehensive institutional pitch package",
+          price: "₹14,999",
+          unit: "per deck",
+          turnaround: "8–12 working days",
           revisions: "2 consolidated revision rounds",
           deliverables: [
-            "Web widget + WhatsApp / Telegram deployment",
-            "Multi-source knowledge base (PDFs, Notion, URL)",
-            "Automated calendar booking & slot reservation",
-            "Two-way CRM integration (HubSpot / Salesforce)",
-            "Multi-language support & sentiment routing",
-            "Error monitoring & weekly usage summary",
-            "Complete technical documentation & team training",
+            "Up to 18 slides with narrative architecture",
+            "Deep storyline structuring & thesis refinement",
+            "Custom visual diagrams, financial layout & traction slides",
+            "Problem-solution framing & TAM/SAM/SOM market sizing graphics",
+            "Includes 1-page executive pitch summary (PDF)",
+            "Two structured revision rounds",
+            "Fully editable PPTX master + pitch PDF",
           ],
         },
       ],
-      note: "Client covers direct OpenAI/Anthropic/Meta API usage fees (typically ₹200–₹800/month for standard traffic).",
+      note: "Additional slides can be added to any package (₹600–₹1,000 per slide). Rush delivery available on request.",
     },
     faqs: [
       {
-        q: "Will the AI chatbot hallucinate or give wrong answers?",
-        a: "No. We implement rigid retrieval-augmented generation (RAG) and strict boundary instructions. When a user asks something outside your verified documentation, the agent politely admits it doesn't know and offers to connect them with a human.",
+        q: "What do I need to provide before kickoff?",
+        a: "You can share an existing slide deck, a Notion doc, raw bullet points, or just your website. We distill whatever material you have into a cohesive story arc.",
       },
       {
-        q: "How does the bot connect to my existing website?",
-        a: "We provide a single line of JavaScript embed code that works on any website (React, Next.js, WordPress, Webflow, Shopify). You paste it in your footer, and the widget appears immediately.",
+        q: "Will I be able to edit the slides after delivery?",
+        a: "Yes. You receive 100% editable source files in Microsoft PowerPoint (.pptx) or Google Slides, using standard system fonts and master layout templates so you can tweak numbers anytime.",
       },
       {
-        q: "Can the bot book appointments directly on my calendar?",
-        a: "Yes. We integrate directly with Google Calendar, Calendly, or Cal.com. The bot checks real-time availability, lets the visitor pick a slot, and sends calendar invites to both parties.",
+        q: "Do you write the copy or just design the visuals?",
+        a: "Both. We refine your narrative structure, sharpen headlines, and edit content for clarity and brevity while engineering the visual design and data infographics.",
       },
       {
-        q: "What ongoing maintenance is required?",
-        a: "Very little. If your pricing or services change, you simply update the knowledge document. We also offer Essential Care (₹1,499/mo) if you prefer Arché to monitor logs and update responses monthly.",
+        q: "What is your turnaround time?",
+        a: "Clear Decks take 4–5 working days, Story Decks take 6–8 working days, and Signature Decks take 8–12 working days. Express turnaround is available when deadlines cannot slide.",
       },
     ],
     crossLinks: [
       { slug: "video-editing", n: "01", title: "Video Production", tagline: "Raw footage transformed into high-retention visual stories.", startingAt: "₹799" },
-      { slug: "web-development", n: "02", title: "Web Development", tagline: "Sub-35ms responsive flagships engineered to convert.", startingAt: "₹5,999" },
+      { slug: "web-development", n: "03", title: "Web Development", tagline: "Sub-35ms responsive flagships engineered to convert.", startingAt: "₹5,999" },
       { slug: "ai-automation", n: "04", title: "AI Automation", tagline: "Autonomous multi-app pipelines eliminating repetitive manual ops.", startingAt: "₹7,999" },
     ],
   },
@@ -710,13 +710,16 @@ export const SERVICE_DETAILS: Record<string, ServiceDetail> = {
     ],
     crossLinks: [
       { slug: "video-editing", n: "01", title: "Video Production", tagline: "Raw footage transformed into high-retention visual stories.", startingAt: "₹799" },
-      { slug: "web-development", n: "02", title: "Web Development", tagline: "Sub-35ms responsive flagships engineered to convert.", startingAt: "₹5,999" },
-      { slug: "ai-chatbots", n: "03", title: "AI Chatbots", tagline: "24/7 lead qualification & grounded knowledge assistants.", startingAt: "₹7,999" },
+      { slug: "pitch-decks", n: "02", title: "Pitch Decks", tagline: "Structured storyline architecture and high-stakes presentation design.", startingAt: "₹3,999" },
+      { slug: "web-development", n: "03", title: "Web Development", tagline: "Sub-35ms responsive flagships engineered to convert.", startingAt: "₹5,999" },
     ],
   },
 };
 
 export function getServiceDetail(slug: string): ServiceDetail | undefined {
+  if (slug === "ai-chatbots" || slug === "pitch-decks-storytelling" || slug === "pitch-deck" || slug === "storytelling") {
+    return SERVICE_DETAILS["pitch-decks"];
+  }
   if (SERVICE_DETAILS[slug]) return SERVICE_DETAILS[slug];
   for (const key of Object.keys(SERVICE_DETAILS)) {
     const item = SERVICE_DETAILS[key];

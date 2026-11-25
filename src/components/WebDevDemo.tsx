@@ -2,18 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import { prefersReducedMotion } from "../lib/gsap";
 import { announcePreviewDone, markPreviewPlayed } from "../lib/autoplay";
 
-const PHASES = ["IDEA", "STRUCTURE", "INTERFACE", "LIVE"] as const;
 const SLUG = "web-development";
 
-/**
- * Service 02 — Web Development (NORTH · ARCHITECTURE)
- *
- * Light architectural interface preview engineered inside the shared warm-stone studio tray:
- * - Continuous live blueprint-to-live-interface loop (IDEA → STRUCTURE → INTERFACE → LIVE)
- * - Hairline architectural gridlines draw in, cards elevate into place with live metric bars
- * - Focus ring simulates a visit booking, switching slot to "CONFIRMED · FRI 3:00 PM" + "LEAD CAPTURED" badge
- * - Fully interactive: users or automated tests can click "Book a visit", open the dialog, and confirm
- */
+export const STAGES = [
+  { id: "wireframe", label: "01 WIREFRAME", name: "Architecture" },
+  { id: "design", label: "02 DESIGN", name: "Visual Craft" },
+  { id: "speed", label: "03 BUILD & SPEED", name: "Performance" },
+  { id: "converting", label: "04 LIVE & CONVERTING", name: "Conversion" },
+] as const;
+
+// Backward-compatibility export
+export const MODES = ["BLUEPRINT", "CRAFT", "LIVE"] as const;
+
 export function WebDevDemo({
   active = false,
   isInView: _isInView,
@@ -25,471 +25,739 @@ export function WebDevDemo({
   runKey?: number;
   preview?: boolean;
 }) {
-  const [phase, setPhase] = useState(0); // Start at IDEA
-  const [viewTab, setViewTab] = useState<"design" | "interface" | "book">("design");
-  const [bookingOpen, setBookingOpen] = useState(false);
-  const [booked, setBooked] = useState(false);
-  const [bookedName, setBookedName] = useState("");
-  const [nameInput, setNameInput] = useState("");
-  const [limePulse, setLimePulse] = useState(false);
-  const [simulatedFocus, setSimulatedFocus] = useState(false);
-  const [announcement, setAnnouncement] = useState("");
+  const [activeStage, setActiveStage] = useState<number>(0); // 0 to 3
+  const [cursorPos, setCursorPos] = useState({ x: 75, y: 70, visible: false, clicked: false });
+  const [isBooked, setIsBooked] = useState(false);
+  const [showToast, setShowToast] = useState(false);
   const [userInteracted, setUserInteracted] = useState(false);
 
-  const timers = useRef<number[]>([]);
+  const animFrameRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number>(0);
 
-  const clearTimers = () => {
-    timers.current.forEach((id) => window.clearTimeout(id));
-    timers.current = [];
-  };
-
-  useEffect(() => () => clearTimers(), []);
-
-  // Viewport-gated reset & replay
+  // 12.8-Second Choreography Loop (4 stages x 3.2s)
   useEffect(() => {
-    clearTimers();
-    if (!active) {
-      setPhase(0);
-      setBooked(false);
-      setSimulatedFocus(false);
+    if (prefersReducedMotion() || !active || userInteracted) {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       return;
     }
-
-    if (preview || userInteracted) return;
 
     markPreviewPlayed(SLUG);
 
-    if (prefersReducedMotion()) {
-      setPhase(3);
-      announcePreviewDone(SLUG);
-      return;
-    }
+    const STAGE_DURATION = 3200; // 3.2s per stage
+    const TOTAL_LOOP_MS = STAGE_DURATION * 4; // 12.8s total
 
-    const runLoop = () => {
-      clearTimers();
-      setBooked(false);
-      setSimulatedFocus(false);
-      setPhase(0);
+    const tick = (now: number) => {
+      if (!startTimeRef.current) startTimeRef.current = now;
+      const elapsed = (now - startTimeRef.current) % TOTAL_LOOP_MS;
+      const currentStage = Math.floor(elapsed / STAGE_DURATION);
+      const stageElapsed = elapsed % STAGE_DURATION;
 
-      // 0.4s: Structure
-      timers.current.push(
-        window.setTimeout(() => {
-          setPhase(1);
-        }, 400)
-      );
+      setActiveStage(currentStage);
 
-      // 1.1s: Interface (cards snap in & bars fill)
-      timers.current.push(
-        window.setTimeout(() => {
-          setPhase(2);
-        }, 1100)
-      );
+      // Stage 0: WIREFRAME
+      if (currentStage === 0) {
+        setCursorPos({ x: 75, y: 70, visible: false, clicked: false });
+        setIsBooked(false);
+        setShowToast(false);
+      }
+      // Stage 1: DESIGN
+      else if (currentStage === 1) {
+        setCursorPos({ x: 75, y: 70, visible: false, clicked: false });
+        setIsBooked(false);
+        setShowToast(false);
+      }
+      // Stage 2: BUILD & SPEED
+      else if (currentStage === 2) {
+        setCursorPos({ x: 75, y: 70, visible: false, clicked: false });
+        setIsBooked(false);
+        setShowToast(false);
+      }
+      // Stage 3: LIVE & CONVERTING
+      else {
+        // Cursor glides in: 0 to 1400ms
+        if (stageElapsed < 1400) {
+          const t = stageElapsed / 1400;
+          setCursorPos({
+            x: 75 - (75 - 46) * t,
+            y: 70 - (70 - 48) * t,
+            visible: true,
+            clicked: false,
+          });
+          setIsBooked(false);
+          setShowToast(false);
+        }
+        // Cursor clicks button: 1400ms to 1800ms
+        else if (stageElapsed < 1800) {
+          setCursorPos({ x: 46, y: 48, visible: true, clicked: true });
+          setIsBooked(true);
+          setShowToast(true);
+        }
+        // Toast and confirmed state sustained: 1800ms to 3200ms
+        else {
+          setCursorPos({ x: 46, y: 48, visible: true, clicked: false });
+          setIsBooked(true);
+          setShowToast(true);
+          if (!preview && stageElapsed > 2800) {
+            announcePreviewDone(SLUG);
+          }
+        }
+      }
 
-      // 2.0s: Live interface ready
-      timers.current.push(
-        window.setTimeout(() => {
-          setPhase(3);
-          announcePreviewDone(SLUG);
-        }, 2000)
-      );
-
-      // 3.0s: Focus ring on "Book a visit"
-      timers.current.push(
-        window.setTimeout(() => {
-          setSimulatedFocus(true);
-        }, 3000)
-      );
-
-      // 3.6s: Simulated click -> Confirm reservation
-      timers.current.push(
-        window.setTimeout(() => {
-          setBooked(true);
-          setBookedName("Alex Rivera");
-          setSimulatedFocus(false);
-          setLimePulse(true);
-        }, 3600)
-      );
-
-      timers.current.push(
-        window.setTimeout(() => {
-          setLimePulse(false);
-        }, 4800)
-      );
-
-      // 8.5s: Seamless loop repeat
-      timers.current.push(
-        window.setTimeout(() => {
-          runLoop();
-        }, 8500)
-      );
+      animFrameRef.current = requestAnimationFrame(tick);
     };
 
-    runLoop();
+    startTimeRef.current = performance.now();
+    animFrameRef.current = requestAnimationFrame(tick);
 
-    return () => clearTimers();
-  }, [active, runKey, preview, userInteracted]);
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    };
+  }, [active, userInteracted, preview]);
 
-  const confirmBooking = (who: string) => {
-    const trimmed = who.trim() || "Ana Silva";
-    setBookedName(trimmed);
-    setBooked(true);
-    setBookingOpen(false);
-    setLimePulse(true);
-    window.setTimeout(() => setLimePulse(false), 1200);
-    setAnnouncement(`Visit booked for ${trimmed} on Friday at 3 PM.`);
-  };
-
+  // Reset on viewport or key changes
   useEffect(() => {
-    const notice =
-      phase >= 3
-        ? "Live. Architectural interface ready."
-        : phase === 2
-        ? "Interface elements visible."
-        : phase === 1
-        ? "Blueprint structure forming."
-        : "Idea placed.";
-    setAnnouncement(notice);
-  }, [phase]);
+    setActiveStage(0);
+    setCursorPos({ x: 75, y: 70, visible: false, clicked: false });
+    setIsBooked(false);
+    setShowToast(false);
+    setUserInteracted(false);
+    startTimeRef.current = performance.now();
+  }, [active, runKey]);
+
+  const handleSelectStage = (idx: number) => {
+    setUserInteracted(true);
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    setActiveStage(idx);
+    if (idx === 3) {
+      setCursorPos({ x: 46, y: 48, visible: true, clicked: false });
+      setIsBooked(true);
+      setShowToast(true);
+    } else {
+      setCursorPos({ x: 75, y: 70, visible: false, clicked: false });
+      setIsBooked(false);
+      setShowToast(false);
+    }
+  };
 
   return (
     <div
-      className="relative flex h-full w-full flex-col justify-between p-[12px] min-[900px]:p-[16px] select-none"
-      data-preview={preview ? "1" : "0"}
-      aria-label="Web Development Demo"
+      className="web-dev-demo relative flex flex-col justify-between w-full h-full p-2.5 sm:p-4 select-none rounded-2xl border border-white/[0.08]"
+      style={{
+        background: "#080B07",
+        backgroundImage:
+          "radial-gradient(ellipse 75% 60% at 20% 0%, rgba(158,228,26,0.11), transparent 65%), radial-gradient(circle, rgba(255,255,255,0.045) 1px, transparent 1px)",
+        backgroundSize: "100% 100%, 18px 18px",
+      }}
+      aria-label="Interactive Web Development Pipeline Stage"
     >
       {/* ------------------------------------------------------------- */}
-      {/* 1. Top Blueprint Progress Bar & View Tabs                     */}
+      {/* 1. TOP STUDIO CONTROL & STAGE SWITCHER                        */}
       {/* ------------------------------------------------------------- */}
-      <div className="flex flex-none items-center justify-between gap-[10px]">
-        {/* Blueprint Build Steps */}
-        <div className="flex items-center gap-[4px]" aria-label="Build progress">
-          {PHASES.map((label, i) => {
-            const isPassed = phase >= i;
+      <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2.5 border-b border-white/[0.08]">
+        {/* Stage Tabs (Clickable, Auto-advancing) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto hide-scroll">
+          {STAGES.map((s, idx) => {
+            const isCurrent = activeStage === idx;
             return (
-              <div key={label} className="flex items-center gap-[4px]">
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => handleSelectStage(idx)}
+                className="flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[9px] font-semibold tracking-wider transition-all border cursor-pointer whitespace-nowrap"
+                style={{
+                  background: isCurrent ? "rgba(158,228,26,0.14)" : "rgba(18, 23, 17, 0.82)",
+                  borderColor: isCurrent ? "#9EE41A" : "rgba(255,255,255,0.09)",
+                  color: isCurrent ? "#9EE41A" : "#8A8D89",
+                  boxShadow: isCurrent
+                    ? "0 0 12px rgba(158,228,26,0.2), inset 0 1px 0 rgba(255,255,255,0.12)"
+                    : "inset 0 1px 0 rgba(255,255,255,0.06)",
+                }}
+              >
                 <span
-                  className="font-mono text-[9px] uppercase tracking-[0.14em] px-[7px] py-[2px] rounded transition-all duration-300"
-                  style={{
-                    background: isPassed ? "#141413" : "#ECEAE2",
-                    color: isPassed ? (i === 3 ? "#9EE41A" : "#FFFFFF") : "#A8A69E",
-                    fontWeight: isPassed ? 600 : 400,
-                  }}
-                >
-                  {label}
-                </span>
-                {i < PHASES.length - 1 && (
-                  <span
-                    className="h-px w-[14px] transition-all duration-400"
-                    style={{
-                      background: phase >= i + 1 ? "#9EE41A" : "rgba(20,20,19,0.12)",
-                    }}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* View Switcher Tabs: DESIGN / INTERFACE / BOOK */}
-        <div
-          className="flex items-center gap-[2px] rounded-full p-[2px] border border-[#141413]/10 bg-[#EAE7DF]"
-          role="tablist"
-          aria-label="Interface Views"
-        >
-          {(["design", "interface", "book"] as const).map((tab) => {
-            const isTabActive = viewTab === tab;
-            return (
-              <button
-                key={tab}
-                type="button"
-                role="tab"
-                aria-selected={isTabActive}
-                onClick={() => {
-                  setUserInteracted(true);
-                  clearTimers();
-                  setViewTab(tab);
-                  if (tab === "book" && !booked) setBookingOpen(true);
-                }}
-                className="rounded-full px-[9px] py-[3px] font-mono text-[9px] font-semibold uppercase tracking-[0.12em] transition-all duration-200 cursor-pointer"
-                style={{
-                  background: isTabActive ? "#141413" : "transparent",
-                  color: isTabActive ? "#F4F4EE" : "#5C5F59",
-                  boxShadow: isTabActive ? "0 1px 4px rgba(20,20,19,0.15)" : "none",
-                }}
-              >
-                {tab === "design" ? "Design" : tab === "interface" ? "Interface" : "Book"}
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ background: isCurrent ? "#9EE41A" : "rgba(255,255,255,0.2)" }}
+                />
+                <span>{s.label}</span>
               </button>
             );
           })}
         </div>
-      </div>
 
-      {/* ------------------------------------------------------------- */}
-      {/* 2. Architectural Blueprint Surface & Cards (Light Stone + White) */}
-      {/* ------------------------------------------------------------- */}
-      <div
-        className="wd-surface relative flex-1 my-[6px] flex flex-col justify-between overflow-hidden rounded-[10px] border border-[#141413]/10 bg-[#E5E7DC] p-[10px] min-[900px]:p-[12px]"
-        style={{
-          boxShadow: "0 12px 32px -12px rgba(20,20,19,0.10), 0 2px 6px rgba(20,20,19,0.04)",
-        }}
-      >
-        {/* Animated Blueprint Grid Dividers */}
-        <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-          <svg className="h-full w-full opacity-30" preserveAspectRatio="none">
-            <defs>
-              <pattern id="wd-bp-grid" width="28" height="28" patternUnits="userSpaceOnUse">
-                <path d="M 28 0 L 0 0 0 28" fill="none" stroke="rgba(20,20,19,0.08)" strokeWidth="0.7" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#wd-bp-grid)" />
-          </svg>
-          {/* Hairline Grid Dividers */}
+        {/* Right Telemetry Badges */}
+        <div className="flex items-center gap-2">
+          {/* Active Stage Indicator */}
           <div
-            className="absolute inset-x-0 top-[60px] h-px bg-[#141413]/[0.08] transition-transform duration-500 ease-out origin-left"
-            style={{ transform: phase >= 1 ? "scaleX(1)" : "scaleX(0.2)" }}
-          />
-          <div
-            className="absolute inset-x-0 bottom-[56px] h-px bg-[#141413]/[0.08] transition-transform duration-500 ease-out origin-right"
-            style={{ transform: phase >= 1 ? "scaleX(1)" : "scaleX(0.2)" }}
-          />
-        </div>
-
-        {/* Top Hero Architectural Headline Block */}
-        <div
-          data-slab="s3"
-          className="relative z-10 rounded-[8px] border border-[#141413]/10 p-[10px] min-[900px]:p-[12px] bg-[#F1F2EA] transition-all duration-500"
-          style={{
-            boxShadow: "0 2px 8px rgba(20,20,19,0.06)",
-            opacity: phase >= 1 ? 1 : 0.85,
-            transform: phase >= 1 ? "none" : "translateY(4px)",
-          }}
-        >
-          <div className="flex items-center justify-between gap-[10px]">
-            <div>
-              <span className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#5C5F59] block mb-[2px]">
-                NORTH // ARCHITECTURE · 02
-              </span>
-              <h4 className="text-[clamp(15px,1.3vw,18px)] font-medium tracking-tight text-[#141413] leading-tight">
-                Quiet rooms for loud ideas.
-              </h4>
-            </div>
-            <div className="flex items-center gap-[6px] rounded-full bg-[#EAE7DF] px-[9px] py-[3px] border border-[#141413]/10 shadow-sm">
-              <span
-                className="h-[6px] w-[6px] rounded-full transition-transform"
-                style={{
-                  background: limePulse || booked ? "#9EE41A" : "#8A8D89",
-                  transform: limePulse ? "scale(1.6)" : "scale(1)",
-                  boxShadow: limePulse || booked ? "0 0 6px #9EE41A" : "none",
-                }}
-              />
-              <span className="font-mono text-[9px] font-semibold text-[#141413]">
-                {booked ? "RESERVED" : "PRODUCTION"}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Two Beveled White Cards */}
-        <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-[8px] my-[4px]">
-          {/* Card 1: Booking system */}
-          <div
-            data-slab="s4"
-            className="rounded-[8px] p-[10px] min-[900px]:p-[12px] border border-[#141413]/10 bg-[#F1F2EA] transition-all duration-500"
+            className="flex items-center gap-1.5 rounded-md px-2.5 py-1 border font-mono text-[9px] font-semibold text-[#CBD1C5]"
             style={{
-              boxShadow: "0 4px 14px rgba(20,20,19,0.05)",
-              opacity: phase >= 1 ? 1 : 0.7,
-              transform: phase >= 1 ? "none" : "translateY(4px)",
+              background: "rgba(18, 23, 17, 0.82)",
+              borderColor: "rgba(255,255,255,0.09)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12)",
             }}
           >
-            <div className="flex items-center justify-between gap-[8px]">
-              <strong className="text-[13px] font-medium tracking-tight text-[#141413]">
-                Booking system
-              </strong>
-              <span
-                className="h-[6px] w-[6px] rounded-full transition-colors"
-                style={{
-                  background: booked ? "#9EE41A" : "#8A8D89",
-                  boxShadow: booked ? "0 0 6px #9EE41A" : "none",
-                }}
-              />
-            </div>
-            <p className="mt-[3px] text-[11px] leading-[1.35] text-[#5C5F59]">
-              A visit button that updates this very page in real-time.
-            </p>
-            {/* Smooth Progress Hairline */}
-            <div className="mt-[8px] h-[3.5px] w-full rounded-full bg-[#EAE7DF] overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-600 ease-out"
-                style={{
-                  width: booked ? "100%" : phase >= 3 ? "68%" : phase >= 2 ? "45%" : phase >= 1 ? "25%" : "0%",
-                  background: "#9EE41A",
-                  boxShadow: "0 0 4px #9EE41A",
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Card 2: Rooms previewed */}
-          <div
-            data-slab="s5"
-            className="rounded-[8px] p-[10px] min-[900px]:p-[12px] border border-[#141413]/10 bg-[#F1F2EA] transition-all duration-500"
-            style={{
-              boxShadow: "0 4px 14px rgba(20,20,19,0.05)",
-              opacity: phase >= 1 ? 1 : 0.7,
-              transform: phase >= 1 ? "none" : "translateY(4px)",
-            }}
-          >
-            <div className="flex items-center justify-between gap-[8px]">
-              <strong className="text-[13px] font-medium tracking-tight text-[#141413]">
-                Rooms previewed
-              </strong>
-              <span className="h-[6px] w-[6px] rounded-full bg-[#8A8D89]" />
-            </div>
-            <p className="mt-[3px] text-[11px] leading-[1.35] text-[#5C5F59]">
-              Small interface pieces, engineered with precision, not decoration.
-            </p>
-            <div className="mt-[8px] h-[3.5px] w-full rounded-full bg-[#EAE7DF] overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-600 ease-out"
-                style={{
-                  width: phase >= 3 ? "52%" : phase >= 2 ? "38%" : phase >= 1 ? "18%" : "0%",
-                  background: "#9EE41A",
-                  boxShadow: "0 0 4px #9EE41A",
-                }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Action Row & Confirmation Micro-Interaction */}
-        <div className="relative z-10 flex flex-wrap items-center justify-between gap-[8px] pt-[2px]">
-          <div className="flex items-center gap-[8px]">
-            {/* BOOK A VISIT / VISIT CONFIRMED Button (.wd-book) */}
-            <div className="relative">
-              {simulatedFocus && (
-                <span className="pointer-events-none absolute -inset-1 rounded-full border-2 border-[#9EE41A] animate-ping opacity-75" />
-              )}
-              <button
-                type="button"
-                data-slab="engine"
-                className="wd-book rounded-full px-[13px] py-[6px] font-mono text-[10.5px] font-semibold transition-all duration-300 flex items-center gap-[6px] cursor-pointer"
-                style={{
-                  background: booked ? "#141413" : "#9EE41A",
-                  color: booked ? "#9EE41A" : "#141413",
-                  border: booked ? "1px solid #141413" : "1px solid #9EE41A",
-                  boxShadow: simulatedFocus
-                    ? "0 0 0 2px #9EE41A, 0 4px 12px rgba(158,228,26,0.4)"
-                    : "0 2px 10px rgba(20,20,19,0.1)",
-                }}
-                disabled={preview}
-                onClick={() => {
-                  setUserInteracted(true);
-                  clearTimers();
-                  if (booked) {
-                    setBooked(false);
-                  } else {
-                    setBookingOpen(true);
-                  }
-                }}
-                data-cursor="BOOK"
-              >
-                <span>{booked ? "VISIT CONFIRMED ✓" : "Book a visit"}</span>
-                {!booked && <span>→</span>}
-              </button>
-            </div>
-
-            {/* Quick Name Input Pill */}
-            <div
-              data-slab="s1"
-              className="flex items-center gap-[6px] rounded-full border border-[#141413]/10 bg-[#F1F2EA] px-[9px] py-[3.5px] shadow-sm"
-            >
-              <span className="font-mono text-[9px] uppercase text-[#5C5F59]">GUEST:</span>
-              <input
-                type="text"
-                value={nameInput}
-                onChange={(e) => {
-                  setUserInteracted(true);
-                  setNameInput(e.target.value);
-                }}
-                placeholder={bookedName || "Alex Rivera"}
-                aria-label="Name for the visit"
-                disabled={booked}
-                className="w-[85px] bg-transparent font-mono text-[10px] text-[#141413] outline-none placeholder:text-[#8A8D89]"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-[6px]">
-            {booked && (
-              <span className="font-mono text-[9px] font-semibold uppercase tracking-wider text-[#141413] bg-[#9EE41A]/30 px-[7px] py-[2px] rounded border border-[#9EE41A] animate-fade-in">
-                LEAD CAPTURED
-              </span>
-            )}
-            <span className="font-mono text-[10px] text-[#5C5F59] tracking-wider">
-              {booked ? "STATUS: FRIDAY 3 PM RESERVED" : "SLOT: FRI 3:00 PM"}
+            <span className="h-1.5 w-1.5 rounded-full bg-[#9EE41A] shadow-[0_0_6px_#9EE41A]" />
+            <span className="text-[#9EE41A] font-bold">
+              {activeStage === 0 && "CONVERSION ARCHITECTURE"}
+              {activeStage === 1 && "LUXURY VISUAL CRAFT"}
+              {activeStage === 2 && "0.4s SPEED & 99 PERF"}
+              {activeStage === 3 && "INBOUND CONVERTING ✓"}
             </span>
           </div>
-        </div>
 
-        {/* Confirmation Sheet / Inline Booking Dialog (needed by verify.mjs) */}
-        {bookingOpen && (
-          <div
-            className="absolute inset-x-[10px] bottom-[10px] z-30 rounded-[8px] border border-[#141413]/15 bg-[#F1F2EA] p-[12px] shadow-[0_12px_32px_rgba(20,20,19,0.18)] transition-all"
-            role="dialog"
-            aria-label="Confirm the visit"
-          >
-            <div className="flex items-center justify-between border-b border-[#141413]/10 pb-[8px] mb-[8px]">
-              <span className="font-mono text-[10px] uppercase font-semibold text-[#141413]">
-                Confirm the visit · Next opening
-              </span>
-              <button
-                type="button"
-                onClick={() => setBookingOpen(false)}
-                className="font-mono text-[9.5px] text-[#5C5F59] hover:text-[#141413] cursor-pointer"
-              >
-                Cancel ✕
-              </button>
-            </div>
-            <p className="text-[13px] text-[#141413] font-medium leading-snug">
-              Friday · 3:00 PM — Quiet Room Studio Tour
-            </p>
-            <p className="text-[11px] text-[#5C5F59] mt-[2px] mb-[10px]">
-              Reserve one reserved session for {nameInput.trim() || "Alex Rivera"}.
-            </p>
-            <button
-              type="button"
-              onClick={() => confirmBooking(nameInput)}
-              className="rounded-full bg-[#141413] text-[#F4F4EE] hover:text-[#9EE41A] px-[14px] py-[6px] font-mono text-[10.5px] font-semibold shadow-sm hover:opacity-95 cursor-pointer"
-              aria-label="Confirm visit · 3 PM"
-            >
-              Confirm visit · 3 PM
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* ------------------------------------------------------------- */}
-      {/* 3. Bottom Telemetry Bar                                       */}
-      {/* ------------------------------------------------------------- */}
-      <div className="flex flex-none items-center justify-between gap-[8px] font-mono text-[10px] text-[#5C5F59] pt-[2px]">
-        <div className="flex items-center gap-[6px]">
-          <span
-            className="h-[5px] w-[5px] rounded-full transition-colors"
-            style={{
-              background: booked ? "#9EE41A" : "#8A8D89",
-              boxShadow: booked ? "0 0 6px #9EE41A" : "none",
+          {/* Auto/Interactive Status */}
+          <button
+            type="button"
+            onClick={() => {
+              setUserInteracted(false);
+              startTimeRef.current = performance.now();
             }}
-          />
-          <span className="text-[#141413] font-medium">
-            {booked ? `VISIT CONFIRMED · FRI 3 PM (${bookedName})` : "LIVE · ARCHITECTURAL PROTOTYPE"}
-          </span>
+            className="hidden sm:flex items-center gap-1 rounded-md px-2 py-1 border font-mono text-[9px] font-semibold cursor-pointer transition-colors"
+            style={{
+              background: "rgba(18, 23, 17, 0.82)",
+              borderColor: "rgba(255,255,255,0.09)",
+              color: userInteracted ? "#8A8D89" : "#9EE41A",
+            }}
+            title={userInteracted ? "Click to resume auto-cycle" : "Auto-cycling"}
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${userInteracted ? "bg-[#8A8D89]" : "bg-[#9EE41A] animate-pulse"}`}
+            />
+            <span>{userInteracted ? "RESUME AUTO" : "AUTO"}</span>
+          </button>
         </div>
-        <span>SYSTEM RESPONSE: 42ms</span>
       </div>
 
-      <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-        {announcement}
-      </span>
+      {/* ------------------------------------------------------------- */}
+      {/* 2. MAIN WORKSPACE (Desktop Stage 68% | Business Impact 32%)   */}
+      {/* ------------------------------------------------------------- */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 pt-3 items-stretch">
+        {/* Left: Desktop Browser Stage (~68% -> lg:col-span-8) */}
+        <div
+          className="lg:col-span-8 relative flex flex-col rounded-xl border overflow-hidden shadow-2xl"
+          style={{
+            background: "#0B0F0A",
+            borderColor: "rgba(255,255,255,0.09)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 16px 40px -12px rgba(0,0,0,0.6)",
+          }}
+        >
+          {/* Browser Chrome Header */}
+          <div className="flex items-center justify-between px-3 py-2 bg-[#121711] border-b border-white/[0.08] z-20">
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-[#EF4444]/80" />
+              <span className="h-2 w-2 rounded-full bg-[#F59E0B]/80" />
+              <span className="h-2 w-2 rounded-full bg-[#10B981]/80" />
+            </div>
+
+            {/* URL Pill */}
+            <div className="flex items-center gap-1.5 rounded-full bg-[#0A0D09] px-3 py-0.5 border border-white/[0.08] font-mono text-[9px] text-[#8A8D89] max-w-[240px] truncate">
+              <span className="text-[#9EE41A]">🔒</span>
+              <span className="text-[#CBD1C5]">arche.studio/flagship</span>
+            </div>
+
+            <div className="flex items-center gap-2 font-mono text-[8.5px] text-[#8A8D89]">
+              <span className="hidden sm:inline">1440 × 900</span>
+              <span className="text-[#9EE41A] font-bold">STAGE 0{activeStage + 1}</span>
+            </div>
+          </div>
+
+          {/* Browser Viewport: ONLY ONE ACTIVE STAGE RENDERED AT A TIME (ZERO OVERLAP) */}
+          <div className="relative w-full h-[330px] sm:h-[350px] overflow-hidden select-none bg-[#0B0F0A]">
+            {/* --------------------------------------------------------- */}
+            {/* STAGE 01: WIREFRAME (Architectural Planning Skeleton)     */}
+            {/* --------------------------------------------------------- */}
+            {activeStage === 0 && (
+              <div className="absolute inset-0 p-4 sm:p-5 flex flex-col justify-between bg-[#0B0F0A] animate-fadeIn">
+                {/* Blueprint Grid Watermark */}
+                <div
+                  className="absolute inset-0 pointer-events-none opacity-20"
+                  style={{
+                    backgroundImage:
+                      "linear-gradient(to right, rgba(158,228,26,0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(158,228,26,0.2) 1px, transparent 1px)",
+                    backgroundSize: "24px 24px",
+                  }}
+                />
+
+                {/* Wireframe Nav Skeleton */}
+                <div className="flex items-center justify-between border-b border-dashed border-white/20 pb-2.5 z-10">
+                  <div className="flex items-center gap-2">
+                    <div className="h-5 w-20 rounded border border-dashed border-[#9EE41A]/60 bg-[#9EE41A]/[0.06] flex items-center justify-center font-mono text-[8px] font-bold text-[#9EE41A]">
+                      [ LOGO ]
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="h-4 w-12 rounded border border-dashed border-white/20 bg-white/[0.02]" />
+                    <div className="h-4 w-12 rounded border border-dashed border-white/20 bg-white/[0.02]" />
+                    <div className="h-4 w-12 rounded border border-dashed border-white/20 bg-white/[0.02]" />
+                  </div>
+                  <div className="h-5 w-24 rounded border border-dashed border-[#9EE41A]/60 bg-[#9EE41A]/[0.08] flex items-center justify-center font-mono text-[8px] font-bold text-[#9EE41A]">
+                    [ CTA BUTTON ]
+                  </div>
+                </div>
+
+                {/* Wireframe Hero Skeleton */}
+                <div className="my-auto space-y-3.5 py-1 z-10">
+                  <div className="inline-flex items-center gap-1.5 rounded border border-dashed border-[#9EE41A]/50 bg-[#9EE41A]/[0.05] px-2 py-0.5 font-mono text-[8.5px] font-semibold text-[#9EE41A]">
+                    <span>01 · CONVERSION ARCHITECTURE PLANNED</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="h-7 w-4/5 rounded border border-dashed border-white/30 bg-white/[0.03]" />
+                    <div className="h-4 w-2/3 rounded border border-dashed border-white/20 bg-white/[0.02]" />
+                  </div>
+
+                  {/* Wireframe CTA Placeholder */}
+                  <div className="pt-1">
+                    <div className="inline-flex items-center justify-center h-8 px-4 rounded-full border border-dashed border-[#9EE41A]/60 bg-[#9EE41A]/10 font-mono text-[9px] font-bold text-[#9EE41A]">
+                      [ BOOK A STRATEGY CALL CTA ]
+                    </div>
+                  </div>
+
+                  {/* Wireframe Bento Skeleton (3 boxes) */}
+                  <div className="grid grid-cols-3 gap-2.5 pt-2">
+                    <div className="h-14 rounded-lg border border-dashed border-white/25 bg-white/[0.02] p-2 flex flex-col justify-between">
+                      <div className="font-mono text-[8px] font-bold text-[#CBD1C5]">MOTION ENGINE</div>
+                      <div className="font-mono text-[7px] text-[#8A8D89]">60fps GSAP Physics</div>
+                    </div>
+                    <div className="h-14 rounded-lg border border-dashed border-[#9EE41A]/40 bg-[#9EE41A]/[0.03] p-2 flex flex-col justify-between">
+                      <div className="font-mono text-[8px] font-bold text-[#9EE41A]">EDGE LATENCY</div>
+                      <div className="font-mono text-[7px] text-[#8A8D89]">Sub-35ms Global Speed</div>
+                    </div>
+                    <div className="h-14 rounded-lg border border-dashed border-white/25 bg-white/[0.02] p-2 flex flex-col justify-between">
+                      <div className="font-mono text-[8px] font-bold text-[#CBD1C5]">CONVERSION FUNNEL</div>
+                      <div className="font-mono text-[7px] text-[#8A8D89]">Qualified Pipeline</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Wireframe Footer Telemetry */}
+                <div className="flex items-center justify-between pt-2 border-t border-dashed border-white/15 font-mono text-[8.5px] text-[#8A8D89] z-10">
+                  <span>LAYOUT: 12-COLUMN SUBGRID · 24PX GAP</span>
+                  <span className="text-[#9EE41A] font-bold">CLS 0.000 · ZERO LAYOUT SHIFT</span>
+                </div>
+              </div>
+            )}
+
+            {/* --------------------------------------------------------- */}
+            {/* STAGE 02: DESIGN (Rich Dark Luxury Visual Craft)          */}
+            {/* --------------------------------------------------------- */}
+            {activeStage === 1 && (
+              <div
+                className="absolute inset-0 p-4 sm:p-5 flex flex-col justify-between bg-[#0A0E09] animate-fadeIn"
+                style={{
+                  backgroundImage:
+                    "radial-gradient(ellipse 80% 60% at 30% 20%, rgba(158,228,26,0.16), transparent 70%)",
+                }}
+              >
+                {/* Luxury Mini-Navbar */}
+                <div className="flex items-center justify-between pb-2.5 border-b border-white/[0.08] z-10">
+                  <div className="flex items-center gap-2">
+                    <span className="font-sans font-bold text-xs tracking-tight text-[#F4F1E0]">
+                      ARCHÉ
+                    </span>
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#9EE41A] shadow-[0_0_6px_#9EE41A]" />
+                  </div>
+                  <div className="flex items-center gap-4 font-sans text-[10px] text-[#CBD1C5]">
+                    <span className="hover:text-white cursor-pointer transition-colors">Work</span>
+                    <span className="hover:text-white cursor-pointer transition-colors">Systems</span>
+                    <span className="hover:text-white cursor-pointer transition-colors">About</span>
+                  </div>
+                  <div className="rounded-full bg-[#9EE41A] px-2.5 py-0.5 font-sans text-[9px] font-bold text-[#0B0C0A]">
+                    Launch
+                  </div>
+                </div>
+
+                {/* High-Contrast Luxury Hero */}
+                <div className="my-auto space-y-3 z-10">
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-[#9EE41A]/10 border border-[#9EE41A]/30 px-2 py-0.5 font-mono text-[8.5px] text-[#9EE41A] font-bold">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#9EE41A] animate-pulse" />
+                    BESPOKE DIGITAL FLAGSHIP
+                  </div>
+
+                  <h4 className="font-sans text-xl sm:text-2xl font-extrabold tracking-tight text-[#F4F1E0] leading-tight max-w-[24ch]">
+                    Built to Lead Your Category.
+                  </h4>
+
+                  <p className="font-sans text-[11px] text-[#C9CEC3] leading-relaxed max-w-[42ch]">
+                    Engineered for high-growth brands that demand sub-frame speed, fluid physics, and
+                    uncompromising conversion.
+                  </p>
+
+                  <div className="pt-1">
+                    <div className="inline-flex items-center gap-2 rounded-full px-4 py-2 bg-[#F4F1E0] text-[#0B0C0A] font-sans text-xs font-bold shadow-lg">
+                      <span>Book a Strategy Call →</span>
+                    </div>
+                  </div>
+
+                  {/* 3 High-Contrast Service Cards */}
+                  <div className="grid grid-cols-3 gap-2.5 pt-2">
+                    <div className="rounded-lg p-2.5 border border-white/[0.08] bg-[rgba(18,23,17,0.85)]">
+                      <div className="font-sans font-bold text-[10.5px] text-[#F4F1E0]">
+                        Motion Physics
+                      </div>
+                      <div className="font-mono text-[7.5px] text-[#8A8D89] mt-0.5">
+                        60fps GSAP Choreography
+                      </div>
+                    </div>
+                    <div className="rounded-lg p-2.5 border border-[#9EE41A]/35 bg-[rgba(25,38,20,0.85)] shadow-[0_0_12px_rgba(158,228,26,0.15)]">
+                      <div className="font-sans font-bold text-[10.5px] text-[#9EE41A]">
+                        Edge Speed
+                      </div>
+                      <div className="font-mono text-[7.5px] text-[#CBD1C5] mt-0.5">
+                        Sub-35ms Global Latency
+                      </div>
+                    </div>
+                    <div className="rounded-lg p-2.5 border border-white/[0.08] bg-[rgba(18,23,17,0.85)]">
+                      <div className="font-sans font-bold text-[10.5px] text-[#F4F1E0]">
+                        Conversion Engine
+                      </div>
+                      <div className="font-mono text-[7.5px] text-[#8A8D89] mt-0.5">
+                        3.8× Industry Benchmark
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer Proof Strip */}
+                <div className="flex items-center justify-between pt-2 border-t border-white/[0.08] font-mono text-[8.5px] text-[#8A8D89] z-10">
+                  <span>TYPOGRAPHY: INTER TIGHT · 700 DISPLAY</span>
+                  <span className="text-[#9EE41A] font-bold">DARK SMOKED CYPRESS ATMOSPHERE</span>
+                </div>
+              </div>
+            )}
+
+            {/* --------------------------------------------------------- */}
+            {/* STAGE 03: BUILD & SPEED (Lighthouse 100 & Enterprise Verif) */}
+            {/* --------------------------------------------------------- */}
+            {activeStage === 2 && (
+              <div
+                className="absolute inset-0 p-4 sm:p-5 flex flex-col justify-between bg-[#0A0E09] animate-fadeIn"
+                style={{
+                  backgroundImage:
+                    "radial-gradient(ellipse 80% 60% at 30% 20%, rgba(158,228,26,0.22), transparent 70%)",
+                }}
+              >
+                {/* Background Site Preview (Slightly dimmed for contrast) */}
+                <div className="flex items-center justify-between pb-2.5 border-b border-white/[0.08] opacity-60">
+                  <span className="font-sans font-bold text-xs text-[#F4F1E0]">ARCHÉ</span>
+                  <span className="font-mono text-[9px] text-[#9EE41A]">ENGINEERING CHECK ✓</span>
+                </div>
+
+                {/* Center High-Impact Speed & Architecture Overlay Badge Strip */}
+                <div className="my-auto space-y-3 z-10">
+                  <div className="flex items-center justify-between">
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-[#9EE41A]/15 border border-[#9EE41A]/40 px-2.5 py-0.5 font-mono text-[9px] font-bold text-[#9EE41A]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#9EE41A] animate-pulse" />
+                      LIGHTHOUSE 100 & ARCHITECTURE VERIFIED
+                    </div>
+                    <span className="font-mono text-[9px] text-[#9EE41A] font-bold">
+                      TOP 1% GLOBAL
+                    </span>
+                  </div>
+
+                  {/* 4 Enterprise Green Checkmark Cards */}
+                  <div className="grid grid-cols-2 gap-2.5 pt-1">
+                    <div className="rounded-xl border border-[#9EE41A]/40 bg-[#0E150C]/95 p-3 flex flex-col justify-between shadow-[0_0_16px_rgba(158,228,26,0.15)]">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-[10px] font-bold text-[#9EE41A]">
+                          0.4s Load Time
+                        </span>
+                        <span className="h-4 w-4 rounded-full bg-[#9EE41A]/20 flex items-center justify-center text-[9px] text-[#9EE41A] font-bold">
+                          ✓
+                        </span>
+                      </div>
+                      <div className="font-sans text-[9px] text-[#C9CEC3] mt-1">
+                        Top 1% global sub-frame LCP performance
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-[#9EE41A]/40 bg-[#0E150C]/95 p-3 flex flex-col justify-between shadow-[0_0_16px_rgba(158,228,26,0.15)]">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-[10px] font-bold text-[#9EE41A]">
+                          99 Lighthouse Score
+                        </span>
+                        <span className="h-4 w-4 rounded-full bg-[#9EE41A]/20 flex items-center justify-center text-[9px] text-[#9EE41A] font-bold">
+                          ✓
+                        </span>
+                      </div>
+                      <div className="font-sans text-[9px] text-[#C9CEC3] mt-1">
+                        Perfect scores across SEO, Perf & Accessibility
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-[#9EE41A]/40 bg-[#0E150C]/95 p-3 flex flex-col justify-between shadow-[0_0_16px_rgba(158,228,26,0.15)]">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-[10px] font-bold text-[#9EE41A]">
+                          SEO & Social Graph
+                        </span>
+                        <span className="h-4 w-4 rounded-full bg-[#9EE41A]/20 flex items-center justify-center text-[9px] text-[#9EE41A] font-bold">
+                          ✓
+                        </span>
+                      </div>
+                      <div className="font-sans text-[9px] text-[#C9CEC3] mt-1">
+                        Dynamic meta, OG card generation & microdata
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-[#9EE41A]/40 bg-[#0E150C]/95 p-3 flex flex-col justify-between shadow-[0_0_16px_rgba(158,228,26,0.15)]">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-[10px] font-bold text-[#9EE41A]">
+                          Mobile Native
+                        </span>
+                        <span className="h-4 w-4 rounded-full bg-[#9EE41A]/20 flex items-center justify-center text-[9px] text-[#9EE41A] font-bold">
+                          ✓
+                        </span>
+                      </div>
+                      <div className="font-sans text-[9px] text-[#C9CEC3] mt-1">
+                        Zero layout shift, touch-optimized fluid physics
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Speed Proof */}
+                <div className="flex items-center justify-between pt-2 border-t border-white/[0.08] font-mono text-[8.5px] text-[#8A8D89] z-10">
+                  <span>TIME TO INTERACTIVE: 28MS</span>
+                  <span className="text-[#9EE41A] font-bold">60FPS GPU COMPOSITED ONLY</span>
+                </div>
+              </div>
+            )}
+
+            {/* --------------------------------------------------------- */}
+            {/* STAGE 04: LIVE & CONVERTING (Cursor Click & Lead Inbound) */}
+            {/* --------------------------------------------------------- */}
+            {activeStage === 3 && (
+              <div
+                className="absolute inset-0 p-4 sm:p-5 flex flex-col justify-between bg-[#0A0E09] animate-fadeIn"
+                style={{
+                  backgroundImage:
+                    "radial-gradient(ellipse 80% 60% at 30% 20%, rgba(158,228,26,0.18), transparent 70%)",
+                }}
+              >
+                {/* Navbar */}
+                <div className="flex items-center justify-between pb-2.5 border-b border-white/[0.08] z-10">
+                  <div className="flex items-center gap-2">
+                    <span className="font-sans font-bold text-xs tracking-tight text-[#F4F1E0]">
+                      ARCHÉ
+                    </span>
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#9EE41A] shadow-[0_0_6px_#9EE41A]" />
+                  </div>
+                  <div className="flex items-center gap-4 font-sans text-[10px] text-[#CBD1C5]">
+                    <span>Work</span>
+                    <span>Systems</span>
+                    <span>About</span>
+                  </div>
+                  <div className="rounded-full bg-[#9EE41A] px-2.5 py-0.5 font-sans text-[9px] font-bold text-[#0B0C0A]">
+                    Live
+                  </div>
+                </div>
+
+                {/* Live Hero with Interactive CTA */}
+                <div className="my-auto space-y-3 z-10">
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-[#9EE41A]/10 border border-[#9EE41A]/30 px-2 py-0.5 font-mono text-[8.5px] text-[#9EE41A] font-bold">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#9EE41A] animate-ping" />
+                    LIVE PRODUCTION SYSTEM
+                  </div>
+
+                  <h4 className="font-sans text-xl sm:text-2xl font-extrabold tracking-tight text-[#F4F1E0] leading-tight max-w-[24ch]">
+                    Built to Lead Your Category.
+                  </h4>
+
+                  <p className="font-sans text-[11px] text-[#C9CEC3] leading-relaxed max-w-[42ch]">
+                    Prospects arrive, experience immediate sub-frame clarity, and book directly into
+                    your pipeline.
+                  </p>
+
+                  {/* Primary CTA Button (Target of Cursor) */}
+                  <div className="relative inline-block pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsBooked(true);
+                        setShowToast(true);
+                      }}
+                      className="relative z-10 flex items-center gap-2 rounded-full px-5 py-2.5 font-sans text-xs font-bold transition-all cursor-pointer shadow-lg"
+                      style={{
+                        background: isBooked ? "#9EE41A" : "#F4F1E0",
+                        color: "#0B0C0A",
+                        transform: cursorPos.clicked ? "scale(0.96)" : "scale(1)",
+                        boxShadow: isBooked ? "0 0 20px rgba(158,228,26,0.4)" : "none",
+                      }}
+                    >
+                      <span>{isBooked ? "CALL BOOKED ✓" : "Book a Strategy Call →"}</span>
+                    </button>
+
+                    {/* Animated Ripple Pulse on Click */}
+                    {cursorPos.clicked && (
+                      <span className="absolute inset-0 rounded-full bg-[#9EE41A]/50 animate-ping pointer-events-none" />
+                    )}
+                  </div>
+
+                  {/* Live Conversion Metrics */}
+                  <div className="flex items-center gap-4 pt-2 font-mono text-[8.5px]">
+                    <div className="rounded-lg bg-white/[0.04] p-1.5 border border-white/[0.08]">
+                      <span className="text-[#9EE41A] font-bold block text-[10px]">3.8× CVR</span>
+                      <span className="text-[#8A8D89]">Inbound Engine</span>
+                    </div>
+                    <div className="rounded-lg bg-white/[0.04] p-1.5 border border-white/[0.08]">
+                      <span className="text-[#F4F1E0] font-bold block text-[10px]">0.4s LCP</span>
+                      <span className="text-[#8A8D89]">Zero Lag</span>
+                    </div>
+                    <div className="rounded-lg bg-white/[0.04] p-1.5 border border-white/[0.08]">
+                      <span className="text-[#9EE41A] font-bold block text-[10px]">+$48k</span>
+                      <span className="text-[#8A8D89]">Avg Deal Captured</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Floating Inbound Lead Toast */}
+                {showToast && (
+                  <div className="absolute bottom-4 right-4 z-40 flex items-center gap-2.5 rounded-xl bg-[#0B0C0A] border border-[#9EE41A]/50 px-3.5 py-2 shadow-2xl font-mono text-[9px] font-bold text-[#F4F1E0] animate-bounce">
+                    <span className="h-2 w-2 rounded-full bg-[#9EE41A] shadow-[0_0_8px_#9EE41A]" />
+                    <span className="text-[#9EE41A]">
+                      NEW QUALIFIED LEAD · BOOKED FOR THU 3 PM ✓
+                    </span>
+                  </div>
+                )}
+
+                {/* Animated Studio Cursor */}
+                {cursorPos.visible && (
+                  <div
+                    className="absolute pointer-events-none z-50 transition-all duration-300 ease-out"
+                    style={{
+                      left: `${cursorPos.x}%`,
+                      top: `${cursorPos.y}%`,
+                      transform: cursorPos.clicked ? "scale(0.85)" : "scale(1)",
+                    }}
+                  >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M4 4L11 20L14 13L21 10L4 4Z"
+                        fill="#9EE41A"
+                        stroke="#0B0C0A"
+                        strokeWidth="2"
+                      />
+                    </svg>
+                    <span className="font-mono text-[7.5px] bg-[#0B0C0A] text-[#9EE41A] px-1 py-0.5 rounded shadow absolute top-5 left-3 whitespace-nowrap border border-[#9EE41A]/30">
+                      LIVE VISITOR
+                    </span>
+                  </div>
+                )}
+
+                {/* Footer Telemetry */}
+                <div className="flex items-center justify-between pt-2 border-t border-white/[0.08] font-mono text-[8.5px] text-[#8A8D89] z-10">
+                  <span>CONVERSION STATUS: ACTIVE PIPELINE</span>
+                  <span className="text-[#9EE41A] font-bold">24/7 AUTOMATIC QUALIFICATION</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right: Business Impact Panel (~32% -> lg:col-span-4) */}
+        <div
+          className="lg:col-span-4 flex flex-col justify-between rounded-xl border p-3.5 sm:p-4 text-[#CBD1C5] gap-3"
+          style={{
+            background: "rgba(18, 23, 17, 0.85)",
+            borderColor: "rgba(255,255,255,0.09)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 24px -6px rgba(0,0,0,0.5)",
+            backdropFilter: "blur(12px)",
+          }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between font-mono text-[9px] font-bold uppercase tracking-wider text-[#8A8D89] pb-2 border-b border-white/[0.08]">
+            <span className="text-[#F4F1E0]">Business Impact</span>
+            <span className="text-[#9EE41A] flex items-center gap-1 font-mono">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#9EE41A] animate-pulse" />
+              REAL-WORLD ROI
+            </span>
+          </div>
+
+          {/* 4 Clear Business Impact Rows */}
+          <div className="space-y-2.5 my-auto">
+            {/* Metric 1: PAGE LOAD SPEED */}
+            <div className="rounded-lg p-2.5 border border-white/[0.07] bg-[#0E150C]/90 flex flex-col gap-1.5">
+              <div className="flex items-center justify-between font-mono text-[9px]">
+                <span className="text-[#8A8D89]">PAGE LOAD SPEED</span>
+                <span className="text-[#9EE41A] font-bold">12× FASTER</span>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="font-mono text-xs text-[#8A8D89] line-through">4.8s (avg site)</span>
+                <span className="font-mono text-sm sm:text-base font-extrabold text-[#9EE41A]">
+                  0.4s
+                </span>
+              </div>
+              <div className="w-full bg-white/[0.06] rounded-full h-1 overflow-hidden">
+                <div
+                  className="bg-[#9EE41A] h-full rounded-full transition-all duration-500"
+                  style={{ width: "95%" }}
+                />
+              </div>
+            </div>
+
+            {/* Metric 2: VISITOR TRUST & RETENTION */}
+            <div className="rounded-lg p-2.5 border border-white/[0.07] bg-[#0E150C]/90 flex flex-col gap-1.5">
+              <div className="flex items-center justify-between font-mono text-[9px]">
+                <span className="text-[#8A8D89]">VISITOR TRUST & RETENTION</span>
+                <span className="text-[#9EE41A] font-bold">+52% GAIN</span>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="font-mono text-xs text-[#8A8D89]">32% (avg site)</span>
+                <span className="font-mono text-sm sm:text-base font-extrabold text-[#F4F1E0]">
+                  84%
+                </span>
+              </div>
+              <div className="w-full bg-white/[0.06] rounded-full h-1 overflow-hidden">
+                <div
+                  className="bg-[#F4F1E0] h-full rounded-full transition-all duration-500"
+                  style={{ width: "84%" }}
+                />
+              </div>
+            </div>
+
+            {/* Metric 3: INBOUND CONVERSION */}
+            <div className="rounded-lg p-2.5 border border-white/[0.07] bg-[#0E150C]/90 flex flex-col gap-1.5">
+              <div className="flex items-center justify-between font-mono text-[9px]">
+                <span className="text-[#8A8D89]">INBOUND CONVERSION</span>
+                <span className="text-[#9EE41A] font-bold">3.8× MULTIPLIER</span>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="font-mono text-xs text-[#8A8D89]">1.0× (avg site)</span>
+                <span className="font-mono text-sm sm:text-base font-extrabold text-[#9EE41A]">
+                  3.8×
+                </span>
+              </div>
+              <div className="w-full bg-white/[0.06] rounded-full h-1 overflow-hidden">
+                <div
+                  className="bg-[#9EE41A] h-full rounded-full transition-all duration-500"
+                  style={{ width: "88%" }}
+                />
+              </div>
+            </div>
+
+            {/* Metric 4: 24/7 LEAD CAPTURE */}
+            <div className="rounded-lg p-2.5 border border-white/[0.07] bg-[#0E150C]/90 flex flex-col gap-1.5">
+              <div className="flex items-center justify-between font-mono text-[9px]">
+                <span className="text-[#8A8D89]">24/7 LEAD CAPTURE</span>
+                <span className="text-[#9EE41A] font-bold">ZERO LEAKAGE</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-xs text-[#8A8D89]">Manual Forms</span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#9EE41A]/15 border border-[#9EE41A]/35 px-2 py-0.5 font-mono text-[10px] font-bold text-[#9EE41A]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#9EE41A] animate-pulse" />
+                  ALWAYS ON ✓
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Outcome Summary */}
+          <div className="rounded-lg bg-[#0A0D09] border border-[#9EE41A]/20 p-2.5 font-mono text-[8.5px] space-y-1">
+            <div className="text-[#8A8D89] font-bold">EXECUTIVE OUTCOME:</div>
+            <div className="text-[#F4F1E0] font-sans text-[10.5px] font-semibold leading-snug">
+              3.8× more qualified leads with sub-frame speed and zero revenue leakage.
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -4,8 +4,8 @@ import { oneRailStore } from "../lib/oneRailState";
 import { SlotButton } from "./SlotButton";
 
 import { VideoEditingDemo } from "./VideoEditingDemo";
+import { PitchDeckDemo } from "./PitchDeckDemo";
 import { WebDevDemo } from "./WebDevDemo";
-import { AgentDemo } from "./AgentDemo";
 import { AutomationDemo } from "./AutomationDemo";
 
 interface ServiceCardData {
@@ -33,25 +33,25 @@ const SERVICE_CARDS: ServiceCardData[] = [
     coordinate: "03 · SERVICES",
   },
   {
-    id: "web-development",
+    id: "pitch-decks",
     n: "02",
+    title: "Pitch Decks & Storytelling",
+    roomName: "PITCH DECKS",
+    headline: "Pitch Decks & Storytelling",
+    desc: "Investor-ready narratives engineered for clarity, conviction, and close rates. Structured story arcs paired with bespoke visual hierarchy.",
+    slug: "pitch-decks",
+    highlights: ["Storyline Architecture", "Custom Infographics", "16:9 Master Decks"],
+    coordinate: "03 · SERVICES",
+  },
+  {
+    id: "web-development",
+    n: "03",
     title: "Web Development",
     roomName: "WEB DEVELOPMENT",
     headline: "Web Development",
     desc: "Fast, bespoke websites engineered to convert. High-craft digital flagships with sub-35ms interaction speed.",
     slug: "web-development",
     highlights: ["Architectural Layout Systems", "Sub-35ms Interaction", "Fluid Spatial Responsive Canvas"],
-    coordinate: "03 · SERVICES",
-  },
-  {
-    id: "ai-chatbots",
-    n: "03",
-    title: "AI Chatbots",
-    roomName: "AI CHATBOTS",
-    headline: "AI Chatbots",
-    desc: "Intelligent agents that qualify leads, book calls, and handle support 24/7. Zero latency, rules-backed reasoning.",
-    slug: "ai-chatbots",
-    highlights: ["INSTANT LEAD ROUTING", "Multi-tool Function Calling", "24/7 Autonomous Booking"],
     coordinate: "03 · SERVICES",
   },
   {
@@ -156,7 +156,7 @@ export function Chapters() {
 
     const ctx = gsap.context(() => {
       // For each card (except the last), as the next card scrolls up over it into stepped sticky position,
-      // visibly animate Card N receding into depth: scale 1.0 -> 0.955 -> 0.92, body opacity 1.0 -> 0.25, brightness 1.0 -> 0.96
+      // visibly animate Card N receding into depth: scale 1.0 -> 0.94, y: 0 -> -14px, brightness 1.0 -> 0.86
       cards.forEach((card, i) => {
         if (i < cards.length - 1) {
           const nextCard = cards[i + 1];
@@ -169,18 +169,20 @@ export function Chapters() {
             scrub: 0.6,
             onUpdate: (self) => {
               const p = self.progress;
-              const scaleVal = 1.0 - p * 0.08; // 1.0 -> 0.92
-              const bodyOpacityVal = 1.0 - p * 0.75; // 1.0 -> 0.25
-              const brightnessVal = 1.0 - p * 0.04; // 1.0 -> 0.96
+              const scaleVal = 1.0 - p * 0.06; // 1.0 -> 0.94
+              const yVal = -p * 14; // 0 -> -14px upward tuck
+              const brightnessVal = 1.0 - p * 0.14; // 1.0 -> 0.86
+              const bodyOpacityVal = 1.0 - p * 0.65; // 1.0 -> 0.35
               gsap.set(card, {
                 scale: scaleVal,
+                y: yVal,
+                filter: `brightness(${brightnessVal})`,
                 transformOrigin: "center top",
               });
               const body = card.querySelector<HTMLElement>(".service-card-body");
               if (body) {
                 gsap.set(body, {
                   opacity: bodyOpacityVal,
-                  filter: `brightness(${brightnessVal})`,
                 });
               }
             },
@@ -272,9 +274,8 @@ export function Chapters() {
                 background: "#F4F1E0",
                 border: "1px solid rgba(24, 36, 22, 0.12)",
                 boxShadow:
-                  idx === 0
-                    ? "inset 0 1px 0 rgba(255, 253, 244, 0.92), 0 20px 44px -14px rgba(24, 36, 22, 0.24), 0 4px 12px -2px rgba(24, 36, 22, 0.10)"
-                    : "inset 0 1px 0 rgba(255, 253, 244, 0.92), 0 -14px 36px -10px rgba(24, 36, 22, 0.14), 0 20px 44px -14px rgba(24, 36, 22, 0.24)",
+                  "0 32px 80px -20px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 16px -2px rgba(24, 36, 22, 0.08)",
+                willChange: "transform, filter",
               }}
               className="sticky-service-card frosted-ivory-card arche-glow-card shiny-border w-full max-w-[1220px] mx-auto rounded-[28px] p-6 sm:p-8 lg:p-10 transition-all duration-300 flex flex-col gap-8"
             >
@@ -318,8 +319,16 @@ export function Chapters() {
 
               {/* Inner Service Card Body (dimmed to 0.15 on recession) */}
               <div className="service-card-body flex flex-col gap-8 transition-opacity duration-300">
-                {/* Inner Live Interactive Demo Canvas Tray on Soft Alabaster #E5E7DC */}
-                <div className="w-full rounded-2xl bg-[#E5E7DC] border border-[#141413]/[0.08] overflow-hidden shadow-[0_4px_16px_-4px_rgba(20,20,19,0.05)]">
+                {/* Inner Live Interactive Demo Canvas Tray with Shared Studio Lighting */}
+                <div
+                  className="w-full rounded-2xl overflow-hidden border border-black/20 shadow-[0_12px_36px_-8px_rgba(0,0,0,0.5)]"
+                  style={{
+                    background: "#080B07",
+                    backgroundImage:
+                      "radial-gradient(ellipse 75% 60% at 20% 0%, rgba(158,228,26,0.11), transparent 65%), radial-gradient(circle, rgba(255,255,255,0.045) 1px, transparent 1px)",
+                    backgroundSize: "100% 100%, 18px 18px",
+                  }}
+                >
                   {idx === 0 && (
                     <VideoEditingDemo
                       active={cardInView[0]}
@@ -328,14 +337,14 @@ export function Chapters() {
                     />
                   )}
                   {idx === 1 && (
-                    <WebDevDemo
+                    <PitchDeckDemo
                       active={cardInView[1]}
                       isInView={cardInView[1]}
                       runKey={cardRunKeys[1]}
                     />
                   )}
                   {idx === 2 && (
-                    <AgentDemo
+                    <WebDevDemo
                       active={cardInView[2]}
                       isInView={cardInView[2]}
                       runKey={cardRunKeys[2]}

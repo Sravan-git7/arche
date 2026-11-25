@@ -137,7 +137,7 @@ export function TheManifesto() {
           {/* Right Column (Cols 7–12): Crisp 3-Line Editorial Explanation + 2 Sleek Kinetic Links */}
           <div className="lg:col-span-6 flex flex-col gap-6">
             <p className="text-base sm:text-lg text-[#C9CEC3] leading-relaxed font-sans font-normal text-left">
-              When film, web, AI agents, and automation live in separate silos, momentum leaks at every seam. Arché engineers all four as one connected system.
+              When film, pitch decks, web, and automation live in separate silos, momentum leaks at every seam. Arché engineers all four as one connected system.
             </p>
 
             <div className="pt-2 flex flex-wrap items-center gap-4">

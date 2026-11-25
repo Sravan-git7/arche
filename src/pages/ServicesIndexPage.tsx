@@ -8,8 +8,8 @@ import { attachCardTilt } from "../motion/cardTilt";
 
 const BENTO_VERTICALS = [
   SERVICE_DETAILS["video-editing"],
+  SERVICE_DETAILS["pitch-decks"],
   SERVICE_DETAILS["web-development"],
-  SERVICE_DETAILS["ai-chatbots"],
   SERVICE_DETAILS["ai-automation"],
 ];
 
@@ -52,7 +52,7 @@ export function ServicesIndexPage() {
             className="mt-5 max-w-[62ch] text-[#CBD1C5] text-[clamp(16px,1.5vw,19.5px)] leading-relaxed font-sans"
             data-r="meta"
           >
-            From cinematic video editing and sub-35ms web architecture to document-grounded AI chatbots and autonomous multi-app pipelines, Arché engineers all four disciplines as one continuous system.
+            From cinematic video editing and investor pitch decks to sub-35ms web architecture and autonomous multi-app pipelines, Arché engineers all four disciplines as one continuous system.
           </p>
 
           {/* Prominent Catalogue Download Banner */}

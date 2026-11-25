@@ -61,9 +61,23 @@ export default function App() {
     };
   }, []);
 
+  // Auto-redirect legacy routes
+  useEffect(() => {
+    if (route === "/services/ai-chatbots" || route === "/services/pitch-decks-storytelling") {
+      window.location.hash = "#/services/pitch-decks";
+    }
+  }, [route]);
+
   let page = <Home />;
   if (route === "/services") page = <ServicesIndexPage />;
-  else if (route.startsWith("/services/")) page = <ServicePage slug={route.split("/")[2]} />;
+  else if (route.startsWith("/services/")) {
+    const rawSlug = route.split("/")[2];
+    const normalizedSlug =
+      rawSlug === "ai-chatbots" || rawSlug === "pitch-decks-storytelling"
+        ? "pitch-decks"
+        : rawSlug;
+    page = <ServicePage slug={normalizedSlug} />;
+  }
   else if (route === "/pricing") page = <PricingPage />;
   else if (route === "/work") page = <WorkPage />;
   else if (route === "/contact") page = <ContactPage />;

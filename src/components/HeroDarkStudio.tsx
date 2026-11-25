@@ -8,8 +8,8 @@ const KINETIC_WORDS = ["move.", "scale.", "convert.", "win."];
 
 const HERO_SERVICES = [
   { n: "01", label: "FILM", idx: 0 },
-  { n: "02", label: "WEB", idx: 1 },
-  { n: "03", label: "AI AGENTS", idx: 2 },
+  { n: "02", label: "PITCH DECKS", idx: 1 },
+  { n: "03", label: "WEB", idx: 2 },
   { n: "04", label: "AUTOMATION", idx: 3 },
 ];
 
@@ -281,7 +281,7 @@ export function HeroDarkStudio() {
           ref={subcopyRef}
           className="mt-5 sm:mt-6 max-w-[660px] text-[19px] text-[#C9CEC3] leading-[1.55] font-sans font-normal"
         >
-          Brand film, bespoke web flagships, autonomous AI agents, and operational automation—engineered together as one connected system.
+          Brand film, investor pitch decks, bespoke web flagships, and operational automation—engineered together as one connected system.
         </p>
 
         {/* 4. CENTERED DUAL KINETIC SLOT-ROLL CTAS */}

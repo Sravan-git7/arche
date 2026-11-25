@@ -25,11 +25,11 @@ const QUICK_QUESTIONS = [
   },
   {
     q: "Can we start with one service?",
-    a: "Yes, absolutely. You can start with a single vertical (e.g. Video Editing from ₹799 or a Launch Website at ₹5,999) and expand into connected AI agents and automations as you scale.",
+    a: "Yes, absolutely. You can start with a single vertical (e.g. Video Editing from ₹799, Pitch Decks from ₹3,999, or a Launch Website at ₹5,999) and expand into connected systems and automations as you scale.",
   },
   {
     q: "How fast can we launch?",
-    a: "Video edits ship in 3–5 working days; pitch decks take 4–8 days; bespoke websites launch in 5–15 days; and AI chatbots / workflow automations deploy in 5–15 days with live staging previews.",
+    a: "Video edits ship in 3–5 working days; pitch decks take 4–8 days; bespoke websites launch in 5–15 days; and workflow automations deploy in 5–15 days with live staging previews.",
   },
 ];
 

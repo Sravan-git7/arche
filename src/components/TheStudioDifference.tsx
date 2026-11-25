@@ -19,7 +19,7 @@ const METRICS: MetricItem[] = [
     target: 4,
     format: "{val}",
     label: "Disciplines",
-    sub: "Cinema, Code, Neural & Flow engineered under one roof.",
+    sub: "Cinema, Decks, Code & Flow engineered under one roof.",
   },
   {
     n: "02",
@@ -61,7 +61,7 @@ const CONVICTIONS: ConvictionItem[] = [
     n: "01",
     title: "One team, zero handoff friction",
     lead: "Four disciplines engineered as one feedback loop.",
-    desc: "Film, web, AI agents, and automation built under one roof. No competing agency agendas, no lost context between separate vendors, and no finger-pointing.",
+    desc: "Film, pitch decks, web, and automation built under one roof. No competing agency agendas, no lost context between separate vendors, and no finger-pointing.",
     meta: "Unified Architecture",
     proof: "01 · Unified Repo & Brand",
   },

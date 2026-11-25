@@ -1,16 +1,16 @@
 const ROW_1_ITEMS = [
   "Brand Film",
+  "Pitch Decks",
   "Bespoke Websites",
-  "AI Agents",
   "Workflow Automation",
   "4K Colour Grading",
 ];
 
 const ROW_2_ITEMS = [
+  "Investor Storytelling",
   "CRM & Calendar Sync",
   "Retention Editing",
   "Interactive Systems",
-  "Lead Qualification",
   "Custom Dashboards",
 ];
 

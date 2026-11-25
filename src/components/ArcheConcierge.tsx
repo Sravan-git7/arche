@@ -22,7 +22,7 @@ const STARTER_PROMPTS = [
 const INITIAL_BOT_MESSAGE: Message = {
   id: "initial-welcome",
   sender: "bot",
-  text: "Hello! I am Arché's Studio Concierge. I'm directly grounded in Arché's verified INR rates, turnaround SLAs, and service architectures. Ask me anything about our film, web, AI chatbots, and automation tiers:",
+  text: "Hello! I am Arché's Studio Concierge. I'm directly grounded in Arché's verified INR rates, turnaround SLAs, and service architectures. Ask me anything about our film, pitch decks, web, and automation tiers:",
   timestamp: "Just now",
   actions: [
     { label: "View All Pricing →", href: "#/pricing" },

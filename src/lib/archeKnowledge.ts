@@ -181,7 +181,7 @@ export function matchRepoKnowledge(
     q === "good afternoon"
   ) {
     return {
-      text: `Hello! I am Arché's Studio Concierge. I'm directly grounded in Arché's verified INR rates, turnaround SLAs, and service architectures.\n\nI can help you explore exact package pricing, turnaround times, and deliverables across:\n• **Video Editing & Production** (from ₹799)\n• **Web Development** (from ₹5,999)\n• **Pitch Decks & Storytelling** (from ₹3,999)\n• **AI Chatbots & Automation** (from ₹7,999)\n\nWhat are you looking to build or optimize?`,
+      text: `Hello! I am Arché's Studio Concierge. I'm directly grounded in Arché's verified INR rates, turnaround SLAs, and service architectures.\n\nI can help you explore exact package pricing, turnaround times, and deliverables across:\n• **Video Editing & Production** (from ₹799)\n• **Pitch Decks & Storytelling** (from ₹3,999)\n• **Web Development** (from ₹5,999)\n• **AI Automation** (from ₹7,999)\n\nWhat are you looking to build or optimize?`,
       actions: defaultActions,
     };
   }
@@ -277,7 +277,7 @@ export function matchRepoKnowledge(
       return {
         text: `For AI assistants and operational automations, turnaround times are:\n\n• **Starter Assist (Basic)**: 5–8 working days\n• **Connected Growth (Standard)**: 10–15 working days\n• **AI Workflow Suite (Premium)**: 15–25 working days\n\nIncludes staging verification, end-to-end webhook testing, and team walkthrough.`,
         actions: [
-          { label: "Explore AI Chatbots →", href: "#/services/ai-chatbots" },
+          { label: "Explore AI Automation →", href: "#/services/ai-automation" },
           { label: "Start an AI Sprint →", href: "#/contact" },
         ],
       };
@@ -481,7 +481,7 @@ export function matchRepoKnowledge(
   }
 
   // =========================================================================
-  // 9. AI CHATBOTS, AUTOMATIONS & CRM INTEGRATIONS
+  // 9. AI AUTOMATION, WORKFLOWS & CRM INTEGRATIONS
   // =========================================================================
   const isAiKeyword =
     q.includes("ai") ||
@@ -510,7 +510,7 @@ export function matchRepoKnowledge(
       return {
         text: `Yes! Arché connects your website, leads, and operational workflows directly to your existing tools:\n\n• **CRM & Calendars**: Direct sync to HubSpot, Salesforce, Google Calendar, and Calendly for instant 24/7 qualification and booking.\n• **Internal Grids**: Real-time push to Google Sheets, Slack, and Supabase via dual-write deterministic webhooks.\n• **Packages**: Included in our **Connected Growth package (${aiStandard.price})** with up to 2 live tool integrations, or as an add-on from ₹3,500.`,
         actions: [
-          { label: "Explore AI Chatbots →", href: "#/services/ai-chatbots" },
+          { label: "Explore Pitch Decks →", href: "#/services/pitch-decks" },
           { label: "Explore AI Automation →", href: "#/services/ai-automation" },
           { label: "Audit Your CRM Stack →", href: "#/contact" },
         ],
@@ -521,7 +521,7 @@ export function matchRepoKnowledge(
       return {
         text: `Our **Connected Growth (Standard)** AI package is **${aiStandard.price}**:\n\n• **Scope**: Document-grounded AI assistant + up to 2 active integrations (CRM, Slack, Google Sheets)\n• **Turnaround**: ${aiStandard.turnaround}\n• **Deliverables**: High-accuracy vector retrieval, custom prompt persona, automated qualification, and webhook sync.`,
         actions: [
-          { label: "Explore AI Chatbots →", href: "#/services/ai-chatbots" },
+          { label: "Explore AI Automation →", href: "#/services/ai-automation" },
           { label: "Start an AI Project →", href: "#/contact" },
         ],
       };
@@ -530,7 +530,7 @@ export function matchRepoKnowledge(
     return {
       text: `AI Solutions & Automation Packages (All published in INR):\n\n• **Starter Assist (Basic) — ${aiBasic.price}**:\n  - One website FAQ/lead qualification bot OR 1 automated workflow into Google Sheets/email\n  - Turnaround: ${aiBasic.turnaround}\n\n• **Connected Growth (Standard) — ${aiStandard.price}**:\n  - Document-grounded assistant + up to 2 active integrations (CRM, Slack, Google Sheets)\n  - Turnaround: ${aiStandard.turnaround}\n\n• **AI Workflow Suite (Premium) — ${aiPremium.price}**:\n  - Multi-step automated operational pipeline with human approval stages & deterministic sync\n  - Turnaround: ${aiPremium.turnaround}`,
       actions: [
-        { label: "Explore AI Chatbots →", href: "#/services/ai-chatbots" },
+        { label: "Explore Pitch Decks →", href: "#/services/pitch-decks" },
         { label: "Explore AI Automation →", href: "#/services/ai-automation" },
         { label: "Start an AI Project →", href: "#/contact" },
       ],
@@ -633,7 +633,7 @@ export function matchRepoKnowledge(
 
   if (q.includes("turnaround") || q.includes("how long") || q.includes("time") || q.includes("timeline") || q.includes("fast") || q.includes("days") || q.includes("weeks")) {
     return {
-      text: `Standard Turnaround Times across Arché:\n• **Short-Form Video**: 3–5 working days\n• **Long-Form Video**: 5–8 working days\n• **Pitch Decks**: 4–5 days (Basic) · 6–8 days (Standard) · 8–12 days (Premium)\n• **Websites**: 5–7 days (Landing) · 10–15 days (Business) · 15–25 days (Platform)\n• **AI Chatbots & Automation**: 5–8 days (Assist) · 10–15 days (Connected Pipeline)\n\n*Express priority turnaround (+25% fee) is available when deadlines cannot slide.*`,
+      text: `Standard Turnaround Times across Arché:\n• **Short-Form Video**: 3–5 working days\n• **Long-Form Video**: 5–8 working days\n• **Pitch Decks**: 4–5 days (Basic) · 6–8 days (Standard) · 8–12 days (Premium)\n• **Websites**: 5–7 days (Landing) · 10–15 days (Business) · 15–25 days (Platform)\n• **AI Automation**: 5–8 days (Assist) · 10–15 days (Connected Pipeline)\n\n*Express priority turnaround (+25% fee) is available when deadlines cannot slide.*`,
       actions: [
         { label: "Check All Timelines on Pricing Page →", href: "#/pricing" },
         { label: "Book a Project Timeline →", href: "#/contact" },

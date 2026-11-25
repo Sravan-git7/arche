@@ -427,7 +427,31 @@ export function Header() {
                     </div>
                   </Link>
 
-                  {/* 02 · Web Development */}
+                  {/* 02 · Pitch Decks & Storytelling */}
+                  <Link
+                    to="/services/pitch-decks"
+                    onClick={() => setActiveDropdown(null)}
+                    className="text-left group/item p-3.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.08] hover:border-[#9EE41A]/40 shadow-[0_2px_8px_rgba(0,0,0,0.2)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.35)] transition-all cursor-pointer flex flex-col justify-between block"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="font-mono text-[10px] font-bold tracking-widest text-[#9EE41A] uppercase">
+                          02 · PITCH DECKS & STORYTELLING
+                        </span>
+                        <span className="font-mono text-xs text-[#F4F1E0]/40 group-hover/item:text-[#9EE41A] group-hover/item:translate-x-0.5 transition-all">
+                          →
+                        </span>
+                      </div>
+                      <h4 className="text-[14px] font-bold text-[#F4F1E0] group-hover/item:text-[#9EE41A] transition-colors tracking-tight">
+                        Pitch Decks &amp; Storytelling
+                      </h4>
+                      <p className="text-[11.5px] text-[#A3AA9D] leading-relaxed mt-1">
+                        Investor-ready narratives, structured storylines, and custom presentation slides.
+                      </p>
+                    </div>
+                  </Link>
+
+                  {/* 03 · Web Development */}
                   <Link
                     to="/services/web-development"
                     onClick={() => setActiveDropdown(null)}
@@ -436,7 +460,7 @@ export function Header() {
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="font-mono text-[10px] font-bold tracking-widest text-[#9EE41A] uppercase">
-                          02 · WEB DEVELOPMENT
+                          03 · WEB DEVELOPMENT
                         </span>
                         <span className="font-mono text-xs text-[#F4F1E0]/40 group-hover/item:text-[#9EE41A] group-hover/item:translate-x-0.5 transition-all">
                           →
@@ -447,30 +471,6 @@ export function Header() {
                       </h4>
                       <p className="text-[11.5px] text-[#A3AA9D] leading-relaxed mt-1">
                         Fast, custom-built websites engineered to convert visitors into enquiries.
-                      </p>
-                    </div>
-                  </Link>
-
-                  {/* 03 · AI Chatbots */}
-                  <Link
-                    to="/services/ai-chatbots"
-                    onClick={() => setActiveDropdown(null)}
-                    className="text-left group/item p-3.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.08] hover:border-[#9EE41A]/40 shadow-[0_2px_8px_rgba(0,0,0,0.2)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.35)] transition-all cursor-pointer flex flex-col justify-between block"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="font-mono text-[10px] font-bold tracking-widest text-[#9EE41A] uppercase">
-                          03 · AI CHATBOTS
-                        </span>
-                        <span className="font-mono text-xs text-[#F4F1E0]/40 group-hover/item:text-[#9EE41A] group-hover/item:translate-x-0.5 transition-all">
-                          →
-                        </span>
-                      </div>
-                      <h4 className="text-[14px] font-bold text-[#F4F1E0] group-hover/item:text-[#9EE41A] transition-colors tracking-tight">
-                        AI Chatbots
-                      </h4>
-                      <p className="text-[11.5px] text-[#A3AA9D] leading-relaxed mt-1">
-                        24/7 intelligent agents that qualify leads, book calls, and connect to your CRM.
                       </p>
                     </div>
                   </Link>
@@ -732,18 +732,18 @@ export function Header() {
                   01 · Video Editing
                 </Link>
                 <Link
+                  to="/services/pitch-decks"
+                  onClick={() => setMobileOpen(false)}
+                  className="text-xs text-[#A3AA9D] hover:text-white py-1 text-left"
+                >
+                  02 · Pitch Decks
+                </Link>
+                <Link
                   to="/services/web-development"
                   onClick={() => setMobileOpen(false)}
                   className="text-xs text-[#A3AA9D] hover:text-white py-1 text-left"
                 >
-                  02 · Web Dev
-                </Link>
-                <Link
-                  to="/services/ai-chatbots"
-                  onClick={() => setMobileOpen(false)}
-                  className="text-xs text-[#A3AA9D] hover:text-white py-1 text-left"
-                >
-                  03 · AI Chatbots
+                  03 · Web Dev
                 </Link>
                 <Link
                   to="/services/ai-automation"

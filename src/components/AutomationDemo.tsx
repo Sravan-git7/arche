@@ -1,26 +1,88 @@
-import { useEffect, useRef, useState, useLayoutEffect } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { prefersReducedMotion } from "../lib/gsap";
 import { announcePreviewDone, markPreviewPlayed } from "../lib/autoplay";
 
 const SLUG = "ai-automation";
 
-type Mode = "manual" | "auto";
-type Phase = "idle" | "running" | "done";
-
-const STEPS = [
-  "Email arrives",
-  "Copy the details",
-  "Update the sheet",
-  "Open the CRM",
-  "Send a reply",
-  "Create a task",
+// 6 Manual Steps for Phase A
+const MANUAL_STEPS = [
+  { id: "m1", n: "01", title: "Email arrives", target: "inbox" },
+  { id: "m2", n: "02", title: "Copy the details", target: "inbox" },
+  { id: "m3", n: "03", title: "Update the sheet", target: "sheet" },
+  { id: "m4", n: "04", title: "Open the CRM", target: "crm" },
+  { id: "m5", n: "05", title: "Send a reply", target: "inbox" },
+  { id: "m6", n: "06", title: "Create a task", target: "slack" },
 ];
 
-const CARDS = [
-  { k: "Inbox", tip: "Marked read, tagged Lead · 0ms", icon: "✉" },
-  { k: "Sheet", tip: "Row added: Name, Source, Timestamp", icon: "⊞" },
-  { k: "CRM", tip: "Contact created, pipeline stage assigned", icon: "◎" },
-  { k: "Slack", tip: "Notification dispatched to #sales", icon: "💬" },
+// 4 Destination Systems
+const DESTINATIONS = [
+  {
+    id: "inbox",
+    name: "INBOX",
+    manualLabel: "Email Logged",
+    autoLatency: "12ms",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect width="20" height="16" x="2" y="4" rx="2" />
+        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+      </svg>
+    ),
+  },
+  {
+    id: "sheet",
+    name: "SHEET",
+    manualLabel: "Row Appended",
+    autoLatency: "34ms",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect width="18" height="18" x="3" y="3" rx="2" />
+        <path d="M3 9h18M3 15h18M9 3v18M15 3v18" />
+      </svg>
+    ),
+  },
+  {
+    id: "crm",
+    name: "CRM",
+    manualLabel: "Deal Created",
+    autoLatency: "45ms",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+    ),
+  },
+  {
+    id: "slack",
+    name: "SLACK",
+    manualLabel: "Ping Dispatched",
+    autoLatency: "18ms",
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect width="3" height="8" x="13" y="2" rx="1.5" />
+        <path d="M19 8.5a2.5 2.5 0 0 0-5 0" />
+        <rect width="3" height="8" x="8" y="14" rx="1.5" />
+        <path d="M5 15.5a2.5 2.5 0 0 0 5 0" />
+        <rect width="8" height="3" x="14" y="13" rx="1.5" />
+        <path d="M15.5 19a2.5 2.5 0 0 0 0-5" />
+        <rect width="8" height="3" x="2" y="8" rx="1.5" />
+        <path d="M8.5 5a2.5 2.5 0 0 0 0 5" />
+      </svg>
+    ),
+  },
 ];
+
+interface ConnectorCoords {
+  width: number;
+  height: number;
+  startX: number;
+  startY: number;
+  inputStartX: number;
+  inputEndX: number;
+  inputY: number;
+  endpoints: { x: number; y: number }[];
+}
 
 export function AutomationDemo({
   active = false,
@@ -33,573 +95,702 @@ export function AutomationDemo({
   runKey?: number;
   preview?: boolean;
 }) {
-  const [mode, setMode] = useState<Mode>("manual");
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [manualStep, setManualStep] = useState(-1);
-  const [cardStates, setCardStates] = useState<Record<string, "idle" | "active" | "complete">>({
-    Inbox: "idle",
-    Sheet: "idle",
-    CRM: "idle",
-    Slack: "idle",
-  });
-  const [packetProgress, setPacketProgress] = useState<number[]>([0, 0, 0, 0]);
-  const [nodePulse, setNodePulse] = useState(false);
-  const [elapsedTimer, setElapsedTimer] = useState("0.0s");
+  const [phase, setPhase] = useState<"manual" | "automated">("manual");
+  const [phaseProgress, setPhaseProgress] = useState(0); // 0 to 1 inside current phase
+  const [manualSeconds, setManualSeconds] = useState("0.0s");
+  const [userSelectedPhase, setUserSelectedPhase] = useState<"manual" | "automated" | null>(null);
 
-  const stageRef = useRef<HTMLDivElement>(null);
-  const nodeRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const aiCoreRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const timers = useRef<number[]>([]);
-  const animFrame = useRef<number>(0);
-  const startTime = useRef<number>(0);
-  const userInteractedRef = useRef(false);
 
-  const clearTimers = () => {
-    timers.current.forEach((t) => window.clearTimeout(t));
-    timers.current = [];
-    if (animFrame.current) cancelAnimationFrame(animFrame.current);
-  };
+  const [coords, setCoords] = useState<ConnectorCoords>({
+    width: 600,
+    height: 260,
+    startX: 240,
+    startY: 130,
+    inputStartX: 0,
+    inputEndX: 164,
+    inputY: 130,
+    endpoints: [
+      { x: 380, y: 35 },
+      { x: 380, y: 98 },
+      { x: 380, y: 162 },
+      { x: 380, y: 225 },
+    ],
+  });
 
-  useEffect(() => () => clearTimers(), []);
+  const animFrameRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number>(0);
 
-  // Run Automated Pipeline (1.4s fast run)
-  const runAuto = () => {
-    clearTimers();
-    setPhase("running");
-    setCardStates({ Inbox: "idle", Sheet: "idle", CRM: "idle", Slack: "idle" });
-    setPacketProgress([0, 0, 0, 0]);
-    setNodePulse(true);
-    setElapsedTimer("0.0s");
-    startTime.current = performance.now();
+  // Exact Edge-to-Edge Coordinate Measurement via ResizeObserver
+  const updateCoords = () => {
+    if (!containerRef.current || !aiCoreRef.current) return;
+    const cRect = containerRef.current.getBoundingClientRect();
+    const aiRect = aiCoreRef.current.getBoundingClientRect();
 
-    const updateTimer = () => {
-      const now = performance.now();
-      const s = Math.min(1.4, (now - startTime.current) / 1000);
-      setElapsedTimer(`${s.toFixed(1)}s`);
-      if (s < 1.4) {
-        animFrame.current = requestAnimationFrame(updateTimer);
+    if (cRect.width === 0 || cRect.height === 0) return;
+
+    const startX = aiRect.right - cRect.left;
+    const startY = aiRect.top - cRect.top + aiRect.height / 2;
+    const inputStartX = 0;
+    const inputEndX = aiRect.left - cRect.left;
+    const inputY = startY;
+
+    const endpoints: { x: number; y: number }[] = [];
+    cardRefs.current.forEach((el) => {
+      if (el) {
+        const r = el.getBoundingClientRect();
+        endpoints.push({
+          x: r.left - cRect.left,
+          y: r.top - cRect.top + r.height / 2,
+        });
       }
-    };
-    animFrame.current = requestAnimationFrame(updateTimer);
-
-    // AI core node concentric pulse ring
-    timers.current.push(
-      window.setTimeout(() => {
-        setNodePulse(false);
-      }, 500)
-    );
-
-    // Synchronized light-packets along 4 SVG bus lines
-    const packetStart = performance.now();
-    const packetDuration = 650;
-    const animatePackets = () => {
-      const elapsed = performance.now() - packetStart;
-      const progress = Math.min(1, elapsed / packetDuration);
-      setPacketProgress([progress, progress, progress, progress]);
-      if (progress < 1) {
-        requestAnimationFrame(animatePackets);
-      }
-    };
-    timers.current.push(window.setTimeout(() => requestAnimationFrame(animatePackets), 200));
-
-    // Staggered card flip (Waiting -> Updated)
-    CARDS.forEach((c, idx) => {
-      timers.current.push(
-        window.setTimeout(() => {
-          setCardStates((prev) => ({ ...prev, [c.k]: "complete" }));
-        }, 850 + idx * 60)
-      );
     });
 
-    // Resolve run complete at 1.4s
-    timers.current.push(
-      window.setTimeout(() => {
-        setPhase("done");
-        setElapsedTimer("1.4s");
-        announcePreviewDone(SLUG);
-
-        // Continuous comparison loop: after auto completes, transition back to manual after 3.8s
-        if (!userInteractedRef.current) {
-          timers.current.push(
-            window.setTimeout(() => {
-              if (userInteractedRef.current) return;
-              setMode("manual");
-              runManual();
-            }, 3800)
-          );
-        }
-      }, 1400)
-    );
-  };
-
-  // Run Manual Pipeline (Paced 6 sequential steps to snappier 4.8s for preview)
-  const runManual = () => {
-    clearTimers();
-    setPhase("running");
-    setManualStep(0);
-    setCardStates({ Inbox: "idle", Sheet: "idle", CRM: "idle", Slack: "idle" });
-    setElapsedTimer("0.0s");
-    startTime.current = performance.now();
-
-    const updateTimer = () => {
-      const now = performance.now();
-      const s = Math.min(4.8, (now - startTime.current) / 1000);
-      setElapsedTimer(`${s.toFixed(1)}s`);
-      if (s < 4.8) {
-        animFrame.current = requestAnimationFrame(updateTimer);
-      }
-    };
-    animFrame.current = requestAnimationFrame(updateTimer);
-
-    // Sequence 6 steps
-    STEPS.forEach((_, idx) => {
-      timers.current.push(
-        window.setTimeout(() => {
-          setManualStep(idx);
-          if (idx === 1) setCardStates((prev) => ({ ...prev, Inbox: "complete" }));
-          if (idx === 2) setCardStates((prev) => ({ ...prev, Sheet: "complete" }));
-          if (idx === 3) setCardStates((prev) => ({ ...prev, CRM: "complete" }));
-          if (idx === 5) setCardStates((prev) => ({ ...prev, Slack: "complete" }));
-        }, idx * 750)
-      );
-    });
-
-    // Complete manual run at 4.8s
-    timers.current.push(
-      window.setTimeout(() => {
-        setPhase("done");
-        setElapsedTimer("4.8s");
-        announcePreviewDone(SLUG);
-
-        // Continuous comparison loop: after manual completes, transition to auto after 1.2s
-        if (!userInteractedRef.current) {
-          timers.current.push(
-            window.setTimeout(() => {
-              if (userInteractedRef.current) return;
-              setMode("auto");
-              runAuto();
-            }, 1200)
-          );
-        }
-      }, 4800)
-    );
-  };
-
-  const executeMode = (m: Mode) => {
-    if (m === "auto") runAuto();
-    else runManual();
-  };
-
-  const handleModeChange = (m: Mode) => {
-    userInteractedRef.current = true;
-    setMode(m);
-    executeMode(m);
-  };
-
-  const handleResetOrRun = () => {
-    userInteractedRef.current = true;
-    if (phase === "running") {
-      clearTimers();
-      setPhase("idle");
-      setManualStep(-1);
-      setElapsedTimer("0.0s");
-      setCardStates({ Inbox: "idle", Sheet: "idle", CRM: "idle", Slack: "idle" });
-    } else {
-      executeMode(mode);
+    if (endpoints.length === 4) {
+      setCoords({
+        width: cRect.width,
+        height: cRect.height,
+        startX,
+        startY,
+        inputStartX,
+        inputEndX,
+        inputY,
+        endpoints,
+      });
     }
   };
 
-  // Viewport-gated reset & replay
+  useLayoutEffect(() => {
+    updateCoords();
+  }, [phase]);
+
   useEffect(() => {
-    clearTimers();
-    if (!active) {
-      setMode("manual");
-      setPhase("idle");
-      setManualStep(-1);
-      setElapsedTimer("0.0s");
-      setCardStates({ Inbox: "idle", Sheet: "idle", CRM: "idle", Slack: "idle" });
+    const el = containerRef.current;
+    if (!el) return;
+
+    updateCoords();
+
+    const ro = new ResizeObserver(() => {
+      updateCoords();
+    });
+    ro.observe(el);
+
+    window.addEventListener("resize", updateCoords);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", updateCoords);
+    };
+  }, []);
+
+  // 2-Phase Automatic Sequence Loop (Manual: 4.2s, Automated: 4.5s -> ~8.7s cycle)
+  useEffect(() => {
+    if (prefersReducedMotion() || !active) {
+      setPhase("automated");
+      setPhaseProgress(1);
+      setManualSeconds("10.9s");
       return;
     }
 
-    if (preview || userInteractedRef.current) return;
     markPreviewPlayed(SLUG);
 
-    setMode("manual");
-    setPhase("idle");
-    setManualStep(-1);
-    setElapsedTimer("0.0s");
-    setCardStates({ Inbox: "idle", Sheet: "idle", CRM: "idle", Slack: "idle" });
+    const DURATION_MANUAL = 4200;
+    const DURATION_AUTOMATED = 4500;
+    const TOTAL_CYCLE = DURATION_MANUAL + DURATION_AUTOMATED;
 
-    const initialDelay = window.setTimeout(() => {
-      runManual();
-    }, 280);
+    const tick = (now: number) => {
+      if (!startTimeRef.current) startTimeRef.current = now;
+      const elapsed = (now - startTimeRef.current) % TOTAL_CYCLE;
 
-    timers.current.push(initialDelay);
-    return () => clearTimers();
-  }, [active, runKey, preview]);
+      if (userSelectedPhase) {
+        // User manually clicked one tab, run that phase specifically
+        if (userSelectedPhase === "manual") {
+          setPhase("manual");
+          const p = (elapsed % DURATION_MANUAL) / DURATION_MANUAL;
+          setPhaseProgress(p);
+          setManualSeconds(`${(p * 10.9).toFixed(1)}s`);
+        } else {
+          setPhase("automated");
+          const p = (elapsed % DURATION_AUTOMATED) / DURATION_AUTOMATED;
+          setPhaseProgress(p);
+        }
+      } else {
+        // Automatic 2-phase sequence
+        if (elapsed < DURATION_MANUAL) {
+          setPhase("manual");
+          const p = elapsed / DURATION_MANUAL;
+          setPhaseProgress(p);
+          setManualSeconds(`${(p * 10.9).toFixed(1)}s`);
+        } else {
+          setPhase("automated");
+          const p = (elapsed - DURATION_MANUAL) / DURATION_AUTOMATED;
+          setPhaseProgress(p);
+          if (!preview && p > 0.9) {
+            announcePreviewDone(SLUG);
+          }
+        }
+      }
 
-  // Clean SVG Path Geometry calculation for Automated Mode
-  const [busPaths, setBusPaths] = useState<string[]>(["", "", "", ""]);
+      animFrameRef.current = requestAnimationFrame(tick);
+    };
 
-  useLayoutEffect(() => {
-    if (mode !== "auto") return;
-    const stage = stageRef.current;
-    const node = nodeRef.current;
-    if (!stage || !node) return;
+    startTimeRef.current = performance.now();
+    animFrameRef.current = requestAnimationFrame(tick);
 
-    const sRect = stage.getBoundingClientRect();
-    const nRect = node.getBoundingClientRect();
+    return () => {
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    };
+  }, [active, preview, userSelectedPhase]);
 
-    const sx = nRect.left + nRect.width / 2 - sRect.left;
-    const sy = nRect.bottom - sRect.top;
+  // Viewport/key reset
+  useEffect(() => {
+    setPhase("manual");
+    setPhaseProgress(0);
+    setManualSeconds("0.0s");
+    setUserSelectedPhase(null);
+    startTimeRef.current = performance.now();
+  }, [active, runKey]);
 
-    const paths = cardRefs.current.map((card) => {
-      if (!card) return "";
-      const cRect = card.getBoundingClientRect();
-      const ex = cRect.left + cRect.width / 2 - sRect.left;
-      const ey = cRect.top - sRect.top;
-      const midY = (sy + ey) * 0.5;
-      return `M ${sx} ${sy} C ${sx} ${midY}, ${ex} ${midY}, ${ex} ${ey}`;
-    });
+  const handleSelectPhase = (selected: "manual" | "automated") => {
+    setUserSelectedPhase(selected);
+    setPhase(selected);
+    setPhaseProgress(0);
+    startTimeRef.current = performance.now();
+  };
 
-    setBusPaths(paths);
-  }, [mode, active]);
+  const handleRunAgain = () => {
+    setUserSelectedPhase(null);
+    setPhase("manual");
+    setPhaseProgress(0);
+    setManualSeconds("0.0s");
+    startTimeRef.current = performance.now();
+  };
+
+  // Phase A calculations
+  const manualStepActiveIndex = Math.min(
+    MANUAL_STEPS.length - 1,
+    Math.floor(phaseProgress * MANUAL_STEPS.length)
+  );
+
+  // Phase B calculations
+  // Input line travel: 0 to 0.2 (~180ms)
+  const inputProgress = Math.min(1, phaseProgress / 0.16);
+  // Core excitation: 0.16 to 0.28
+  const isCoreExcited = phaseProgress >= 0.16 && phaseProgress < 0.45;
+  // Bezier fan-out travel: 0.25 to 0.55 (~600ms, well under 0.8s)
+  const beamProgress = Math.min(1, Math.max(0, (phaseProgress - 0.22) / 0.26));
+  // All 4 cards illuminated and updated:
+  const isAutoUpdated = phaseProgress >= 0.48;
+
+  // Compute position of light comets along the 4 cubic Bezier curves
+  const getCubicPoint = (
+    t: number,
+    p0: [number, number],
+    p1: [number, number],
+    p2: [number, number],
+    p3: [number, number]
+  ): [number, number] => {
+    const u = 1 - t;
+    const tt = t * t;
+    const uu = u * u;
+    const uuu = uu * u;
+    const ttt = tt * t;
+    const x = uuu * p0[0] + 3 * uu * t * p1[0] + 3 * u * tt * p2[0] + ttt * p3[0];
+    const y = uuu * p0[1] + 3 * uu * t * p1[1] + 3 * u * tt * p2[1] + ttt * p3[1];
+    return [x, y];
+  };
 
   return (
     <div
-      ref={stageRef}
-      className="au au-pane relative flex h-full w-full flex-col justify-between p-[10px] min-[900px]:p-[14px] select-none"
-      aria-label="AI Automation Demo"
+      className="automation-demo relative flex flex-col justify-between w-full h-full p-3 sm:p-5 select-none rounded-2xl border border-white/[0.08]"
+      style={{
+        background: "#080B07",
+        backgroundImage:
+          "radial-gradient(ellipse 75% 60% at 20% 0%, rgba(158,228,26,0.11), transparent 65%), radial-gradient(circle, rgba(255,255,255,0.045) 1px, transparent 1px)",
+        backgroundSize: "100% 100%, 18px 18px",
+      }}
+      aria-label="Full-Width Auto-Switching AI Automation Console"
     >
       {/* ------------------------------------------------------------- */}
-      {/* 1. Header Bar: Segmented Switcher & Run Control               */}
+      {/* 1. TOP STUDIO BAR: SEGMENTED PILL TOGGLE + RUNNING/REPLAY     */}
       {/* ------------------------------------------------------------- */}
-      <div className="flex flex-none items-center justify-between gap-[10px]">
-        {/* Segmented Mode Switcher (.au-seg button) */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 border-b border-white/[0.08]">
+        {/* Segmented Pill Toggle [ MANUAL | AUTOMATED ] */}
         <div
-          role="radiogroup"
-          aria-label="Automation Mode"
-          className="au-seg flex items-center rounded-full p-[3px] bg-[#EAE7DF] border border-[#141413]/10"
+          className="flex items-center rounded-full p-0.5 border"
+          style={{
+            background: "rgba(18, 23, 17, 0.88)",
+            borderColor: "rgba(255,255,255,0.09)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12)",
+          }}
         >
           <button
             type="button"
-            role="radio"
-            aria-checked={mode === "manual"}
-            onClick={() => handleModeChange("manual")}
-            className="rounded-full px-[14px] py-[4.5px] font-mono text-[12px] font-semibold uppercase tracking-[0.12em] transition-all cursor-pointer"
+            onClick={() => handleSelectPhase("manual")}
+            className="flex items-center gap-1.5 rounded-full px-3.5 py-1 font-mono text-[9px] font-semibold tracking-wider transition-all cursor-pointer"
             style={{
-              background: mode === "manual" ? "#0D0E0C" : "transparent",
-              color: mode === "manual" ? "#F4F4EE" : "#343832",
-              border: mode === "manual" ? "1px solid #0D0E0C" : "1px solid transparent",
-              boxShadow: mode === "manual" ? "0 1px 4px rgba(13,14,12,0.15)" : "none",
+              background: phase === "manual" ? "#161C14" : "transparent",
+              border: phase === "manual" ? "1px solid rgba(158,228,26,0.35)" : "1px solid transparent",
+              color: phase === "manual" ? "#9EE41A" : "#8A8D89",
+              boxShadow: phase === "manual" ? "0 0 14px rgba(158,228,26,0.2)" : "none",
             }}
           >
-            Manual
+            <span
+              className="h-1.5 w-1.5 rounded-full"
+              style={{
+                background: phase === "manual" ? "#9EE41A" : "rgba(255,255,255,0.2)",
+              }}
+            />
+            <span>MANUAL</span>
           </button>
+
           <button
             type="button"
-            role="radio"
-            aria-checked={mode === "auto"}
-            onClick={() => handleModeChange("auto")}
-            className="rounded-full px-[14px] py-[4.5px] font-mono text-[12px] font-semibold uppercase tracking-[0.12em] transition-all cursor-pointer"
+            onClick={() => handleSelectPhase("automated")}
+            className="flex items-center gap-1.5 rounded-full px-3.5 py-1 font-mono text-[9px] font-semibold tracking-wider transition-all cursor-pointer"
             style={{
-              background: mode === "auto" ? "#0D0E0C" : "transparent",
-              color: mode === "auto" ? "#F4F4EE" : "#343832",
-              border: mode === "auto" ? "1px solid #0D0E0C" : "1px solid transparent",
-              boxShadow: mode === "auto" ? "0 1px 4px rgba(13,14,12,0.15)" : "none",
+              background: phase === "automated" ? "#161C14" : "transparent",
+              border: phase === "automated" ? "1px solid rgba(158,228,26,0.35)" : "1px solid transparent",
+              color: phase === "automated" ? "#9EE41A" : "#8A8D89",
+              boxShadow: phase === "automated" ? "0 0 14px rgba(158,228,26,0.2)" : "none",
             }}
           >
-            Automated
+            <span
+              className="h-1.5 w-1.5 rounded-full"
+              style={{
+                background: phase === "automated" ? "#9EE41A" : "rgba(255,255,255,0.2)",
+              }}
+            />
+            <span>AUTOMATED</span>
           </button>
         </div>
 
-        {/* Run / Run Again / Running Button (.au-run) */}
-        <button
-          type="button"
-          onClick={handleResetOrRun}
-          className="au-run flex items-center gap-[5px] rounded-full bg-[#141413] border border-[#141413] px-[13px] py-[4px] font-mono text-[10px] font-semibold text-[#F4F4EE] shadow-sm transition-all hover:text-[#9EE41A] cursor-pointer"
-          data-cursor="RUN"
-        >
-          <span className="text-[#9EE41A] text-[8.5px]">
-            {phase === "running" ? "◼" : "▶"}
-          </span>
-          <span className="whitespace-nowrap">
-            {phase === "running"
-              ? "Running…"
-              : phase === "done"
-              ? "Run again"
-              : mode === "manual"
-              ? "Run manual"
-              : "Run automated"}
-          </span>
-        </button>
+        {/* Live Status Indicator & Replay Button */}
+        <div className="flex items-center gap-2">
+          {/* Phase Badge */}
+          <div
+            className="hidden sm:flex items-center gap-1.5 rounded-md px-2.5 py-1 border font-mono text-[9px] font-semibold text-[#CBD1C5]"
+            style={{
+              background: "rgba(18, 23, 17, 0.82)",
+              borderColor: "rgba(255,255,255,0.09)",
+            }}
+          >
+            <span className="text-[#8A8D89]">PHASE:</span>
+            <span className="text-[#9EE41A] font-bold">
+              {phase === "manual" ? "01 MANUAL DRAG" : "02 INSTANT AUTONOMY"}
+            </span>
+          </div>
+
+          {/* Running / Run Again Button */}
+          <button
+            type="button"
+            onClick={handleRunAgain}
+            className="flex items-center gap-1.5 rounded-md px-3 py-1 border font-mono text-[9px] font-bold tracking-wider cursor-pointer transition-all"
+            style={{
+              background: "rgba(18, 23, 17, 0.88)",
+              borderColor: "rgba(255,255,255,0.09)",
+              color: "#CBD1C5",
+            }}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-[#9EE41A] animate-pulse" />
+            <span>RUN AGAIN</span>
+          </button>
+        </div>
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* 2. Main Stage Content Area (Warm Stone Recessed Tray)         */}
+      {/* 2. MAIN WORKSPACE CONTAINER (Smooth 0.35s Crossfade)          */}
       {/* ------------------------------------------------------------- */}
-      <div className="relative flex-1 my-[8px] overflow-hidden rounded-[10px] border border-[#141413]/10 bg-[#E5E7DC] p-[10px] min-[900px]:p-[12px] shadow-sm flex flex-col justify-center">
-        {mode === "manual" ? (
-          /* ========================================================= */
-          /* MANUAL MODE: 2 Columns Side-by-Side (YOU · 6 STEPS | RESULT) */
-          /* ========================================================= */
-          <div className="grid h-full w-full grid-cols-1 md:grid-cols-[1.35fr_1fr] gap-[12px] min-[900px]:gap-[16px] items-start">
-            {/* Left Column: YOU · 6 STEPS (~58%) */}
-            <div className="flex flex-col h-full justify-start py-[2px]">
-              <div className="flex items-center justify-between pb-[6px] border-b border-[#0D0E0C]/10">
-                <span className="font-mono text-[12px] uppercase tracking-[0.12em] text-[#343832] font-semibold">
-                  YOU · 6 STEPS
-                </span>
-                <span className="font-mono text-[12px] text-[#0D0E0C] font-semibold tabular-nums">
-                  {manualStep >= 0 ? `STEP 0${manualStep + 1} OF 06` : "STEP 00 OF 06"}
-                </span>
-              </div>
-
-              {/* 6 Stacked Horizontal Step Rows */}
-              <div className="flex flex-col gap-[6px] mt-[8px]">
-                {STEPS.map((s, idx) => {
-                  const isCurrent = manualStep === idx;
-                  const isDone = manualStep > idx;
-                  return (
-                    <div
-                      key={s}
-                      className="relative overflow-hidden rounded-[8px] border py-3 px-4 flex items-center justify-between transition-all"
-                      style={{
-                        borderColor: isCurrent
-                          ? "#9EE41A"
-                          : isDone
-                          ? "rgba(158, 228, 26, 0.4)"
-                          : "rgba(13,14,12,0.08)",
-                        background: isDone
-                          ? "#F1F9E3"
-                          : isCurrent
-                          ? "#FFFFFF"
-                          : "#FFFFFF",
-                      }}
-                    >
-                      <div className="flex items-center gap-[10px] min-w-0">
-                        <span className="font-mono text-[13px] font-bold text-[#343832]">
-                          0{idx + 1}
-                        </span>
-                        <span className="font-sans text-[13.5px] font-semibold text-[#0D0E0C] truncate">
-                          {s}
-                        </span>
-                      </div>
-
-                      {/* Status Checkmark Indicator */}
-                      <span
-                        className="h-[18px] w-[18px] rounded-full flex items-center justify-center transition-colors flex-none"
-                        style={{
-                          background: isDone ? "#9EE41A" : isCurrent ? "#0D0E0C" : "transparent",
-                          border: isDone
-                            ? "1px solid #9EE41A"
-                            : isCurrent
-                            ? "1px solid #0D0E0C"
-                            : "1px solid rgba(13,14,12,0.2)",
-                        }}
-                      >
-                        {isDone ? (
-                          <span className="text-[10px] font-bold text-[#0D0E0C]">✓</span>
-                        ) : isCurrent ? (
-                          <span className="h-[5px] w-[5px] rounded-full bg-[#9EE41A] animate-pulse" />
-                        ) : null}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Right Column: RESULT · 4 Stacked Status Cards (~42%) */}
-            <div className="flex flex-col h-full justify-start py-[2px] border-t md:border-t-0 md:border-l border-[#0D0E0C]/10 md:pl-[14px]">
-              <div className="flex items-center justify-between pb-[6px] border-b border-[#0D0E0C]/10">
-                <span className="font-mono text-[12px] uppercase tracking-[0.12em] text-[#343832] font-semibold">
-                  RESULT
-                </span>
-                <span className="font-mono text-[12px] text-[#343832] font-semibold">
-                  4 OUTPUTS
-                </span>
-              </div>
-
-              {/* 4 Stacked Result Cards */}
-              <div className="flex flex-col gap-[6px] mt-[8px]">
-                {CARDS.map((c) => {
-                  const isDone = cardStates[c.k] === "complete";
-                  return (
-                    <div
-                      key={c.k}
-                      className="au-card rounded-[8px] border p-3 transition-all bg-[#F1F2EA]"
-                      data-state={isDone ? "complete" : "idle"}
-                      style={{
-                        borderColor: isDone ? "#9EE41A" : "rgba(13,14,12,0.08)",
-                        boxShadow: isDone
-                          ? "0 2px 8px rgba(158,228,26,0.15)"
-                          : "0 1px 4px rgba(13,14,12,0.03)",
-                      }}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[13px] text-[#343832]">{c.icon}</span>
-                          <span className="font-mono text-[13px] font-bold text-[#0D0E0C]">
-                            {c.k.toUpperCase()}
-                          </span>
-                        </div>
-                        <span
-                          className="font-mono text-[10px] uppercase px-2 py-0.5 rounded font-semibold"
-                          style={{
-                            background: isDone ? "#9EE41A" : "rgba(13,14,12,0.05)",
-                            color: isDone ? "#0D0E0C" : "#343832",
-                            border: isDone ? "1px solid #9EE41A" : "1px solid rgba(13,14,12,0.08)",
-                          }}
-                        >
-                          {isDone ? "UPDATED ✓" : "WAITING"}
-                        </span>
-                      </div>
-                      <p className="font-mono text-[12px] font-medium text-[#343832] mt-1.5 truncate">
-                        {c.tip}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* ========================================================= */
-          /* AUTOMATED MODE: Centered AI Node + 4 Symmetrical Bus Lines */
-          /* ========================================================= */
-          <div className="relative flex h-full w-full flex-col justify-between items-center py-[4px]">
-            {/* SVG Bus Paths Layer */}
-            <svg
-              className="pointer-events-none absolute inset-0 h-full w-full overflow-visible z-10"
-              aria-hidden="true"
-            >
-              {busPaths.map((d, i) => (
-                <g key={i}>
-                  <path
-                    d={d}
-                    fill="none"
-                    stroke="rgba(20,20,19,0.1)"
-                    strokeWidth="1.5"
-                    strokeDasharray="4 3"
-                  />
-                  <path
-                    d={d}
-                    fill="none"
-                    stroke="#9EE41A"
-                    strokeWidth="2"
-                    style={{
-                      opacity: cardStates[CARDS[i].k] === "complete" ? 0.85 : 0.2,
-                      transition: "opacity 0.4s",
-                    }}
-                  />
-                  {phase === "running" && packetProgress[i] > 0 && packetProgress[i] < 1 && (
-                    <circle
-                      r="4"
-                      fill="#9EE41A"
-                      filter="drop-shadow(0 0 4px #9EE41A)"
-                      style={{
-                        offsetPath: `path('${d}')`,
-                        offsetDistance: `${packetProgress[i] * 100}%`,
-                      }}
-                    />
-                  )}
-                </g>
-              ))}
-            </svg>
-
-            {/* Centered Charcoal AI Core Hub */}
-            <div className="relative z-20 flex flex-col items-center pt-[2px]">
-              <div
-                ref={nodeRef}
-                data-slab="engine"
-                className="relative flex h-[50px] w-[50px] items-center justify-center rounded-full bg-[#141413] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_6px_18px_rgba(20,20,19,0.18)]"
-              >
-                {nodePulse && (
-                  <span className="au-ring pointer-events-none absolute -inset-[8px] rounded-full border-2 border-[#9EE41A] animate-ping opacity-60" />
-                )}
-                <span className="font-mono text-[13px] font-bold tracking-wider text-[#9EE41A]">
-                  AI
-                </span>
-                <span className="au-node-port absolute -bottom-[3px] left-1/2 -translate-x-1/2 h-[6px] w-[6px] rounded-full bg-[#9EE41A]" />
-              </div>
-              <span className="font-mono text-[8.5px] uppercase tracking-[0.16em] text-[#6E6D68] mt-[4px]">
-                READS · DECIDES · ROUTES
+      <div className="relative w-full my-auto py-3">
+        {/* =========================================================== */}
+        {/* PHASE A — MANUAL (~4.2s)                                    */}
+        {/* =========================================================== */}
+        <div
+          className="transition-all duration-350 ease-out"
+          style={{
+            display: phase === "manual" ? "block" : "none",
+            opacity: phase === "manual" ? 1 : 0,
+            transform: phase === "manual" ? "scale(1)" : "scale(0.985)",
+          }}
+        >
+          {/* Sub-Header: YOU · 6 MANUAL STEPS vs RESULT */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 pb-2 font-mono text-[9px] font-bold text-[#8A8D89] uppercase tracking-wider">
+            <div className="md:col-span-7 flex items-center justify-between">
+              <span className="text-[#F59E0B] flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B]" />
+                YOU · 6 MANUAL STEPS
+              </span>
+              <span className="text-[#F59E0B] font-mono">
+                SIMULATED · {manualSeconds}
               </span>
             </div>
+            <div className="md:col-span-5 hidden md:flex items-center justify-between">
+              <span>RESULT</span>
+              <span className="text-[#8A8D89]">SLUGGISH UPDATE</span>
+            </div>
+          </div>
 
-            {/* Lower 4 Result Cards */}
-            <div className="relative z-20 grid grid-cols-2 sm:grid-cols-4 gap-[8px] w-full pt-[10px]">
-              {CARDS.map((c, idx) => {
-                const isComplete = cardStates[c.k] === "complete";
+          {/* 2-Column Split: 58% Steps | 42% Destination Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-stretch min-h-[265px]">
+            {/* Left Column (58% -> md:col-span-7): 6 Step Rows */}
+            <div className="md:col-span-7 flex flex-col justify-between gap-1.5">
+              {MANUAL_STEPS.map((step, idx) => {
+                const isPast = manualStepActiveIndex > idx;
+                const isCurrent = manualStepActiveIndex === idx;
+
                 return (
                   <div
-                    key={c.k}
-                    ref={(el) => {
-                      cardRefs.current[idx] = el;
-                    }}
-                    className="au-card relative rounded-[8px] border border-[#0D0E0C]/10 bg-[#F1F2EA] p-[10px_12px] transition-all duration-300 shadow-sm"
+                    key={step.id}
+                    className="rounded-lg px-3 py-2 border flex items-center justify-between transition-all duration-300"
                     style={{
-                      boxShadow: isComplete
-                        ? "0 4px 14px rgba(158,228,26,0.15)"
-                        : "0 2px 6px rgba(13,14,12,0.04)",
-                      transform: isComplete ? "translateY(-2px)" : "none",
+                      background: isCurrent
+                        ? "rgba(245, 158, 11, 0.12)"
+                        : isPast
+                          ? "rgba(255, 255, 255, 0.03)"
+                          : "rgba(255, 255, 255, 0.015)",
+                      borderColor: isCurrent
+                        ? "rgba(245, 158, 11, 0.45)"
+                        : isPast
+                          ? "rgba(255, 255, 255, 0.08)"
+                          : "rgba(255, 255, 255, 0.04)",
                     }}
-                    data-state={isComplete ? "complete" : "idle"}
                   >
-                    <span
-                      className="au-card-port absolute -top-[4px] left-1/2 -translate-x-1/2 h-[6px] w-[6px] rounded-full transition-colors duration-300"
-                      style={{ background: isComplete ? "#9EE41A" : "#8A8D89" }}
-                    />
-                    <div className="flex items-center justify-between gap-[4px] mb-[4px]">
-                      <span className="font-mono text-[13px] font-bold text-[#0D0E0C]">
-                        {c.k}
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className="font-mono text-[8.5px] font-bold px-1.5 py-0.5 rounded"
+                        style={{
+                          background: isCurrent
+                            ? "#F59E0B"
+                            : isPast
+                              ? "rgba(255,255,255,0.1)"
+                              : "rgba(255,255,255,0.05)",
+                          color: isCurrent ? "#0B0C0A" : "#8A8D89",
+                        }}
+                      >
+                        {step.n}
                       </span>
                       <span
-                        className="h-[6px] w-[6px] rounded-full transition-colors"
-                        style={{ background: isComplete ? "#9EE41A" : "#8A8D89" }}
-                      />
+                        className="font-sans text-[11px] font-semibold"
+                        style={{
+                          color: isCurrent ? "#F59E0B" : isPast ? "#C9CEC3" : "#6E726A",
+                        }}
+                      >
+                        {step.title}
+                      </span>
                     </div>
-                    <div className="font-mono text-[10px] uppercase tracking-wider">
-                      {isComplete ? (
-                        <span className="text-[#0D0E0C] font-semibold bg-[#9EE41A]/20 px-[6px] py-[1.5px] rounded border border-[#9EE41A]">UPDATED ✓</span>
-                      ) : (
-                        <span className="text-[#343832]">WAITING</span>
+
+                    <div className="flex items-center gap-1.5 font-mono text-[8px]">
+                      {isPast && <span className="text-[#10B981] font-bold">DONE</span>}
+                      {isCurrent && (
+                        <span className="flex items-center gap-1 text-[#F59E0B] font-bold">
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#F59E0B] animate-spin" />
+                          <span>TYPING...</span>
+                        </span>
                       )}
+                      {!isPast && !isCurrent && <span className="text-[#6E726A]">WAITING</span>}
                     </div>
-                    <p className="font-mono text-[12px] font-medium text-[#343832] mt-[4px] truncate">
-                      {c.tip}
-                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Right Column (42% -> md:col-span-5): 4 Destination Cards (Manual) */}
+            <div className="md:col-span-5 flex flex-col justify-between gap-2">
+              {DESTINATIONS.map((dest, idx) => {
+                const isUpdated = manualStepActiveIndex >= idx + 1;
+
+                return (
+                  <div
+                    key={dest.id}
+                    className="rounded-lg p-2.5 border flex items-center justify-between transition-all duration-300"
+                    style={{
+                      background: isUpdated ? "rgba(25, 30, 24, 0.9)" : "rgba(18, 23, 17, 0.75)",
+                      borderColor: isUpdated ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.05)",
+                    }}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="text-[#8A8D89]">{dest.icon}</div>
+                      <div>
+                        <div className="font-sans font-bold text-[10.5px] text-[#F4F1E0]">
+                          {dest.name}
+                        </div>
+                        <div className="font-mono text-[7.5px] text-[#8A8D89]">
+                          {isUpdated ? dest.manualLabel : "Waiting on human"}
+                        </div>
+                      </div>
+                    </div>
+
+                    <span
+                      className="font-mono text-[8px] font-bold px-2 py-0.5 rounded transition-colors"
+                      style={{
+                        background: isUpdated ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)",
+                        color: isUpdated ? "#CBD1C5" : "#6E726A",
+                      }}
+                    >
+                      {isUpdated ? "UPDATED" : "WAITING"}
+                    </span>
                   </div>
                 );
               })}
             </div>
           </div>
-        )}
+        </div>
+
+        {/* =========================================================== */}
+        {/* PHASE B — AUTOMATED (~4.5s)                                 */}
+        {/* =========================================================== */}
+        <div
+          className="transition-all duration-350 ease-out"
+          style={{
+            display: phase === "automated" ? "block" : "none",
+            opacity: phase === "automated" ? 1 : 0,
+            transform: phase === "automated" ? "scale(1)" : "scale(0.985)",
+          }}
+        >
+          {/* Sub-Header: SYSTEM · 1 EVENT vs RESULT */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 pb-2 font-mono text-[9px] font-bold text-[#8A8D89] uppercase tracking-wider">
+            <div className="md:col-span-7 flex items-center justify-between">
+              <span className="text-[#9EE41A] flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#9EE41A] shadow-[0_0_6px_#9EE41A]" />
+                SYSTEM · 1 EVENT
+              </span>
+              <span className="text-[#9EE41A] font-mono">
+                TRIGGER: INBOUND RFQ
+              </span>
+            </div>
+            <div className="md:col-span-5 hidden md:flex items-center justify-between">
+              <span>RESULT</span>
+              <span className="text-[#9EE41A]">ALL 4 SYSTEMS SYNCED</span>
+            </div>
+          </div>
+
+          {/* Unified Aligned Coordinate Layout */}
+          <div
+            ref={containerRef}
+            className="relative grid grid-cols-1 md:grid-cols-12 gap-3.5 items-stretch min-h-[265px]"
+          >
+            {/* SVG Bezier Overlay connecting AI core to 4 destination cards with ZERO GAP */}
+            <svg
+              className="absolute inset-0 w-full h-full pointer-events-none hidden md:block z-10"
+              style={{ overflow: "visible" }}
+            >
+              <defs>
+                <filter id="autoGlow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="3.5" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+              </defs>
+
+              {/* Input Line: Left Edge to AI Core */}
+              <line
+                x1={coords.inputStartX}
+                y1={coords.inputY}
+                x2={coords.inputEndX}
+                y2={coords.inputY}
+                stroke={inputProgress > 0.1 ? "#9EE41A" : "rgba(255,255,255,0.12)"}
+                strokeWidth="2"
+              />
+
+              {/* Traveling Light Comet on Input Line */}
+              {phaseProgress < 0.22 && (
+                <circle
+                  cx={coords.inputStartX + (coords.inputEndX - coords.inputStartX) * inputProgress}
+                  cy={coords.inputY}
+                  r="4.5"
+                  fill="#9EE41A"
+                  filter="url(#autoGlow)"
+                />
+              )}
+
+              {/* 4 Fan-Out Cubic Bezier Curves (AI Core Right Edge -> 4 Cards Left Edges) */}
+              {coords.endpoints.map((ep, idx) => {
+                const p0: [number, number] = [coords.startX, coords.startY];
+                const p1: [number, number] = [
+                  coords.startX + (ep.x - coords.startX) * 0.45,
+                  coords.startY,
+                ];
+                const p2: [number, number] = [
+                  coords.startX + (ep.x - coords.startX) * 0.55,
+                  ep.y,
+                ];
+                const p3: [number, number] = [ep.x, ep.y];
+
+                const pathD = `M ${p0[0]} ${p0[1]} C ${p1[0]} ${p1[1]}, ${p2[0]} ${p2[1]}, ${p3[0]} ${p3[1]}`;
+
+                // Comet position along curve
+                const cometPt = getCubicPoint(beamProgress, p0, p1, p2, p3);
+
+                return (
+                  <g key={idx}>
+                    {/* Underlying Rail */}
+                    <path
+                      d={pathD}
+                      fill="none"
+                      stroke={isAutoUpdated ? "rgba(158,228,26,0.35)" : "rgba(255,255,255,0.1)"}
+                      strokeWidth="2"
+                    />
+
+                    {/* Animated Traveling Comet Pulses */}
+                    {phaseProgress >= 0.22 && phaseProgress < 0.52 && (
+                      <>
+                        <circle
+                          cx={cometPt[0]}
+                          cy={cometPt[1]}
+                          r="4.5"
+                          fill="#9EE41A"
+                          filter="url(#autoGlow)"
+                        />
+                        <circle
+                          cx={cometPt[0]}
+                          cy={cometPt[1]}
+                          r="7.5"
+                          fill="#9EE41A"
+                          opacity="0.3"
+                        />
+                      </>
+                    )}
+                  </g>
+                );
+              })}
+            </svg>
+
+            {/* Left / Center Flow Area (58% -> md:col-span-7) */}
+            <div className="md:col-span-7 relative flex items-center justify-between p-2">
+              {/* Inbound Lead Indicator at Left Edge */}
+              <div
+                className="z-20 rounded-lg p-2.5 border flex flex-col justify-center transition-all duration-300"
+                style={{
+                  background: "rgba(22, 32, 19, 0.95)",
+                  borderColor: inputProgress > 0 ? "#9EE41A" : "rgba(255,255,255,0.1)",
+                  boxShadow: inputProgress > 0 ? "0 0 14px rgba(158,228,26,0.25)" : "none",
+                }}
+              >
+                <div className="flex items-center gap-1.5 font-mono text-[8px] font-bold text-[#9EE41A]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#9EE41A] animate-pulse" />
+                  <span>INBOUND</span>
+                </div>
+                <div className="font-sans font-bold text-[10.5px] text-[#F4F1E0] mt-0.5">
+                  RFQ Web Form
+                </div>
+              </div>
+
+              {/* Center AI Core: 76px x 76px, circular dark-glass with zero emojis */}
+              <div className="relative flex flex-col items-center justify-center my-auto z-20">
+                <div
+                  ref={aiCoreRef}
+                  className="rounded-full flex flex-col items-center justify-center text-center shadow-2xl transition-all duration-300"
+                  style={{
+                    width: "76px",
+                    height: "76px",
+                    background:
+                      "radial-gradient(circle at center, rgba(158,228,26,0.22) 0%, rgba(14, 18, 13, 0.96) 72%)",
+                    border: "1.5px solid #9EE41A",
+                    boxShadow: isCoreExcited
+                      ? "0 0 32px rgba(158,228,26,0.45), inset 0 1px 0 rgba(255,255,255,0.3)"
+                      : "0 0 20px rgba(158,228,26,0.22), inset 0 1px 0 rgba(255,255,255,0.15)",
+                    transform: isCoreExcited ? "scale(1.05)" : "scale(1)",
+                  }}
+                >
+                  <span
+                    className="font-sans font-extrabold text-xl tracking-tight text-[#F4F1E0]"
+                    style={{ textShadow: "0 0 12px rgba(158,228,26,0.5)" }}
+                  >
+                    AI
+                  </span>
+                </div>
+
+                {/* Subtle Monospace Caption */}
+                <div className="font-mono text-[8px] font-semibold text-[#8A8D89] tracking-wider uppercase mt-2">
+                  READS · DECIDES · ROUTES
+                </div>
+              </div>
+
+              {/* Spacer on right so AI core is centered in the 58% column */}
+              <div className="w-[10px] hidden md:block" />
+            </div>
+
+            {/* Right Destination Stack (42% -> md:col-span-5) */}
+            <div className="md:col-span-5 flex flex-col justify-between gap-2 z-20">
+              {DESTINATIONS.map((dest, idx) => (
+                <div
+                  key={dest.id}
+                  ref={(el) => {
+                    cardRefs.current[idx] = el;
+                  }}
+                  className="rounded-lg p-2.5 border flex items-center justify-between transition-all duration-300"
+                  style={{
+                    background: isAutoUpdated
+                      ? "rgba(22, 34, 18, 0.95)"
+                      : "rgba(18, 23, 17, 0.8)",
+                    borderColor: isAutoUpdated ? "#9EE41A" : "rgba(255,255,255,0.08)",
+                    boxShadow: isAutoUpdated
+                      ? "0 0 16px rgba(158,228,26,0.25), inset 0 1px 0 rgba(255,255,255,0.15)"
+                      : "none",
+                  }}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={isAutoUpdated ? "text-[#9EE41A]" : "text-[#8A8D89]"}>
+                      {dest.icon}
+                    </div>
+                    <div>
+                      <div className="font-sans font-bold text-[10.5px] text-[#F4F1E0] flex items-center gap-1.5">
+                        <span>{dest.name}</span>
+                        <span className="font-mono text-[8.5px] text-[#9EE41A] font-semibold">
+                          · {dest.autoLatency}
+                        </span>
+                      </div>
+                      <div className="font-mono text-[7.5px] text-[#8A8D89]">
+                        {isAutoUpdated ? "Instant Sync" : "Standby"}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className="font-mono text-[8px] font-bold px-2 py-0.5 rounded transition-all"
+                      style={{
+                        background: isAutoUpdated
+                          ? "rgba(158,228,26,0.2)"
+                          : "rgba(255,255,255,0.04)",
+                        color: isAutoUpdated ? "#9EE41A" : "#8A8D89",
+                      }}
+                    >
+                      {isAutoUpdated ? "UPDATED ✓" : "WAITING"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* 3. Bottom Strip: Live Elapsed Status & Multiplier Telemetry   */}
+      {/* 3. BOTTOM SUBTLE FOOTER BAR (Phase A vs Phase B Dynamic)      */}
       {/* ------------------------------------------------------------- */}
-      <div className="flex flex-none items-center justify-between gap-[8px] font-mono text-[9.5px]">
-        <div className="flex items-center gap-[6px] text-[#6E6D68]">
-          <span className="h-[5px] w-[5px] rounded-full bg-[#9EE41A]" />
-          <span>
-            AUTO-PREVIEW · {mode.toUpperCase()} RUN ·{" "}
-            {phase === "running" ? "RUNNING" : phase === "done" ? "COMPLETE" : "READY"} · {elapsedTimer}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-[6px]">
-          <span className="text-[#8E8E88]">SIMULATED</span>
-          {mode === "auto" && phase === "done" ? (
-            <span className="text-[#141413] font-semibold bg-[#DCEEC4] px-[6px] py-[1.5px] rounded border border-[rgba(158,228,26,0.3)]">
-              1.4s · 5× FASTER
-            </span>
-          ) : (
-            <span className="text-[#8E8E88]">· {elapsedTimer}</span>
-          )}
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-white/[0.08] font-mono text-[8.5px]">
+        {phase === "manual" ? (
+          <>
+            <div className="text-[#8A8D89]">
+              <span>AUTO-PREVIEW · MANUAL RUN · </span>
+              <span className="text-[#F59E0B] font-bold">10.9s</span>
+            </div>
+            <div className="text-[#F59E0B] font-bold">
+              18 HRS/WK LOST TO DATA ENTRY
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="text-[#8A8D89]">
+              <span>DONE · </span>
+              <span className="text-[#9EE41A] font-bold">0.32s · PERSON FREE</span>
+            </div>
+            <div className="text-[#9EE41A] font-bold">
+              MANUAL 10.9s → AUTOMATED 0.32s · 34× FASTER
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

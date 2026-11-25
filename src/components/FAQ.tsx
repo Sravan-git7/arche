@@ -14,17 +14,17 @@ export const HOMEPAGE_FAQS: FAQItem[] = [
   {
     n: "01",
     q: "What makes Arché's system approach different from hiring 4 separate agencies?",
-    a: "Traditional agencies sell isolated deliverables—a video editor who doesn't understand your web stack, a web shop that doesn't touch automation, and an AI consultant who doesn't understand brand tone. Arché designs film, web flagships, autonomous agents, and CRM sync grids as one connected system. Data flows with zero friction, attribution is 100% deterministic, and you deal with a single elite multidisciplinary team.",
+    a: "Traditional agencies sell isolated deliverables—a video editor who doesn't understand your web stack, a web shop that doesn't touch automation, and an agency that doesn't understand narrative pitch design. Arché designs film, pitch decks, web flagships, and operational automation as one connected system. Data flows with zero friction, attribution is 100% deterministic, and you deal with a single elite multidisciplinary team.",
   },
   {
     n: "02",
     q: "Which services are currently available, and can we start with just one vertical?",
-    a: "We provide four core capabilities: Video Editing, Bespoke Web Development, Autonomous AI Chatbots, and Operational AI Automation. Many clients start with a single vertical—such as a flagship website or an automated lead pipeline—and expand into a connected system as momentum compounds.",
+    a: "We provide four core capabilities: Video Editing, Pitch Decks & Storytelling, Bespoke Web Development, and Operational AI Automation. Many clients start with a single vertical—such as a pitch deck sprint, a flagship website, or an automated lead pipeline—and expand into a connected system as momentum compounds.",
   },
   {
     n: "03",
     q: "How fast is project turnaround from brief to deployment?",
-    a: "Short-form video assets and master cuts deliver within 3–5 working days. Bespoke web flagships and AI agents typically deploy in 1–3 weeks. Operational automation pipelines run within 1–2 weeks. Because our architecture is blueprint-first, we eliminate endless revision cycles.",
+    a: "Short-form video assets and master cuts deliver within 3–5 working days. Investor pitch decks and web flagships typically deploy in 1–2 weeks. Operational automation pipelines run within 1–2 weeks. Because our architecture is blueprint-first, we eliminate endless revision cycles.",
   },
   {
     n: "04",

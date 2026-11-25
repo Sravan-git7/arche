@@ -61,9 +61,9 @@ export const IDLE_ADVANCE_MS = 6000;
  */
 const PREVIEW_HOLD: Record<string, number> = {
   "video-editing": 7000, // ~4.6s auto-scrub
-  "web-development": 7000, // ~3.4s build sequence
-  "ai-chatbots": 7000, // ~1.5s pause + ~3s reply
-  "ai-automation": 16000, // manual run (~9.7s) + beat + automated run (~1.7s)
+  "pitch-decks": 7000, // ~3.2s slide auto-advance
+  "web-development": 7000, // ~3.5s mode sequence
+  "ai-automation": 10000, // node graph cycle + automated execution
 };
 
 export const holdFor = (slug: string): number =>

@@ -685,7 +685,7 @@ export const servicesData: ServiceData[] = [
       "Intelligent document data extraction and operational triage systems",
     ],
     servicesOffered: [
-      "AI chatbots and website assistants",
+      "Omnichannel intake flows and website assistants",
       "WhatsApp automation and conversational flows",
       "Workflow and business process automation",
       "Lead management and CRM automation",

@@ -6,8 +6,8 @@ import { submitInquiry, type InquiryPayload } from "../lib/inquiries";
 
 type BuildOption =
   | "Video Editing"
+  | "Pitch Decks"
   | "Web Development"
-  | "AI Chatbots"
   | "AI Automation"
   | "Full Connected System";
 
@@ -24,14 +24,14 @@ const BUILD_OPTIONS: BuildCardOption[] = [
     desc: "Cinematic reels, long-form cuts & colour grading",
   },
   {
+    id: "Pitch Decks",
+    title: "Pitch Decks",
+    desc: "Investor narratives, structured storylines & 16:9 slides",
+  },
+  {
     id: "Web Development",
     title: "Web Development",
     desc: "Fast, custom-built flagship websites",
-  },
-  {
-    id: "AI Chatbots",
-    title: "AI Chatbots",
-    desc: "24/7 lead qualification & calendar booking",
   },
   {
     id: "AI Automation",
@@ -106,8 +106,11 @@ export function ContactPage() {
         const map: Record<string, BuildOption> = {
           "video-editing": "Video Editing",
           "video-production": "Video Editing",
+          "pitch-decks": "Pitch Decks",
+          "pitch-decks-storytelling": "Pitch Decks",
+          "pitch-deck": "Pitch Decks",
           "web-development": "Web Development",
-          "ai-chatbots": "AI Chatbots",
+          "ai-chatbots": "Pitch Decks",
           "ai-automation": "AI Automation",
           "ai-solutions-automation": "AI Automation",
           full: "Full Connected System",

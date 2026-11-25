@@ -6,7 +6,7 @@ import { getServiceDetail, type ServiceDetail } from "../data/serviceDetails";
 import { projects, type Project } from "../data/projects";
 import { WebDevInteractiveStage } from "./WebDevInteractiveStage";
 import { VideoEditingDemo } from "./VideoEditingDemo";
-import { AgentDemo } from "./AgentDemo";
+import { PitchDeckDemo } from "./PitchDeckDemo";
 import { AutomationDemo } from "./AutomationDemo";
 import { SlotButton } from "./SlotButton";
 
@@ -69,11 +69,11 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
     if (slug === "video-editing" || slug === "video-production") {
       return p.service === "video-editing";
     }
+    if (slug === "pitch-decks" || slug === "pitch-decks-storytelling") {
+      return p.service === "pitch-decks";
+    }
     if (slug === "web-development" || slug === "web-dev") {
       return p.service === "web-development";
-    }
-    if (slug === "ai-chatbots") {
-      return p.service === "ai-chatbots" || p.service === "ai-automation";
     }
     if (slug === "ai-automation" || slug === "ai-solutions-automation") {
       return p.service === "ai-automation";
@@ -138,16 +138,17 @@ export function ServiceDetailLayout({ slug }: ServiceDetailLayoutProps) {
   // Render vertical-specific showcase component
   const renderInteractiveStage = () => {
     switch (service.slug) {
-      case "web-development":
-        return <WebDevInteractiveStage />;
       case "video-editing":
         return <VideoEditingDemo active isInView />;
-      case "ai-chatbots":
-        return <AgentDemo active isInView />;
+      case "pitch-decks":
+      case "pitch-decks-storytelling":
+        return <PitchDeckDemo active isInView />;
+      case "web-development":
+        return <WebDevInteractiveStage />;
       case "ai-automation":
         return <AutomationDemo active isInView />;
       default:
-        return <WebDevInteractiveStage />;
+        return <PitchDeckDemo active isInView />;
     }
   };
 
